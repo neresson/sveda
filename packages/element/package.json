@@ -1,0 +1,55 @@
+{
+  "name": "@veda-ai/element",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./define": {
+      "types": "./src/define.ts",
+      "import": "./src/define.ts"
+    }
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./define": {
+        "types": "./dist/define.d.ts",
+        "import": "./dist/define.js"
+      }
+    }
+  },
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "vite build && vue-tsc -p tsconfig.json --emitDeclarationOnly",
+    "test": "vitest run",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
+    "lint": "echo 'no lint configured'"
+  },
+  "dependencies": {
+    "@veda-ai/core": "workspace:*",
+    "@veda-ai/vue": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "happy-dom": "^20.14.5",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^4.1.4",
+    "vue": "^3.5.13",
+    "vue-tsc": "^2.2.4"
+  }
+}

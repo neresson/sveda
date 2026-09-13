@@ -1,0 +1,5 @@
+Capabilities for this user session:
+{{tool_mode_line}}
+{{first_round_domains_line}}
+- Available capabilities:
+{{capabilities_block}}

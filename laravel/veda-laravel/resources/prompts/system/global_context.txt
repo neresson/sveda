@@ -1,0 +1,2 @@
+Session context (stable for this chat while values below are unchanged):
+{{global_context_block}}

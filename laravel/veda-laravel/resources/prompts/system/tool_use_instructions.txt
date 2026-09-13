@@ -1,0 +1,2 @@
+Tool use (current request only):
+{{tool_use_block}}
