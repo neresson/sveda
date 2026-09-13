@@ -35,6 +35,7 @@ export interface VedaPluginOptions {
   };
   protocolMode?: 'veda' | 'vercel';
   headers?: Record<string, string> | (() => Record<string, string>);
+  credentials?: RequestCredentials;
   locale?: string;
   messages?: Record<string, Record<string, string>>;
   brand?: VedaBrand;
@@ -73,6 +74,7 @@ export function createVeda(options: VedaPluginOptions): VedaPlugin {
     endpoints: options.endpoints,
     protocolMode: options.protocolMode,
     headers: options.headers,
+    credentials: options.credentials,
   });
 
   const messages: Record<string, VedaMessages> = {};

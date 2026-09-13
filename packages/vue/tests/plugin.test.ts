@@ -11,6 +11,16 @@ describe('createVeda', () => {
     expect(veda.i18n.t('newChat')).toBe('New Chat');
     expect(veda.config.brand.name).toBe('Veda');
     expect(veda.config.models).toEqual([]);
+    expect(veda.client.credentials).toBeUndefined();
+  });
+
+  it('forwards fetch credentials to the client', () => {
+    const veda = createVeda({
+      endpoints: { stream: '/veda/stream' },
+      credentials: 'include',
+    });
+
+    expect(veda.client.credentials).toBe('include');
   });
 
   it('merges chat component locales', () => {
