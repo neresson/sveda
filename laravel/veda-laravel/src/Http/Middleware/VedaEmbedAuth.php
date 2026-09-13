@@ -4,6 +4,7 @@ namespace Veda\Laravel\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 use Veda\Laravel\Services\EmbedTokenService;
 
@@ -42,6 +43,7 @@ class VedaEmbedAuth
 
         if ($guest !== null) {
             $request->setUserResolver(fn () => $guest);
+            Auth::guard()->setUser($guest);
         }
 
         $request->attributes->set(self::ATTRIBUTE_EMBED_GUEST, true);

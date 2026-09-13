@@ -141,6 +141,7 @@ export class VedaChatSession {
         content: messageText(message),
         parts: message.parts as Array<Record<string, unknown>>,
       })),
+      prompt,
       chatId: this.chatId,
       context,
       clientTools: this.client.toolRegistry.list(),
@@ -151,6 +152,8 @@ export class VedaChatSession {
   }
 
   private async streamRequest(prompt: string, sendOptions: VedaSendOptions): Promise<void> {
+    const requestBody = this.buildRequestBody(prompt, sendOptions);
+
     this.status = 'submitted';
     this.emitter.emit('status', this.status);
     this.abortController = new AbortController();
@@ -172,7 +175,7 @@ export class VedaChatSession {
           ...this.client.resolveHeaders(),
         },
         credentials: this.client.credentials,
-        body: JSON.stringify(this.buildRequestBody(prompt, sendOptions)),
+        body: JSON.stringify(requestBody),
         signal: this.abortController.signal,
       });
 
@@ -364,7 +367,7 @@ export class VedaClient {
     this.toolRegistry = options.tools ?? new VedaToolRegistry();
     this.contextRegistry = options.context ?? new VedaContextRegistry();
     this.autoSubmitFrontendToolResults = options.autoSubmitFrontendToolResults ?? true;
-    this.fetchImpl = options.fetchFn ?? fetch;
+    this.fetchImpl = options.fetchFn ?? ((input, init) => globalThis.fetch(input, init));
   }
 
   resolveHeaders(): Record<string, string> {
@@ -427,7 +430,7 @@ export class VedaClient {
     }
 
     const data = (await response.json()) as { histories?: VedaChatHistorySummary[] };
-    return data.histories ?? [];
+    return (data.histories ?? []).map(history => this.normalizeHistory(history));
   }
 
   async getHistory(chatId: string): Promise<VedaChatHistoryDetail> {
@@ -441,7 +444,7 @@ export class VedaClient {
     }
 
     const data = (await response.json()) as { history: VedaChatHistoryDetail };
-    return data.history;
+    return this.normalizeHistory(data.history);
   }
 
   async renameHistory(chatId: string, title: string): Promise<void> {
@@ -471,5 +474,16 @@ export class VedaClient {
     if (!response.ok) {
       throw new Error(`[veda] Failed to delete chat ${chatId}: ${response.status}`);
     }
+  }
+
+  private normalizeHistory<T extends VedaChatHistorySummary>(history: T): T {
+    const fromChatId = typeof history.chatId === 'string' ? history.chatId.trim() : '';
+    if (fromChatId !== '') {
+      return { ...history, chatId: fromChatId };
+    }
+
+    const fromId = typeof history.id === 'string' ? history.id.trim() : '';
+
+    return { ...history, chatId: fromId };
   }
 }

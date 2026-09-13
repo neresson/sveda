@@ -27,7 +27,7 @@ class VedaStreamController
     public function stream(Request $request): Response
     {
         $validated = $this->validatePayload($request);
-        $user = Auth::guard()->user();
+        $user = $request->user() ?? Auth::guard()->user();
 
         $limitResponse = $this->assertQuota($user);
         if ($limitResponse !== null) {
@@ -113,7 +113,7 @@ class VedaStreamController
     public function message(Request $request): JsonResponse
     {
         $validated = $this->validatePayload($request);
-        $user = Auth::guard()->user();
+        $user = $request->user() ?? Auth::guard()->user();
 
         $limitResponse = $this->assertQuota($user);
         if ($limitResponse !== null) {
@@ -264,11 +264,12 @@ class VedaStreamController
 
         $messages = $validated['messages'] ?? null;
         if (is_array($messages) && $messages !== []) {
-            $lastMessage = end($messages);
+            $messages = $this->withoutTrailingEmptyAssistant(array_values($messages));
+            $lastMessage = $messages !== [] ? $messages[array_key_last($messages)] : null;
             $lastRole = is_array($lastMessage) ? ($lastMessage['role'] ?? '') : '';
 
-            if ($lastRole === 'user') {
-                $validated['prompt'] = $this->extractUserPrompt(is_array($lastMessage) ? $lastMessage : []);
+            if ($lastRole === 'user' && is_array($lastMessage)) {
+                $validated['prompt'] = $this->extractUserPrompt($lastMessage);
                 $validated['conversation_history'] = array_slice($messages, 0, -1);
             } elseif ($lastRole === 'tool'
                 && FrontendToolContinuation::fromMessages($messages) !== null) {
@@ -277,6 +278,28 @@ class VedaStreamController
         }
 
         return $validated;
+    }
+
+    /**
+     * @param  array<int, mixed>  $messages
+     * @return array<int, mixed>
+     */
+    protected function withoutTrailingEmptyAssistant(array $messages): array
+    {
+        while ($messages !== []) {
+            $last = $messages[array_key_last($messages)];
+            if (! is_array($last) || ($last['role'] ?? '') !== 'assistant') {
+                break;
+            }
+
+            if ($this->extractUserPrompt($last) !== '') {
+                break;
+            }
+
+            array_pop($messages);
+        }
+
+        return array_values($messages);
     }
 
     /**

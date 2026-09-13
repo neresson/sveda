@@ -3,9 +3,11 @@
 namespace Veda\Laravel;
 
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Veda\Laravel\Http\Middleware\VedaHandleCors;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Events\InvokingTool;
 use Laravel\Ai\Events\ToolInvoked;
@@ -22,12 +24,15 @@ class VedaServiceProvider extends ServiceProvider
 
         $this->app->singleton(VedaManager::class, fn () => new VedaManager);
         $this->app->alias(VedaManager::class, 'veda');
+        $this->app->singleton(Services\HostMcpCredentialStore::class);
+        $this->app->scoped(Services\HostMcpToolGateway::class);
     }
 
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
+        $this->registerCorsMiddleware();
         $this->registerAiProviders();
         $this->registerRoutes();
         $this->registerBroadcasting();
@@ -37,6 +42,14 @@ class VedaServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../config/veda.php' => config_path('veda.php'),
             ], 'veda-config');
+        }
+    }
+
+    protected function registerCorsMiddleware(): void
+    {
+        $kernel = $this->app->make(HttpKernel::class);
+        if (method_exists($kernel, 'prependMiddleware')) {
+            $kernel->prependMiddleware(VedaHandleCors::class);
         }
     }
 

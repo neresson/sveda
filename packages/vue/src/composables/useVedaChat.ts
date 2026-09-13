@@ -6,6 +6,11 @@ import {
 } from '@veda-ai/core';
 import { computed, inject, reactive, readonly, ref } from 'vue';
 import { useVedaT } from '../i18n/index';
+import {
+  mergeServerChatHistories,
+  resolveMergedCurrentChat,
+  upsertChatHistoryMessages,
+} from '../lib/chatHistoryMerge';
 import { readPersistedMinimized, writePersistedMinimized } from '../lib/chatUiStorage';
 import {
   finalizeMessagesForDisplay,
@@ -103,11 +108,21 @@ const finalizeForDisplay = (messages: unknown): VedaDisplayMessage[] => {
   return finalizeMessagesForDisplay(list) as unknown as VedaDisplayMessage[];
 };
 
+const resolveServerHistoryId = (history: VedaChatHistorySummary): string => {
+  const fromChatId = typeof history.chatId === 'string' ? history.chatId.trim() : '';
+  if (fromChatId !== '') {
+    return fromChatId;
+  }
+
+  const fromId = typeof history.id === 'string' ? history.id.trim() : '';
+  return fromId;
+};
+
 const mapServerHistory = (
   history: VedaChatHistorySummary & { messages?: unknown },
   messagesLoaded: boolean
 ): VedaChatHistory => ({
-  id: String(history.chatId),
+  id: resolveServerHistoryId(history),
   title: history.title || '',
   preview: typeof history.preview === 'string' ? history.preview : '',
   messages: messagesLoaded ? finalizeForDisplay(history.messages) : [],
@@ -182,25 +197,10 @@ const buildWelcomeMessage = (text: string): VedaDisplayMessage => ({
 const loadHistories = async () => {
   const serverHistories = await fetchHistoriesFromServer();
 
-  chatHistories.value = serverHistories;
-
+  chatHistories.value = mergeServerChatHistories(serverHistories, currentChat.value);
+  currentChat.value = resolveMergedCurrentChat(chatHistories.value, currentChat.value);
   if (currentChat.value) {
-    const currentId = currentChat.value.id;
-    const chatIndex = chatHistories.value.findIndex(c => c.id === currentId);
-    const updatedChat = chatIndex === -1 ? undefined : chatHistories.value[chatIndex];
-    if (updatedChat) {
-      if (currentChat.value.messagesLoaded && !updatedChat.messagesLoaded) {
-        chatHistories.value[chatIndex] = {
-          ...updatedChat,
-          messages: currentChat.value.messages,
-          messagesLoaded: true,
-        };
-        currentChat.value = chatHistories.value[chatIndex];
-      } else {
-        currentChat.value = updatedChat;
-      }
-      chatState.currentChatId = currentId;
-    }
+    chatState.currentChatId = currentChat.value.id;
   }
 
   if (chatHistories.value.length > 0 && !currentChat.value) {
@@ -399,20 +399,18 @@ const updateMessage = (
 };
 
 const setChatMessages = (chatId: string, messages: VedaDisplayMessage[]) => {
-  const chatIndex = chatHistories.value.findIndex(c => c.id === chatId);
-  if (chatIndex === -1) {
-    return;
-  }
+  const result = upsertChatHistoryMessages(
+    chatHistories.value,
+    currentChat.value,
+    chatId,
+    finalizeForDisplay(messages)
+  );
 
-  const chat = chatHistories.value[chatIndex];
-  chat.messages = finalizeForDisplay(messages);
-  chat.messagesLoaded = true;
-  chat.updatedAt = Date.now();
-
-  chatHistories.value = [...chatHistories.value];
-
-  if (currentChat.value?.id === chatId) {
-    currentChat.value = chatHistories.value[chatIndex];
+  chatHistories.value = result.histories;
+  currentChat.value = result.current;
+  if (result.current?.id === chatId) {
+    chatState.currentChatId = chatId;
+    ensureChatTab(chatId);
   }
 };
 
@@ -543,7 +541,22 @@ export const useVedaChat = () => {
 
   const refreshChatTitleFromServer = async (chatId: string): Promise<string | null> => {
     const loaded = await fetchChatHistoryFromServer(chatId);
-    const title = loaded?.title?.trim();
+    if (!loaded) {
+      return null;
+    }
+
+    if (loaded.messages.length > 0) {
+      const current =
+        currentChat.value?.id === chatId
+          ? currentChat.value
+          : chatHistories.value.find(chat => chat.id === chatId);
+      const localCount = current?.messages.length ?? 0;
+      if (loaded.messages.length >= localCount) {
+        setChatMessages(chatId, loaded.messages);
+      }
+    }
+
+    const title = loaded.title?.trim();
     return title || null;
   };
 

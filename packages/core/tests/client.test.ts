@@ -70,6 +70,8 @@ describe('VedaChatSession', () => {
 
     const body = JSON.parse(capturedBody);
     expect(body.chatId).toBe('chat-ctx');
+    expect(body.prompt).toBe('hello');
+    expect(body.messages.at(-1)).toMatchObject({ role: 'user', content: 'hello' });
     expect(body.context).toEqual({ page: { type: 'dashboard' } });
     expect(body.clientTools).toEqual([
       { name: 'confirm', description: 'Confirm action', parameters: { type: 'object' } },
@@ -108,6 +110,8 @@ describe('VedaChatSession', () => {
     });
 
     const secondBody = JSON.parse(bodies[1]);
+    expect(secondBody.prompt).toBe('tool_results');
+    expect(secondBody.messages.at(-1).role).toBe('tool');
     const toolMessage = secondBody.messages.find(
       (message: { role: string }) => message.role === 'tool'
     );
@@ -235,5 +239,50 @@ describe('VedaClient history API', () => {
       { url: '/veda/histories/c1', method: 'PATCH' },
       { url: '/veda/histories/c1', method: 'DELETE' },
     ]);
+  });
+
+  it('maps history id to chatId when the host omits chatId', async () => {
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      if (method === 'GET' && String(url).endsWith('/histories')) {
+        return Response.json({ histories: [{ id: 'c-legacy', title: 'Legacy' }] });
+      }
+
+      return Response.json({
+        history: { id: 'c-legacy', title: 'Legacy', messages: [] },
+      });
+    }) as unknown as typeof fetch;
+
+    const client = new VedaClient({
+      endpoints: { stream: '/veda/stream', histories: '/veda/histories' },
+      fetchFn,
+    });
+
+    await expect(client.listHistories()).resolves.toEqual([
+      expect.objectContaining({ id: 'c-legacy', chatId: 'c-legacy', title: 'Legacy' }),
+    ]);
+    await expect(client.getHistory('c-legacy')).resolves.toMatchObject({ chatId: 'c-legacy' });
+  });
+
+  it('invokes the default fetch with window as this', async () => {
+    const browserFetch = function (this: unknown) {
+      if (this !== globalThis) {
+        throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+      }
+
+      return Promise.resolve(Response.json({ histories: [] }));
+    } as typeof fetch;
+
+    vi.stubGlobal('fetch', browserFetch);
+
+    try {
+      const client = new VedaClient({
+        endpoints: { stream: '/veda/stream', histories: '/veda/histories' },
+      });
+
+      await expect(client.listHistories()).resolves.toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

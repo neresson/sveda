@@ -3,7 +3,7 @@
 return [
     'prefix' => env('VEDA_ROUTE_PREFIX', 'veda'),
 
-    'middleware' => ['web', 'auth'],
+    'middleware' => array_values(array_filter(array_map('trim', explode(',', (string) env('VEDA_MIDDLEWARE', 'web,auth'))))),
 
     'provider' => env('VEDA_PROVIDER', 'veda-openai'),
 
@@ -74,8 +74,29 @@ return [
         'write_tools_enabled' => env('VEDA_EMBED_WRITE_TOOLS_ENABLED', false),
         'token_ttl_seconds' => (int) env('VEDA_EMBED_TOKEN_TTL', 3600),
         'throttle' => env('VEDA_EMBED_TOKEN_THROTTLE', '30,1'),
+        'host_api_key' => env('VEDA_EMBED_HOST_API_KEY', ''),
         'authorize' => null,
         'user_resolver' => null,
+    ],
+
+    'host' => [
+        'mcp' => [
+            'timeout' => (int) env('VEDA_HOST_MCP_TIMEOUT', 30),
+        ],
+    ],
+
+    'cors' => [
+        'allowed_origins' => array_values(array_filter(array_map('trim', explode(',', (string) env('VEDA_CORS_ORIGINS', ''))))),
+        'allowed_headers' => [
+            'Accept',
+            'Authorization',
+            'Content-Type',
+            'X-Requested-With',
+            'X-Veda-Embed-Token',
+            'X-Veda-Host-Key',
+            'X-Veda-Protocol',
+        ],
+        'allowed_methods' => ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     ],
 
     'tool_defer' => [

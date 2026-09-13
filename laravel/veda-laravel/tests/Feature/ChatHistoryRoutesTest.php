@@ -32,6 +32,7 @@ class ChatHistoryRoutesTest extends TestCase
         $response->assertOk();
         $response->assertJsonCount(1, 'histories');
         $this->assertSame('chat-1', $response->json('histories.0.id'));
+        $this->assertSame('chat-1', $response->json('histories.0.chatId'));
     }
 
     public function test_show_returns_single_history(): void
@@ -53,6 +54,7 @@ class ChatHistoryRoutesTest extends TestCase
 
         $response->assertOk();
         $this->assertSame('Answered chat', $response->json('history.title'));
+        $this->assertSame('chat-42', $response->json('history.chatId'));
     }
 
     public function test_show_returns_404_for_other_users_chat(): void

@@ -19,6 +19,7 @@ use Veda\Laravel\Agent\Middleware\BindRequestContext;
 use Veda\Laravel\Agent\Middleware\RunSearchPreflight;
 use Veda\Laravel\Prompts\PromptBuilder;
 use Veda\Laravel\Services\ConversationCompactionStore;
+use Veda\Laravel\Services\HostMcpToolGateway;
 use Veda\Laravel\Services\RequestContext;
 use Veda\Laravel\Tools\SpawnParallelTasksTool;
 use Veda\Laravel\Tools\ToolResolver;
@@ -39,7 +40,7 @@ class VedaAgent implements Agent, Conversational, HasMiddleware, HasTools
     ) {
         $this->user = $user ?? Auth::guard()->user();
 
-        if ($chatId) {
+        if ($this->user && $chatId) {
             $this->continue($chatId, as: $this->user);
         } elseif ($this->user) {
             $this->forUser($this->user);
@@ -52,8 +53,7 @@ class VedaAgent implements Agent, Conversational, HasMiddleware, HasTools
         $requestContext = RequestContext::current();
         $pageContext = $requestContext?->promptPageContext() ?? [];
 
-        $resolver = app(ToolResolver::class);
-        $resolved = $resolver->resolve($this->user, $requestContext);
+        $resolvedTools = $this->resolvedSessionTools($requestContext);
 
         $contextSections = [];
         foreach ($manager->contextProviders() as $provider) {
@@ -74,7 +74,7 @@ class VedaAgent implements Agent, Conversational, HasMiddleware, HasTools
 
         return app(PromptBuilder::class)->buildSystemPrompt(
             $pageContext,
-            $resolved['tools'],
+            $resolvedTools,
             [],
             $manager->resolveGlobalContextBlock($this->user, $pageContext, $requestContext),
             $contextSections,
@@ -90,14 +90,23 @@ class VedaAgent implements Agent, Conversational, HasMiddleware, HasTools
         $manager = app(VedaManager::class);
         $requestContext = RequestContext::current();
 
-        $resolved = app(ToolResolver::class)->resolve($this->user, $requestContext);
-        $tools = $resolved['tools'];
+        $tools = $this->resolvedSessionTools($requestContext);
 
         if ($manager->getSubagentResolver() !== null) {
             $tools[] = new SpawnParallelTasksTool($this->user);
         }
 
         return $tools;
+    }
+
+    /**
+     * @return array<int, Tool>
+     */
+    protected function resolvedSessionTools(?RequestContext $requestContext): array
+    {
+        $resolved = app(ToolResolver::class)->resolve($this->user, $requestContext);
+
+        return [...$resolved['tools'], ...app(HostMcpToolGateway::class)->tools($requestContext)];
     }
 
     /**

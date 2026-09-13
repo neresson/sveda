@@ -106,6 +106,7 @@ class ChatHistorySyncService
     {
         return [
             'id' => $history->chat_id,
+            'chatId' => $history->chat_id,
             'title' => $history->title,
             'preview' => $this->extractPreview($history->messages ?? []),
             'tokensUsed' => (int) ($history->tokens_used ?? 0),
@@ -122,6 +123,7 @@ class ChatHistorySyncService
     {
         return [
             'id' => $history->chat_id,
+            'chatId' => $history->chat_id,
             'title' => $history->title,
             'messages' => $history->messages ?? [],
             'conversationHistory' => $history->conversation_history ?? [],

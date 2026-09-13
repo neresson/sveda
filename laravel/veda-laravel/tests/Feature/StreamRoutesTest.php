@@ -66,6 +66,29 @@ class StreamRoutesTest extends TestCase
         $this->assertSame($user->getAuthIdentifier(), $history->user_id);
     }
 
+    public function test_stream_extracts_prompt_when_messages_end_with_empty_assistant(): void
+    {
+        Queue::fake();
+
+        $user = $this->createUser();
+
+        Ai::fakeAgent(VedaAgent::class, ['Hello from Veda']);
+
+        $this->actingAs($user)->postJson('/veda/stream', [
+            'messages' => [
+                ['id' => 'm1', 'role' => 'user', 'content' => 'Say hello'],
+                ['id' => 'm2', 'role' => 'assistant', 'parts' => []],
+            ],
+            'chatId' => 'chat-stream-placeholder',
+        ], [
+            'Accept' => 'application/vnd.veda.stream+json',
+        ])->assertOk();
+
+        $generation = VedaGeneration::query()->first();
+        $this->assertNotNull($generation);
+        $this->assertSame('Say hello', $generation->prompt);
+    }
+
     public function test_stream_can_use_vercel_protocol(): void
     {
         Queue::fake();
