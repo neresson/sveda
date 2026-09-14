@@ -153,7 +153,7 @@ class VedaTextGenerationLoopTest extends TestCase
     {
         $provider = Mockery::mock(TextProvider::class);
         $provider->allows('name')->andReturn('deepseek');
-        $provider->allows('driver')->andReturn('veda-deepseek');
+        $provider->allows('driver')->andReturn('veda-responses');
 
         return $provider;
     }

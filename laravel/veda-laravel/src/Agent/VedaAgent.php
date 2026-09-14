@@ -8,8 +8,10 @@ use Laravel\Ai\Concerns\RemembersConversations;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasMiddleware;
+use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Promptable;
@@ -25,7 +27,7 @@ use Veda\Laravel\Tools\SpawnParallelTasksTool;
 use Veda\Laravel\Tools\ToolResolver;
 use Veda\Laravel\VedaManager;
 
-class VedaAgent implements Agent, Conversational, HasMiddleware, HasTools
+class VedaAgent implements Agent, Conversational, HasMiddleware, HasProviderOptions, HasTools
 {
     use Promptable;
     use RemembersConversations {
@@ -145,5 +147,32 @@ class VedaAgent implements Agent, Conversational, HasMiddleware, HasTools
     public function timeout(): int
     {
         return (int) config('veda.stream_timeout', 1800);
+    }
+
+    public function providerOptions(Lab|string $provider): array
+    {
+        $driver = $provider instanceof Lab ? $provider->value : (string) $provider;
+        $thinkingEnabled = RequestContext::current()?->thinkingEnabled !== false;
+
+        return match ($driver) {
+            'veda-responses' => [
+                'reasoning' => [
+                    'effort' => $thinkingEnabled ? 'high' : 'none',
+                ],
+            ],
+            'veda-anthropic' => $thinkingEnabled
+                ? [
+                    'thinking' => [
+                        'type' => 'enabled',
+                        'budget_tokens' => 8192,
+                    ],
+                ]
+                : [
+                    'thinking' => [
+                        'type' => 'disabled',
+                    ],
+                ],
+            default => [],
+        };
     }
 }

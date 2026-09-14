@@ -38,10 +38,13 @@ class ConversationSummarizationService
             }
         }
 
-        $provider = config('veda.compaction.provider');
-        $model = config('veda.compaction.model');
+        $configuredModel = config('veda.compaction.model') ?: config('veda.default_model', config('veda.model'));
 
         try {
+            $target = app(VedaModelCatalog::class)->promptTarget(
+                is_string($configuredModel) ? $configuredModel : null
+            );
+
             $agent = \Laravel\Ai\agent(
                 instructions: 'Summarize the conversation for continuation. Preserve goals, files or entities touched, recent tool commands and results, and the next step. Use the same language as the user. Do not call tools. Output plain text only.',
                 messages: [],
@@ -49,8 +52,8 @@ class ConversationSummarizationService
 
             $response = $agent->prompt(
                 implode("\n", $lines),
-                provider: is_string($provider) && $provider !== '' ? $provider : null,
-                model: is_string($model) && $model !== '' ? $model : null,
+                provider: $target['provider'],
+                model: $target['model'],
             );
 
             return trim($response->text);

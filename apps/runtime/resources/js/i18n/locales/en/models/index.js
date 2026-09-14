@@ -1,0 +1,18 @@
+export default {
+    document_title: 'Veda models',
+    eyebrow: 'Catalog',
+    title: 'Models.',
+    subtitle: 'Add providers this sidecar can call.',
+    id: 'ID',
+    label: 'Label',
+    protocol: 'Protocol',
+    api_model: 'API model',
+    url: 'URL',
+    api_key: 'API key',
+    aliases: 'Aliases',
+    thinking: 'Thinking',
+    vision: 'Vision',
+    model: 'Model',
+    flags: 'Flags',
+    empty: 'No models yet.',
+};

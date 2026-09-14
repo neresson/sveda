@@ -7,14 +7,15 @@ use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Veda\Laravel\Http\Middleware\VedaHandleCors;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Events\InvokingTool;
 use Laravel\Ai\Events\ToolInvoked;
+use Veda\Laravel\Http\Middleware\VedaApplySettings;
+use Veda\Laravel\Http\Middleware\VedaHandleCors;
 use Veda\Laravel\Listeners\BroadcastVedaToolActivity;
-use Veda\Laravel\Providers\VedaDeepSeekProvider;
-use Veda\Laravel\Providers\VedaOpenAiProvider;
-use Veda\Laravel\Providers\YandexTextProvider;
+use Veda\Laravel\Providers\VedaAnthropicProvider;
+use Veda\Laravel\Providers\VedaResponsesProvider;
+use Veda\Laravel\Services\VedaModelCatalog;
 
 class VedaServiceProvider extends ServiceProvider
 {
@@ -26,15 +27,20 @@ class VedaServiceProvider extends ServiceProvider
         $this->app->alias(VedaManager::class, 'veda');
         $this->app->singleton(Services\HostMcpCredentialStore::class);
         $this->app->scoped(Services\HostMcpToolGateway::class);
+        $this->app->singleton(Services\VedaSettingsRepository::class);
+        $this->app->singleton(VedaModelCatalog::class);
     }
 
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'veda');
 
         $this->registerCorsMiddleware();
+        $this->registerSettingsMiddleware();
         $this->registerAiProviders();
         $this->registerRoutes();
+        $this->registerAdminRoutes();
         $this->registerBroadcasting();
         $this->registerEventListeners();
 
@@ -55,33 +61,15 @@ class VedaServiceProvider extends ServiceProvider
 
     protected function registerAiProviders(): void
     {
-        Ai::extend('veda-openai', function (Application $app, array $config) {
-            return new VedaOpenAiProvider($config, $app->make(Dispatcher::class));
+        Ai::extend('veda-responses', function (Application $app, array $config) {
+            return new VedaResponsesProvider($config, $app->make(Dispatcher::class));
         });
 
-        Ai::extend('veda-deepseek', function (Application $app, array $config) {
-            return new VedaDeepSeekProvider($config, $app->make(Dispatcher::class));
+        Ai::extend('veda-anthropic', function (Application $app, array $config) {
+            return new VedaAnthropicProvider($config, $app->make(Dispatcher::class));
         });
 
-        Ai::extend('veda-yandex', function (Application $app, array $config) {
-            return new YandexTextProvider($config, $app->make(Dispatcher::class));
-        });
-
-        $providers = (array) config('veda.providers', []);
-        if ($providers !== []) {
-            $existing = (array) config('ai.providers', []);
-            config(['ai.providers' => array_merge($existing, $providers)]);
-        }
-
-        $failover = array_values(array_filter((array) config('veda.failover', [])));
-        if ($failover !== []) {
-            config(['ai.failover' => $failover]);
-        }
-
-        $defaultProvider = config('veda.provider');
-        if (is_string($defaultProvider) && $defaultProvider !== '') {
-            config(['ai.default' => $defaultProvider]);
-        }
+        $this->app->make(VedaModelCatalog::class)->registerIntoAi();
     }
 
     protected function registerRoutes(): void
@@ -91,6 +79,21 @@ class VedaServiceProvider extends ServiceProvider
             'middleware' => config('veda.middleware', ['web']),
         ], function () {
             $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        });
+    }
+
+    protected function registerSettingsMiddleware(): void
+    {
+        $kernel = $this->app->make(HttpKernel::class);
+        if (method_exists($kernel, 'prependMiddleware')) {
+            $kernel->prependMiddleware(VedaApplySettings::class);
+        }
+    }
+
+    protected function registerAdminRoutes(): void
+    {
+        Route::prefix(config('veda.prefix', 'veda'))->group(function () {
+            $this->loadRoutesFrom(__DIR__.'/../routes/admin.php');
         });
     }
 

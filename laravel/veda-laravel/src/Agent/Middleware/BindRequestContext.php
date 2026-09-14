@@ -43,6 +43,7 @@ class BindRequestContext
             $this->clientTools(),
             $continuation['toolCalls'] ?? null,
             $continuation['toolResults'] ?? null,
+            Request::has('options.thinking') ? Request::boolean('options.thinking') : null,
         );
 
         app()->terminating(function () {

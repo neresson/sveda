@@ -42,6 +42,12 @@ class PromptBuilder
 
         $sections = [];
         $sections[] = $this->renderTemplate('intro.txt');
+
+        $instancePrompt = trim((string) config('veda.system_prompt', ''));
+        if ($instancePrompt !== '') {
+            $sections[] = $instancePrompt;
+        }
+
         $sections[] = $this->renderTemplate('pull_context.txt');
         $sections[] = $this->renderTemplate('capabilities.txt', [
             'tool_mode_line' => $toolModeLine,

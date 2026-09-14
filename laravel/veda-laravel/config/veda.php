@@ -5,11 +5,11 @@ return [
 
     'middleware' => array_values(array_filter(array_map('trim', explode(',', (string) env('VEDA_MIDDLEWARE', 'web,auth'))))),
 
-    'provider' => env('VEDA_PROVIDER', 'veda-openai'),
+    'default_model' => env('VEDA_DEFAULT_MODEL', env('VEDA_MODEL', 'deepseek-v4-flash-responses')),
 
-    'model' => env('VEDA_MODEL'),
+    'model' => env('VEDA_MODEL', env('VEDA_DEFAULT_MODEL', 'deepseek-v4-flash-responses')),
 
-    'failover' => array_values(array_filter(explode(',', (string) env('VEDA_FAILOVER', 'veda-openai')))),
+    'failover' => array_values(array_filter(explode(',', (string) env('VEDA_FAILOVER', 'deepseek-v4-flash-anthropic')))),
 
     'stream_timeout' => (int) env('VEDA_STREAM_TIMEOUT', 1800),
 
@@ -28,38 +28,52 @@ return [
         'chat_turns' => 'veda_chat_turns',
         'chat_compactions' => 'veda_chat_compactions',
         'generations' => 'veda_generations',
+        'settings' => 'veda_settings',
     ],
 
-    'providers' => [
-        'veda-openai' => [
-            'driver' => 'veda-openai',
-            'key' => env('OPENAI_API_KEY'),
-            'url' => env('OPENAI_URL', 'https://api.openai.com/v1'),
+    'admin' => [
+        'api_key' => env('VEDA_ADMIN_API_KEY', ''),
+    ],
+
+    'welcome_message' => env('VEDA_WELCOME_MESSAGE', ''),
+
+    'system_prompt' => env('VEDA_SYSTEM_PROMPT', ''),
+
+    'deepseek' => [
+        'key' => env('DEEPSEEK_API_KEY'),
+    ],
+
+    'models' => [
+        [
+            'id' => 'deepseek-v4-flash-responses',
+            'label' => 'DeepSeek V4 Flash (Responses)',
+            'protocol' => 'responses',
+            'api_model' => 'deepseek-v4-flash',
+            'url' => 'https://api.deepseek.com',
+            'thinking' => true,
+            'vision' => false,
+            'preset' => 'deepseek',
+            'aliases' => ['deepseek-v4-flash'],
         ],
-        'veda-deepseek' => [
-            'driver' => 'veda-deepseek',
-            'key' => env('DEEPSEEK_API_KEY'),
+        [
+            'id' => 'deepseek-v4-flash-anthropic',
+            'label' => 'DeepSeek V4 Flash (Anthropic)',
+            'protocol' => 'anthropic',
+            'api_model' => 'deepseek-v4-flash',
+            'url' => 'https://api.deepseek.com/anthropic/v1',
+            'thinking' => true,
+            'vision' => false,
+            'preset' => 'deepseek',
         ],
-        'veda-yandex' => [
-            'driver' => 'veda-yandex',
-            'key' => env('VEDA_YANDEX_API_KEY', ''),
-            'url' => env('VEDA_YANDEX_CHAT_ENDPOINT', 'https://ai.api.cloud.yandex.net/v1/responses'),
-            'folder_id' => env('VEDA_YANDEX_FOLDER_ID', ''),
-            'use_iam_bearer' => filter_var(env('VEDA_YANDEX_USE_IAM_BEARER', false), FILTER_VALIDATE_BOOLEAN),
-            'embedding_endpoint' => env('VEDA_YANDEX_EMBEDDING_ENDPOINT', 'https://llm.api.cloud.yandex.net/foundationModels/v1/textEmbedding'),
-            'embedding_model_uri' => env('VEDA_YANDEX_EMBEDDING_MODEL_URI', ''),
-            'embedding_query_model_uri' => env('VEDA_YANDEX_EMBEDDING_QUERY_MODEL_URI', ''),
-            'models' => [
-                'text' => [
-                    'default' => env('VEDA_YANDEX_TEXT_MODEL', 'qwen3.6-35b-a3b/latest'),
-                    'cheapest' => env('VEDA_YANDEX_TEXT_MODEL', 'qwen3.6-35b-a3b/latest'),
-                    'smartest' => env('VEDA_YANDEX_TEXT_MODEL', 'qwen3.6-35b-a3b/latest'),
-                ],
-                'embedding' => [
-                    'default' => env('VEDA_YANDEX_EMBEDDING_MODEL', 'text-search-doc/latest'),
-                    'dimensions' => (int) env('VEDA_YANDEX_EMBEDDING_DIMENSIONS', 256),
-                ],
-            ],
+        [
+            'id' => 'deepseek-v4-pro',
+            'label' => 'DeepSeek V4 Pro',
+            'protocol' => 'responses',
+            'api_model' => 'deepseek-v4-pro',
+            'url' => 'https://api.deepseek.com',
+            'thinking' => true,
+            'vision' => false,
+            'preset' => 'deepseek',
         ],
     ],
 
@@ -94,9 +108,10 @@ return [
             'X-Requested-With',
             'X-Veda-Embed-Token',
             'X-Veda-Host-Key',
+            'X-Veda-Admin-Key',
             'X-Veda-Protocol',
         ],
-        'allowed_methods' => ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+        'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     ],
 
     'tool_defer' => [
@@ -106,7 +121,7 @@ return [
     ],
 
     'tool_catalog' => [
-        'embeddings_enabled' => filter_var(env('VEDA_TOOL_CATALOG_EMBEDDINGS_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+        'embeddings_enabled' => filter_var(env('VEDA_TOOL_CATALOG_EMBEDDINGS_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
         'embeddings_online_fill' => filter_var(env('VEDA_TOOL_CATALOG_EMBEDDINGS_ONLINE_FILL', false), FILTER_VALIDATE_BOOLEAN),
         'embedding_cache_days' => (int) env('VEDA_TOOL_CATALOG_EMBEDDING_CACHE_DAYS', 90),
         'embedding_keyword_weight' => (float) env('VEDA_TOOL_CATALOG_EMBEDDING_KEYWORD_WEIGHT', 0.25),
@@ -122,8 +137,6 @@ return [
 
     'context_max_tokens' => (int) env('VEDA_CONTEXT_MAX_TOKENS', 128000),
 
-    'vision_markers' => ['yandex', 'timeweb', 'gemini', 'qwen'],
-
     'safety_tokens_per_request' => (int) env('VEDA_SAFETY_TOKENS_PER_REQUEST', 40000),
 
     'compaction' => [
@@ -132,7 +145,6 @@ return [
         'lock_seconds' => (int) env('VEDA_COMPACTION_LOCK_SECONDS', 180),
         'min_messages' => (int) env('VEDA_COMPACTION_MIN_MESSAGES', 40),
         'keep_tail_messages' => (int) env('VEDA_COMPACTION_KEEP_TAIL_MESSAGES', 20),
-        'provider' => env('VEDA_COMPACTION_PROVIDER'),
         'model' => env('VEDA_COMPACTION_MODEL'),
         'disk' => env('VEDA_COMPACTION_DISK', 'local'),
     ],
@@ -143,7 +155,6 @@ return [
 
     'title_generation' => [
         'enabled' => filter_var(env('VEDA_TITLE_GENERATION_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
-        'provider' => env('VEDA_TITLE_PROVIDER'),
         'model' => env('VEDA_TITLE_MODEL'),
     ],
 

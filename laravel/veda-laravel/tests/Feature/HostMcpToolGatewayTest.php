@@ -2,6 +2,7 @@
 
 namespace Veda\Laravel\Tests\Feature;
 
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Tools\Request as AiToolRequest;
 use Veda\Laravel\Agent\VedaAgent;
@@ -21,7 +22,7 @@ class HostMcpToolGatewayTest extends TestCase
     public function test_loads_host_mcp_tools_for_the_current_visitor(): void
     {
         Http::preventStrayRequests();
-        Http::fake(fn (\Illuminate\Http\Client\Request $request) => $this->fakeMcpResponse($request));
+        Http::fake(fn (Request $request) => $this->fakeMcpResponse($request));
 
         request()->attributes->set(VedaEmbedAuth::ATTRIBUTE_VISITOR_ID, 'lms-20');
         app(HostMcpCredentialStore::class)->put(
@@ -45,7 +46,7 @@ class HostMcpToolGatewayTest extends TestCase
     public function test_veda_agent_includes_host_mcp_tools(): void
     {
         Http::preventStrayRequests();
-        Http::fake(fn (\Illuminate\Http\Client\Request $request) => $this->fakeMcpResponse($request));
+        Http::fake(fn (Request $request) => $this->fakeMcpResponse($request));
 
         request()->attributes->set(VedaEmbedAuth::ATTRIBUTE_VISITOR_ID, 'lms-21');
         app(HostMcpCredentialStore::class)->put(

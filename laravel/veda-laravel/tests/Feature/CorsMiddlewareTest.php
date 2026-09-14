@@ -2,6 +2,7 @@
 
 namespace Veda\Laravel\Tests\Feature;
 
+use Veda\Laravel\Services\EmbedTokenService;
 use Veda\Laravel\Tests\TestCase;
 
 class CorsMiddlewareTest extends TestCase
@@ -42,7 +43,7 @@ class CorsMiddlewareTest extends TestCase
 
     public function test_stream_response_includes_cors_headers_for_widget_origin(): void
     {
-        $token = app(\Veda\Laravel\Services\EmbedTokenService::class)->issue('visitor-cors');
+        $token = app(EmbedTokenService::class)->issue('visitor-cors');
 
         $response = $this->getJson('/veda/chat-histories', [
             'Origin' => 'http://localhost:8001',

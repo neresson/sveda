@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Veda\Laravel\Http\Controllers\VedaChatHistoryController;
 use Veda\Laravel\Http\Controllers\VedaDocumentExtractController;
+use Veda\Laravel\Http\Controllers\VedaEmbedConfigController;
 use Veda\Laravel\Http\Controllers\VedaEmbedTokenController;
 use Veda\Laravel\Http\Controllers\VedaStreamController;
 use Veda\Laravel\Http\Middleware\VedaAuthorize;
@@ -18,6 +19,7 @@ Route::group(['middleware' => [VedaEmbedAuth::class, VedaAuthorize::class]], fun
     Route::delete('/chat-histories/{chatId}', [VedaChatHistoryController::class, 'destroy'])->name('veda.chat-histories.destroy');
 
     Route::post('/documents/extract', VedaDocumentExtractController::class)->name('veda.documents.extract');
+    Route::get('/embed/config', VedaEmbedConfigController::class)->name('veda.embed.config');
 });
 
 if (config('veda.embed.enabled', false)) {

@@ -53,17 +53,20 @@ class ChatTitleService
             'Match the language of the user request.',
         ]);
 
-        $provider = config('veda.title_generation.provider');
-        $model = config('veda.title_generation.model');
+        $provider = is_string(config('veda.title_generation.model')) && config('veda.title_generation.model') !== ''
+            ? config('veda.title_generation.model')
+            : config('veda.default_model', config('veda.model'));
 
         try {
+            $target = app(VedaModelCatalog::class)->promptTarget(is_string($provider) ? $provider : null);
+
             $response = \Laravel\Ai\agent(
                 instructions: $instructions,
                 messages: [],
             )->prompt(
                 mb_substr($trimmedRequest, 0, 2000),
-                provider: is_string($provider) && $provider !== '' ? $provider : null,
-                model: is_string($model) && $model !== '' ? $model : null,
+                provider: $target['provider'],
+                model: $target['model'],
             );
 
             return $this->sanitizeGeneratedTitle($response->text);

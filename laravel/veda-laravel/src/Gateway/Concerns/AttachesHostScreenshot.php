@@ -2,93 +2,134 @@
 
 namespace Veda\Laravel\Gateway\Concerns;
 
+use Laravel\Ai\Providers\Provider;
 use Veda\Laravel\Services\RequestContext;
 
 trait AttachesHostScreenshot
 {
-    /**
-     * @param  array<int, array<string, mixed>>  $chatMessages
-     * @return array<int, array<string, mixed>>
-     */
-    protected function attachHostScreenshot(array $chatMessages, string $providerName, string $model): array
+    protected function hasHostScreenshot(): bool
     {
-        if (! $this->supportsHostScreenshot($providerName, $model)) {
-            return $chatMessages;
+        return $this->hostScreenshotParts() !== null;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $input
+     */
+    protected function appendResponsesScreenshot(array &$input, ?Provider $provider): void
+    {
+        if (! $this->providerSupportsVision($provider)) {
+            return;
         }
 
+        $screenshot = $this->hostScreenshotParts();
+        if ($screenshot === null) {
+            return;
+        }
+
+        $lastUserIndex = $this->lastRoleIndex($input, 'user');
+        if ($lastUserIndex === null) {
+            return;
+        }
+
+        $content = $input[$lastUserIndex]['content'] ?? [];
+        if (! is_array($content)) {
+            return;
+        }
+
+        foreach ($content as $part) {
+            if (is_array($part) && ($part['type'] ?? '') === 'input_image') {
+                return;
+            }
+        }
+
+        $input[$lastUserIndex]['content'][] = [
+            'type' => 'input_image',
+            'image_url' => 'data:'.$screenshot['mime'].';base64,'.$screenshot['base64'],
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $mapped
+     */
+    protected function appendAnthropicScreenshot(array &$mapped, ?Provider $provider): void
+    {
+        if (! $this->providerSupportsVision($provider)) {
+            return;
+        }
+
+        $screenshot = $this->hostScreenshotParts();
+        if ($screenshot === null) {
+            return;
+        }
+
+        $lastUserIndex = $this->lastRoleIndex($mapped, 'user');
+        if ($lastUserIndex === null) {
+            return;
+        }
+
+        $content = $mapped[$lastUserIndex]['content'] ?? [];
+        if (! is_array($content)) {
+            return;
+        }
+
+        foreach ($content as $part) {
+            if (is_array($part) && ($part['type'] ?? '') === 'image') {
+                return;
+            }
+        }
+
+        $mapped[$lastUserIndex]['content'][] = [
+            'type' => 'image',
+            'source' => [
+                'type' => 'base64',
+                'media_type' => $screenshot['mime'],
+                'data' => $screenshot['base64'],
+            ],
+        ];
+    }
+
+    protected function providerSupportsVision(?Provider $provider): bool
+    {
+        if ($provider === null) {
+            return false;
+        }
+
+        return filter_var(
+            $provider->additionalConfiguration()['vision'] ?? false,
+            FILTER_VALIDATE_BOOL
+        ) === true;
+    }
+
+    /**
+     * @return array{mime: string, base64: string}|null
+     */
+    protected function hostScreenshotParts(): ?array
+    {
         $pageContext = RequestContext::current()?->pageContext ?? [];
         $mime = $pageContext['host_screenshot_mime'] ?? null;
         $base64 = $pageContext['host_screenshot_base64'] ?? null;
 
         if (! is_string($mime) || $mime === '' || ! is_string($base64) || strlen($base64) < 32) {
-            return $chatMessages;
+            return null;
         }
 
-        $lastUserIndex = null;
-        for ($index = count($chatMessages) - 1; $index >= 0; $index--) {
-            if (($chatMessages[$index]['role'] ?? '') === 'user') {
-                $lastUserIndex = $index;
-                break;
-            }
-        }
-
-        if ($lastUserIndex === null) {
-            return $chatMessages;
-        }
-
-        $content = $chatMessages[$lastUserIndex]['content'] ?? '';
-        if (is_array($content)) {
-            foreach ($content as $part) {
-                if (is_array($part) && ($part['type'] ?? '') === 'image_url') {
-                    return $chatMessages;
-                }
-            }
-
-            $chatMessages[$lastUserIndex]['content'][] = $this->hostScreenshotImagePart($mime, $base64);
-
-            return $chatMessages;
-        }
-
-        $text = trim((string) $content);
-        $chatMessages[$lastUserIndex]['content'] = [
-            [
-                'type' => 'text',
-                'text' => $text !== '' ? $text : 'Help me with this host application screen.',
-            ],
-            $this->hostScreenshotImagePart($mime, $base64),
+        return [
+            'mime' => $mime,
+            'base64' => $base64,
         ];
-
-        return $chatMessages;
-    }
-
-    protected function supportsHostScreenshot(string $providerName, string $model): bool
-    {
-        $markers = config('veda.vision_markers', ['yandex', 'timeweb', 'gemini', 'qwen']);
-        if (! is_array($markers)) {
-            return false;
-        }
-
-        $haystack = strtolower($providerName.'/'.$model);
-        foreach ($markers as $marker) {
-            if (is_string($marker) && $marker !== '' && str_contains($haystack, strtolower($marker))) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
-     * @return array<string, mixed>
+     * @param  array<int, array<string, mixed>>  $items
      */
-    protected function hostScreenshotImagePart(string $mime, string $base64): array
+    protected function lastRoleIndex(array $items, string $role): ?int
     {
-        return [
-            'type' => 'image_url',
-            'image_url' => [
-                'url' => 'data:'.$mime.';base64,'.$base64,
-                'detail' => 'low',
-            ],
-        ];
+        for ($index = count($items) - 1; $index >= 0; $index--) {
+            if (($items[$index]['role'] ?? '') === $role) {
+                return $index;
+            }
+        }
+
+        return null;
     }
 }

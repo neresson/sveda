@@ -80,4 +80,15 @@ class PromptBuilderTest extends TestCase
 
         $this->assertStringContainsString('read-only', $prompt);
     }
+
+    public function test_includes_instance_system_prompt(): void
+    {
+        config()->set('veda.system_prompt', 'Always answer in Russian.');
+
+        $builder = new PromptBuilder;
+
+        $prompt = $builder->buildSystemPrompt([], []);
+
+        $this->assertStringContainsString('Always answer in Russian.', $prompt);
+    }
 }

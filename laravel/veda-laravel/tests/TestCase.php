@@ -6,6 +6,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Ai\AiServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
+use Veda\Laravel\Services\RequestContext;
 use Veda\Laravel\VedaManager;
 use Veda\Laravel\VedaServiceProvider;
 
@@ -26,6 +27,7 @@ abstract class TestCase extends Orchestra
         $app['config']->set('veda.middleware', []);
         $app['config']->set('veda.broadcasting.enabled', false);
         $app['config']->set('veda.preflight.enabled', false);
+        $app['config']->set('veda.deepseek.key', 'test-deepseek-key');
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
     }
 
@@ -47,6 +49,13 @@ abstract class TestCase extends Orchestra
         parent::setUp();
 
         $this->app->make(VedaManager::class)->flush();
+    }
+
+    protected function tearDown(): void
+    {
+        RequestContext::forget();
+
+        parent::tearDown();
     }
 
     protected function createUser(array $attributes = []): Fixtures\TestUser

@@ -4,7 +4,7 @@ namespace Veda\Laravel\Tests\Unit;
 
 use Illuminate\Contracts\Events\Dispatcher;
 use ReflectionMethod;
-use Veda\Laravel\Gateway\VedaDeepSeekGateway;
+use Veda\Laravel\Gateway\VedaResponsesGateway;
 use Veda\Laravel\Services\RequestContext;
 use Veda\Laravel\Tests\TestCase;
 
@@ -19,7 +19,7 @@ class MapsClientToolsTest extends TestCase
 
     public function test_returns_empty_without_context_or_client_tools(): void
     {
-        $gateway = new VedaDeepSeekGateway(app(Dispatcher::class));
+        $gateway = new VedaResponsesGateway(app(Dispatcher::class));
 
         $this->assertSame([], $this->mapClientTools($gateway, []));
 
@@ -42,7 +42,7 @@ class MapsClientToolsTest extends TestCase
             ],
         ]);
 
-        $gateway = new VedaDeepSeekGateway(app(Dispatcher::class));
+        $gateway = new VedaResponsesGateway(app(Dispatcher::class));
         $mapped = $this->mapClientTools($gateway, []);
 
         $this->assertCount(1, $mapped);
@@ -58,7 +58,7 @@ class MapsClientToolsTest extends TestCase
             ['name' => 'confirm_action', 'description' => 'Confirm', 'parameters' => ['type' => 'object']],
         ]);
 
-        $gateway = new VedaDeepSeekGateway(app(Dispatcher::class));
+        $gateway = new VedaResponsesGateway(app(Dispatcher::class));
         $mapped = $this->mapClientTools($gateway, [], 'responses');
 
         $this->assertCount(1, $mapped);
@@ -74,7 +74,7 @@ class MapsClientToolsTest extends TestCase
             ['name' => 'confirm_action', 'description' => 'OK', 'parameters' => ['type' => 'object']],
         ]);
 
-        $gateway = new VedaDeepSeekGateway(app(Dispatcher::class));
+        $gateway = new VedaResponsesGateway(app(Dispatcher::class));
         $mapped = $this->mapClientTools($gateway, [
             ['type' => 'function', 'function' => ['name' => 'search_knowledge_base']],
         ]);
@@ -89,14 +89,38 @@ class MapsClientToolsTest extends TestCase
             ['name' => 'confirm_action', 'description' => 'OK', 'parameters' => ['properties' => ['x' => ['type' => 'string']]]],
         ]);
 
-        $gateway = new VedaDeepSeekGateway(app(Dispatcher::class));
+        $gateway = new VedaResponsesGateway(app(Dispatcher::class));
         $mapped = $this->mapClientTools($gateway, []);
 
         $this->assertSame('object', $mapped[0]['function']['parameters']['type']);
         $this->assertSame(['x' => ['type' => 'string']], $mapped[0]['function']['parameters']['properties']);
     }
 
-    protected function mapClientTools(VedaDeepSeekGateway $gateway, array $mappedBackendTools, string $format = 'chat'): array
+    public function test_maps_client_tools_to_anthropic_format(): void
+    {
+        RequestContext::bind([], false, clientTools: [
+            [
+                'name' => 'confirm_action',
+                'description' => 'Confirm',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => ['ok' => ['type' => 'boolean']],
+                ],
+            ],
+        ]);
+
+        $gateway = new VedaResponsesGateway(app(Dispatcher::class));
+        $mapped = $this->mapClientTools($gateway, [], 'anthropic');
+
+        $this->assertCount(1, $mapped);
+        $this->assertSame('confirm_action', $mapped[0]['name']);
+        $this->assertSame('Confirm', $mapped[0]['description']);
+        $this->assertArrayHasKey('input_schema', $mapped[0]);
+        $this->assertArrayNotHasKey('type', $mapped[0]);
+        $this->assertArrayNotHasKey('parameters', $mapped[0]);
+    }
+
+    protected function mapClientTools(VedaResponsesGateway $gateway, array $mappedBackendTools, string $format = 'chat'): array
     {
         $method = new ReflectionMethod($gateway, 'mapClientTools');
 

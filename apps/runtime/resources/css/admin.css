@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap');
+@import 'tailwindcss';
+
+@source '../js/admin/**/*.vue';
+@source '../views/vendor/veda/**/*.blade.php';
+
+@theme {
+    --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Newsreader', ui-serif, Georgia, serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+    --color-canvas: #f4f1ea;
+    --color-ink: #0a0a0a;
+    --color-muted: #6f6b63;
+    --color-grid: #d9d4c8;
+    --radius-xs: 0;
+    --radius-sm: 0;
+    --radius-md: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+    --radius-2xl: 0;
+    --radius-3xl: 0;
+    --radius-4xl: 0;
+}
+
+.veda-grid {
+    background-image:
+        linear-gradient(to right, var(--color-grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--color-grid) 1px, transparent 1px);
+    background-size: 25% 25%;
+}

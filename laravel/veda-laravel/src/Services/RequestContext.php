@@ -30,6 +30,7 @@ final class RequestContext
         public readonly array $clientTools = [],
         public readonly ?array $pendingToolCalls = null,
         public readonly ?array $pendingToolResults = null,
+        public readonly ?bool $thinkingEnabled = null,
     ) {}
 
     /**
@@ -48,6 +49,7 @@ final class RequestContext
         array $clientTools = [],
         ?array $pendingToolCalls = null,
         ?array $pendingToolResults = null,
+        ?bool $thinkingEnabled = null,
     ): self {
         self::$instance = new self(
             $pageContext,
@@ -59,6 +61,7 @@ final class RequestContext
             $clientTools,
             $pendingToolCalls,
             $pendingToolResults,
+            $thinkingEnabled,
         );
 
         return self::$instance;

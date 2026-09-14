@@ -10,6 +10,7 @@ use Laravel\Ai\Responses\StreamableAgentResponse;
 use Laravel\Ai\Responses\StreamedAgentResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Veda\Laravel\Agent\VedaAgent;
+use Veda\Laravel\Exceptions\UnknownVedaModelException;
 use Veda\Laravel\Exceptions\VedaTokenLimitExceededException;
 use Veda\Laravel\Jobs\CompactConversationJob;
 use Veda\Laravel\Jobs\GenerateChatTitleJob;
@@ -17,9 +18,11 @@ use Veda\Laravel\Models\VedaGeneration;
 use Veda\Laravel\Services\ChatHistoryCheckpointService;
 use Veda\Laravel\Services\EmbedChatScope;
 use Veda\Laravel\Services\MessageContent;
+use Veda\Laravel\Services\VedaModelCatalog;
 use Veda\Laravel\Streaming\VedaWireProtocolMapper;
 use Veda\Laravel\Streaming\VercelDataProtocolMapper;
 use Veda\Laravel\Support\FrontendToolContinuation;
+use Veda\Laravel\Support\VedaModelDefinition;
 use Veda\Laravel\VedaManager;
 
 class VedaStreamController
@@ -32,6 +35,12 @@ class VedaStreamController
         $limitResponse = $this->assertQuota($user);
         if ($limitResponse !== null) {
             return $limitResponse;
+        }
+
+        try {
+            $target = $this->resolveStreamTarget($validated);
+        } catch (UnknownVedaModelException $e) {
+            return $e->render();
         }
 
         $generation = VedaGeneration::create([
@@ -47,8 +56,9 @@ class VedaStreamController
         set_time_limit($streamTimeout);
         ignore_user_abort(true);
 
-        $providerToUse = $validated['provider'] ?? config('veda.provider');
-        $modelToUse = $validated['model'] ?? config('veda.model');
+        $providerToUse = $target['providers'];
+        $modelToUse = $target['definition']->apiModel;
+        $catalogModelId = $target['definition']->id;
 
         $stream = $agent->stream(
             $validated['prompt'] ?? 'Continue conversation',
@@ -59,14 +69,14 @@ class VedaStreamController
 
         $historyScope = $this->historyScope($request);
 
-        $stream->then(function (StreamedAgentResponse $response) use ($generation, $validated, $agent, $user, $historyScope, $providerToUse, $modelToUse) {
+        $stream->then(function (StreamedAgentResponse $response) use ($generation, $validated, $agent, $user, $historyScope, $modelToUse, $catalogModelId) {
             $tokensUsed = $response->usage->promptTokens + $response->usage->completionTokens;
 
             $result = [
                 'explanation' => $this->applyResponseGuard(
                     (string) ($response->text ?? ''),
                     $validated,
-                    $providerToUse,
+                    $catalogModelId,
                     $modelToUse,
                 ),
                 'tokens_used' => $tokensUsed,
@@ -78,8 +88,8 @@ class VedaStreamController
             if ($user) {
                 app(VedaManager::class)->getTokenPolicy()->recordUsage(
                     $user,
-                    $this->resolvePrimaryProviderName($providerToUse) ?? '',
-                    (string) ($modelToUse ?? ''),
+                    $catalogModelId,
+                    $modelToUse,
                     $response->usage->promptTokens,
                     $response->usage->completionTokens,
                 );
@@ -120,6 +130,12 @@ class VedaStreamController
             return $limitResponse;
         }
 
+        try {
+            $target = $this->resolveStreamTarget($validated);
+        } catch (UnknownVedaModelException $e) {
+            return $e->render();
+        }
+
         $generation = VedaGeneration::create([
             'user_id' => $user?->getAuthIdentifier(),
             'generation_type' => 'chat',
@@ -132,8 +148,9 @@ class VedaStreamController
         try {
             $agent = $this->makeAgent($user, $validated['chatId'] ?? null);
 
-            $providerToUse = $validated['provider'] ?? config('veda.provider');
-            $modelToUse = $validated['model'] ?? config('veda.model');
+            $providerToUse = $target['providers'];
+            $modelToUse = $target['definition']->apiModel;
+            $catalogModelId = $target['definition']->id;
 
             $response = $agent->prompt(
                 $validated['prompt'] ?? 'Continue conversation',
@@ -147,7 +164,7 @@ class VedaStreamController
                 'explanation' => $this->applyResponseGuard(
                     (string) ($response->text ?? ''),
                     $validated,
-                    $providerToUse,
+                    $catalogModelId,
                     $modelToUse,
                 ),
                 'tokens_used' => $tokensUsed,
@@ -159,8 +176,8 @@ class VedaStreamController
             if ($user) {
                 app(VedaManager::class)->getTokenPolicy()->recordUsage(
                     $user,
-                    $this->resolvePrimaryProviderName($providerToUse) ?? '',
-                    (string) ($modelToUse ?? ''),
+                    $catalogModelId,
+                    $modelToUse,
                     $response->usage->promptTokens,
                     $response->usage->completionTokens,
                 );
@@ -195,6 +212,23 @@ class VedaStreamController
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{definition: VedaModelDefinition, providers: array<string, string>}
+     */
+    protected function resolveStreamTarget(array $validated): array
+    {
+        $catalog = app(VedaModelCatalog::class);
+        $modelId = is_string($validated['model'] ?? null) ? trim($validated['model']) : '';
+
+        $definition = $catalog->resolve($modelId !== '' ? $modelId : null);
+
+        return [
+            'definition' => $definition,
+            'providers' => $catalog->streamProviders($definition),
+        ];
     }
 
     protected function makeAgent(?Authenticatable $user, ?string $chatId): VedaAgent

@@ -42,21 +42,27 @@ trait MapsClientTools
                 $parameters['properties'] = new \stdClass;
             }
 
-            $mapped[] = $format === 'chat'
-                ? [
+            $mapped[] = match ($format) {
+                'chat' => [
                     'type' => 'function',
                     'function' => [
                         'name' => $name,
                         'description' => $clientTool['description'],
                         'parameters' => $parameters,
                     ],
-                ]
-                : [
+                ],
+                'anthropic' => [
+                    'name' => $name,
+                    'description' => $clientTool['description'],
+                    'input_schema' => $parameters,
+                ],
+                default => [
                     'type' => 'function',
                     'name' => $name,
                     'description' => $clientTool['description'],
                     'parameters' => $parameters,
-                ];
+                ],
+            };
         }
 
         return $mapped;
