@@ -3,12 +3,16 @@ import '../../css/admin.css';
 import { installI18n } from '../i18n';
 import LoginApp from './LoginApp.vue';
 import ModelsApp from './ModelsApp.vue';
+import PromptsApp from './PromptsApp.vue';
+import RuntimeApp from './RuntimeApp.vue';
 import SetupApp from './SetupApp.vue';
 
 const pages = {
     login: LoginApp,
     setup: SetupApp,
+    runtime: RuntimeApp,
     models: ModelsApp,
+    prompts: PromptsApp,
 };
 
 const el = document.getElementById('veda-admin');
@@ -24,7 +28,7 @@ if (el) {
         settings: {},
     };
 
-    const page = payload.page && pages[payload.page] ? payload.page : 'models';
+    const page = payload.page && pages[payload.page] ? payload.page : 'runtime';
     const app = createApp(pages[page], payload);
     installI18n(app);
     app.mount(el);

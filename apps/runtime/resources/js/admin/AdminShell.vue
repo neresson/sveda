@@ -7,7 +7,8 @@ import LocaleSwitch from './LocaleSwitch.vue';
 defineProps({
     csrf: { type: String, required: true },
     logoutUrl: { type: String, required: true },
-    current: { type: String, default: 'models' },
+    urls: { type: Object, default: () => ({}) },
+    current: { type: String, default: 'runtime' },
 });
 
 const { t } = useI18n();
@@ -77,7 +78,7 @@ onUnmounted(() => {
 
         <div class="relative flex min-h-0 flex-1">
             <aside class="hidden w-[260px] shrink-0 flex-col border-r border-grid p-6 lg:flex">
-                <AdminNav :current="current" />
+                <AdminNav :current="current" :urls="urls" />
             </aside>
 
             <div
@@ -104,7 +105,7 @@ onUnmounted(() => {
                             {{ t('common.close') }}
                         </button>
                     </div>
-                    <AdminNav :current="current" />
+                    <AdminNav :current="current" :urls="urls" />
                 </aside>
             </div>
 

@@ -1,0 +1,18 @@
+export default {
+    document_title: 'Veda runtime',
+    eyebrow: 'Sidecar',
+    title: 'Runtime.',
+    subtitle: 'How this sidecar routes and runs agents.',
+    default_model: 'Default model',
+    default_model_empty: 'Select a model',
+    default_model_hint: 'Used when the host does not pick a model.',
+    failover: 'Failover',
+    failover_hint: 'Comma-separated catalog ids, in order.',
+    max_steps: 'Max agent steps',
+    compaction: 'Compaction',
+    compaction_enabled: 'Enabled',
+    min_messages: 'Min messages',
+    keep_tail: 'Keep tail messages',
+    cors: 'CORS origins',
+    cors_hint: 'One origin per line.',
+};

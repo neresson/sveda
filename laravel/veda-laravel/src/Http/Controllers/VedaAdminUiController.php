@@ -24,6 +24,7 @@ class VedaAdminUiController
 
         return view('veda::admin.settings', [
             'settings' => $settings->maskedDocument(),
+            'page' => $this->adminPage($request),
         ]);
     }
 
@@ -79,5 +80,12 @@ class VedaAdminUiController
         }
 
         return redirect()->route('veda.admin');
+    }
+
+    private function adminPage(Request $request): string
+    {
+        $page = (string) $request->route('page', 'runtime');
+
+        return in_array($page, ['runtime', 'models', 'prompts'], true) ? $page : 'runtime';
     }
 }

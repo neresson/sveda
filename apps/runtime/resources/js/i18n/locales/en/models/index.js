@@ -2,7 +2,7 @@ export default {
     document_title: 'Veda models',
     eyebrow: 'Catalog',
     title: 'Models.',
-    subtitle: 'Add providers this sidecar can call.',
+    subtitle: 'Add and edit providers this sidecar can call.',
     id: 'ID',
     label: 'Label',
     protocol: 'Protocol',
@@ -15,4 +15,7 @@ export default {
     model: 'Model',
     flags: 'Flags',
     empty: 'No models yet.',
+    editing: 'Editing {id}',
+    keep_key: 'Leave empty to keep the current key.',
+    id_taken: 'This ID is already in the catalog.',
 };

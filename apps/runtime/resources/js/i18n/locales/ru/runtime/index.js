@@ -1,0 +1,18 @@
+export default {
+    document_title: 'Veda runtime',
+    eyebrow: 'Sidecar',
+    title: 'Runtime.',
+    subtitle: 'Как sidecar выбирает модель и ведёт агента.',
+    default_model: 'Модель по умолчанию',
+    default_model_empty: 'Выбери модель',
+    default_model_hint: 'Если хост не указал модель.',
+    failover: 'Failover',
+    failover_hint: 'ID из каталога через запятую, по порядку.',
+    max_steps: 'Максимум шагов агента',
+    compaction: 'Compaction',
+    compaction_enabled: 'Включено',
+    min_messages: 'Минимум сообщений',
+    keep_tail: 'Оставить хвост',
+    cors: 'CORS-источники',
+    cors_hint: 'По одному origin на строку.',
+};

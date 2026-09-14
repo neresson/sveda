@@ -1,5 +1,8 @@
 export default {
     add: 'Добавить',
+    save: 'Сохранить',
+    edit: 'Изменить',
+    cancel: 'Отмена',
     remove: 'Убрать',
     close: 'Закрыть',
     menu: 'Меню',

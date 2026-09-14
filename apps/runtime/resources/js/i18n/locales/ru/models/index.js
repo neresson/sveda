@@ -2,7 +2,7 @@ export default {
     document_title: 'Veda models',
     eyebrow: 'Каталог',
     title: 'Модели.',
-    subtitle: 'Добавь провайдеров, которых sidecar сможет вызывать.',
+    subtitle: 'Добавляй и правь провайдеров, которых sidecar сможет вызывать.',
     id: 'ID',
     label: 'Название',
     protocol: 'Протокол',
@@ -15,4 +15,7 @@ export default {
     model: 'Модель',
     flags: 'Флаги',
     empty: 'Моделей пока нет.',
+    editing: 'Редактируешь {id}',
+    keep_key: 'Оставь пустым, чтобы не менять ключ.',
+    id_taken: 'Такой ID уже есть в каталоге.',
 };

@@ -97,4 +97,92 @@ class AdminUiTest extends TestCase
             ->assertJsonPath('models.0.label', 'Custom Flash')
             ->assertJsonPath('models.0.key', '••••••••');
     }
+
+    public function test_session_json_can_update_an_existing_model_without_replacing_the_key(): void
+    {
+        $this->post('/veda/admin/login', [
+            'key' => 'veda-admin-secret',
+        ]);
+
+        $this->postJson('/veda/admin/settings', [
+            'models' => [
+                [
+                    'id' => 'custom-flash',
+                    'label' => 'Custom Flash',
+                    'protocol' => 'responses',
+                    'api_model' => 'flash',
+                    'url' => 'https://api.example.test',
+                    'key' => 'model-secret',
+                    'thinking' => true,
+                    'vision' => false,
+                    'aliases' => ['flash'],
+                ],
+            ],
+        ])->assertOk();
+
+        $this->postJson('/veda/admin/settings', [
+            'models' => [
+                [
+                    'id' => 'custom-flash',
+                    'label' => 'Custom Flash Updated',
+                    'protocol' => 'anthropic',
+                    'api_model' => 'flash-2',
+                    'url' => 'https://api.example.test/v2',
+                    'key' => '',
+                    'thinking' => false,
+                    'vision' => true,
+                    'aliases' => ['flash'],
+                ],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('models.0.id', 'custom-flash')
+            ->assertJsonPath('models.0.label', 'Custom Flash Updated')
+            ->assertJsonPath('models.0.protocol', 'anthropic')
+            ->assertJsonPath('models.0.key', '••••••••');
+    }
+
+    public function test_session_json_can_update_runtime_settings(): void
+    {
+        $this->post('/veda/admin/login', [
+            'key' => 'veda-admin-secret',
+        ]);
+
+        $this->postJson('/veda/admin/settings', [
+            'default_model' => 'deepseek-v4-pro',
+            'failover' => ['deepseek-v4-flash-anthropic'],
+            'max_steps' => 12,
+            'compaction' => [
+                'enabled' => false,
+                'min_messages' => 10,
+                'keep_tail_messages' => 5,
+            ],
+            'cors' => [
+                'allowed_origins' => ['https://lms.test'],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('default_model', 'deepseek-v4-pro')
+            ->assertJsonPath('failover.0', 'deepseek-v4-flash-anthropic')
+            ->assertJsonPath('max_steps', 12)
+            ->assertJsonPath('compaction.enabled', false)
+            ->assertJsonPath('cors.allowed_origins.0', 'https://lms.test')
+            ->assertJsonPath('models.0.id', 'deepseek-v4-flash-responses');
+    }
+
+    public function test_session_json_can_update_prompts(): void
+    {
+        $this->post('/veda/admin/login', [
+            'key' => 'veda-admin-secret',
+        ]);
+
+        $this->postJson('/veda/admin/settings', [
+            'welcome_message' => 'Hello from sidecar.',
+            'system_prompt' => 'Always answer in Russian.',
+        ])
+            ->assertOk()
+            ->assertJsonPath('welcome_message', 'Hello from sidecar.')
+            ->assertJsonPath('system_prompt', 'Always answer in Russian.')
+            ->assertJsonPath('models.0.id', 'deepseek-v4-flash-responses');
+    }
 }

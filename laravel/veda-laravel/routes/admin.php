@@ -16,6 +16,9 @@ Route::put('admin/settings', [VedaAdminSettingsController::class, 'update'])
 
 Route::middleware('web')->group(function () {
     Route::get('admin', [VedaAdminUiController::class, 'show'])->name('veda.admin');
+    Route::get('admin/{page}', [VedaAdminUiController::class, 'show'])
+        ->whereIn('page', ['runtime', 'models', 'prompts'])
+        ->name('veda.admin.section');
     Route::post('admin/setup', [VedaAdminUiController::class, 'setup'])->name('veda.admin.setup');
     Route::post('admin/login', [VedaAdminUiController::class, 'login'])->name('veda.admin.login');
     Route::post('admin/logout', [VedaAdminUiController::class, 'logout'])->name('veda.admin.logout');

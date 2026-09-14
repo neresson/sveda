@@ -1,5 +1,8 @@
 export default {
     add: 'Add',
+    save: 'Save',
+    edit: 'Edit',
+    cancel: 'Cancel',
     remove: 'Remove',
     close: 'Close',
     menu: 'Menu',
