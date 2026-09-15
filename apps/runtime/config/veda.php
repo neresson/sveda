@@ -13,6 +13,8 @@ return [
 
     'stream_timeout' => (int) env('VEDA_STREAM_TIMEOUT', 1800),
 
+    'stream_idle_timeout' => (int) env('VEDA_STREAM_IDLE_TIMEOUT', 90),
+
     'max_steps' => (int) env('VEDA_AGENT_MAX_STEPS', 30),
 
     'protocol' => env('VEDA_STREAM_PROTOCOL', 'veda'),
@@ -29,6 +31,8 @@ return [
         'chat_compactions' => 'veda_chat_compactions',
         'generations' => 'veda_generations',
         'settings' => 'veda_settings',
+        'code_sources' => 'veda_code_sources',
+        'code_index_chunks' => 'veda_code_index_chunks',
     ],
 
     'admin' => [
@@ -117,7 +121,7 @@ return [
     'tool_defer' => [
         'enabled' => filter_var(env('VEDA_TOOL_DEFER_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
         'min_pool' => (int) env('VEDA_TOOL_DEFER_MIN_POOL', 14),
-        'always_loaded' => array_values(array_filter(array_map('trim', explode(',', (string) env('VEDA_TOOL_DEFER_ALWAYS_LOADED', 'spawn_tasks'))))),
+        'always_loaded' => array_values(array_filter(array_map('trim', explode(',', (string) env('VEDA_TOOL_DEFER_ALWAYS_LOADED', 'spawn_tasks,manage_mcp_catalog,list_code_sources,search_code,read_code_index_file,get_code_source_overview'))))),
     ],
 
     'tool_catalog' => [
@@ -133,6 +137,15 @@ return [
         'model' => env('VEDA_EMBEDDINGS_MODEL'),
         'dimensions' => (int) env('VEDA_EMBEDDINGS_DIMENSIONS', 256),
         'max_input_chars' => (int) env('VEDA_EMBEDDINGS_MAX_INPUT_CHARS', 2000),
+        'api_key' => env('VEDA_YANDEX_API_KEY'),
+        'use_iam_bearer' => filter_var(env('VEDA_YANDEX_USE_IAM_BEARER', false), FILTER_VALIDATE_BOOLEAN),
+        'endpoint' => env('VEDA_YANDEX_EMBEDDING_ENDPOINT', 'https://llm.api.cloud.yandex.net/foundationModels/v1/textEmbedding'),
+        'document_model_uri' => env('VEDA_YANDEX_EMBEDDING_MODEL_URI', env('VEDA_EMBEDDINGS_MODEL')),
+        'query_model_uri' => env('VEDA_YANDEX_EMBEDDING_QUERY_MODEL_URI'),
+        'rate_decay_seconds' => (int) env('VEDA_EMBEDDING_RATE_DECAY_SECONDS', 2),
+        'max_requests_per_decay' => (int) env('VEDA_EMBEDDING_MAX_REQUESTS_PER_DECAY', 9),
+        'rate_limiter_key' => env('VEDA_EMBEDDING_RATE_LIMITER_KEY', 'veda_text_embedding'),
+        'circuit_open_minutes' => (int) env('VEDA_EMBEDDING_CIRCUIT_OPEN_MINUTES', 10),
     ],
 
     'context_max_tokens' => (int) env('VEDA_CONTEXT_MAX_TOKENS', 128000),
@@ -177,5 +190,41 @@ return [
 
     'prompts' => [
         'path' => null,
+    ],
+
+    'code_index' => [
+        'allow_local_paths' => filter_var(env('VEDA_CODE_INDEX_ALLOW_LOCAL_PATHS', true), FILTER_VALIDATE_BOOLEAN),
+        'search_snippet_chars' => (int) env('VEDA_CODE_INDEX_SEARCH_SNIPPET_CHARS', 480),
+        'read_default_chars' => (int) env('VEDA_CODE_INDEX_READ_DEFAULT_CHARS', 4000),
+        'read_max_chars' => (int) env('VEDA_CODE_INDEX_READ_MAX_CHARS', 8000),
+        'read_max_lines' => (int) env('VEDA_CODE_INDEX_READ_MAX_LINES', 250),
+        'search_max_files_default' => (int) env('VEDA_CODE_INDEX_SEARCH_MAX_FILES_DEFAULT', 10),
+        'max_file_bytes' => (int) env('VEDA_CODE_INDEX_MAX_FILE_BYTES', 524288),
+        'max_total_chunks' => (int) env('VEDA_CODE_INDEX_MAX_TOTAL_CHUNKS', 80000),
+        'max_files_indexed' => (int) env('VEDA_CODE_INDEX_MAX_FILES_INDEXED', 50000),
+        'chunk_max_chars' => (int) env('VEDA_CODE_INDEX_CHUNK_MAX_CHARS', 1600),
+        'chunk_overlap_ratio' => (float) env('VEDA_CODE_INDEX_CHUNK_OVERLAP_RATIO', 0.18),
+        'embedding_input_rub_per_million' => (float) env('VEDA_CODE_INDEX_EMBEDDING_INPUT_RUB_PER_MILLION', 45),
+        'embedding_chars_per_token_estimate' => (float) env('VEDA_CODE_INDEX_EMBEDDING_CHARS_PER_TOKEN', 3.5),
+        'embedding_vector_dimensions' => (int) env('VEDA_CODE_INDEX_EMBEDDING_VECTOR_DIM', 256),
+        'queue' => env('VEDA_CODE_INDEX_QUEUE', 'default'),
+        'allowed_git_host_suffixes' => array_values(
+            array_filter(
+                array_map('trim', explode(',', (string) env('VEDA_CODE_INDEX_ALLOWED_GIT_HOST_SUFFIXES', 'github.com,gitlab.com')))
+            )
+        ),
+    ],
+
+    'code_search' => [
+        'rrf_k' => (int) env('VEDA_CODE_SEARCH_RRF_K', 60),
+        'max_spans' => (int) env('VEDA_CODE_SEARCH_MAX_SPANS', 24),
+        'max_spans_per_file' => (int) env('VEDA_CODE_SEARCH_MAX_SPANS_PER_FILE', 4),
+        'excerpt_chars' => (int) env('VEDA_CODE_SEARCH_EXCERPT_CHARS', 1000),
+        'path_boost' => (float) env('VEDA_CODE_SEARCH_PATH_BOOST', 0.05),
+        'weights' => [
+            'semantic' => (float) env('VEDA_CODE_SEARCH_WEIGHT_SEMANTIC', 1.0),
+            'keyword' => (float) env('VEDA_CODE_SEARCH_WEIGHT_KEYWORD', 0.8),
+            'symbol' => (float) env('VEDA_CODE_SEARCH_WEIGHT_SYMBOL', 1.0),
+        ],
     ],
 ];

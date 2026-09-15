@@ -75,7 +75,19 @@ class VedaSettingsRepository
             'model' => $defaultModel,
             'models' => $models,
             'welcome_message' => $document['welcome_message'] ?? '',
+            'appearance' => $this->publicAppearance($document),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $document
+     * @return array<string, mixed>
+     */
+    public function publicAppearance(?array $document = null): array
+    {
+        $document ??= $this->document();
+
+        return VedaAppearance::normalize($document['appearance'] ?? []);
     }
 
     /**
@@ -124,6 +136,7 @@ class VedaSettingsRepository
             'veda.cors.allowed_origins' => $this->stringList($cors['allowed_origins'] ?? config('veda.cors.allowed_origins', [])),
             'veda.welcome_message' => is_string($document['welcome_message'] ?? null) ? $document['welcome_message'] : '',
             'veda.system_prompt' => is_string($document['system_prompt'] ?? null) ? $document['system_prompt'] : '',
+            'veda.appearance' => VedaAppearance::normalize($document['appearance'] ?? []),
         ]);
 
         app(VedaModelCatalog::class)->registerIntoAi();
@@ -153,6 +166,8 @@ class VedaSettingsRepository
             ],
             'welcome_message' => (string) config('veda.welcome_message', ''),
             'system_prompt' => (string) config('veda.system_prompt', ''),
+            'appearance' => VedaAppearance::defaults(),
+            'mcp' => $this->catalog()->empty(),
         ];
     }
 
@@ -196,6 +211,49 @@ class VedaSettingsRepository
     }
 
     /**
+     * @param  array<string, mixed>  $server
+     */
+    public function ensureMcpServer(array $server): void
+    {
+        $incoming = isset($server['mcpServers'])
+            ? $this->catalog()->normalize($server)
+            : $this->catalog()->fromLegacyServers([$server]);
+
+        $document = $this->document();
+        $current = $this->catalog()->normalize($document['mcp'] ?? []);
+
+        foreach ($incoming['mcpServers'] as $id => $entry) {
+            if (isset($current['mcpServers'][$id])) {
+                return;
+            }
+
+            $current['mcpServers'][$id] = $entry;
+        }
+
+        $this->update(['mcp' => $current]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     */
+    public function upsertMcpServer(string $id, array $entry): void
+    {
+        $id = trim($id);
+        if ($id === '') {
+            return;
+        }
+
+        $document = $this->document();
+        $current = $this->catalog()->normalize($document['mcp'] ?? []);
+        $incoming = $this->catalog()->normalize([
+            'mcpServers' => [$id => $entry],
+        ], $current);
+        $current['mcpServers'][$id] = $incoming['mcpServers'][$id];
+
+        $this->update(['mcp' => $current]);
+    }
+
+    /**
      * @param  array<string, mixed>  $base
      * @param  array<string, mixed>  $overlay
      * @return array<string, mixed>
@@ -228,6 +286,14 @@ class VedaSettingsRepository
             $merged['models'] = $this->normalizeModels($overlay['models'], $merged['models'] ?? []);
         }
 
+        if (array_key_exists('mcp', $overlay)) {
+            $merged['mcp'] = $this->catalog()->normalize($overlay['mcp'], is_array($merged['mcp'] ?? null) ? $merged['mcp'] : []);
+        } elseif (array_key_exists('mcp_servers', $overlay)) {
+            $merged['mcp'] = $this->catalog()->fromLegacyServers($overlay['mcp_servers']);
+        }
+
+        unset($merged['mcp_servers']);
+
         if (isset($overlay['compaction']) && is_array($overlay['compaction'])) {
             $compaction = is_array($merged['compaction'] ?? null) ? $merged['compaction'] : [];
             if (array_key_exists('enabled', $overlay['compaction'])) {
@@ -256,6 +322,15 @@ class VedaSettingsRepository
                 $deepseek['key'] = (string) $overlay['deepseek']['key'];
             }
             $merged['deepseek'] = $deepseek;
+        }
+
+        if (array_key_exists('appearance', $overlay)) {
+            $merged['appearance'] = VedaAppearance::normalize(
+                $overlay['appearance'],
+                is_array($merged['appearance'] ?? null) ? $merged['appearance'] : null,
+            );
+        } else {
+            $merged['appearance'] = VedaAppearance::normalize($merged['appearance'] ?? []);
         }
 
         return $merged;
@@ -297,6 +372,13 @@ class VedaSettingsRepository
         }
         $next['models'] = $models;
 
+        $next['mcp'] = $this->catalog()->preserveSecrets(
+            is_array($current['mcp'] ?? null) ? $current['mcp'] : [],
+            is_array($next['mcp'] ?? null) ? $next['mcp'] : $this->catalog()->empty(),
+        );
+
+        unset($next['mcp_servers']);
+
         return $next;
     }
 
@@ -321,6 +403,12 @@ class VedaSettingsRepository
             $models[] = $model;
         }
         $document['models'] = $models;
+
+        $document['mcp'] = $this->catalog()->mask(
+            is_array($document['mcp'] ?? null) ? $document['mcp'] : $this->catalog()->empty(),
+        );
+
+        unset($document['mcp_servers']);
 
         return $document;
     }
@@ -384,6 +472,11 @@ class VedaSettingsRepository
         }
 
         return $normalized;
+    }
+
+    protected function catalog(): McpCatalog
+    {
+        return app(McpCatalog::class);
     }
 
     /**

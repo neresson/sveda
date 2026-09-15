@@ -12,4 +12,6 @@ export default {
     language: 'Language',
     open_menu: 'Open menu',
     close_menu: 'Close menu',
+    prev: 'Previous',
+    next: 'Next',
 };

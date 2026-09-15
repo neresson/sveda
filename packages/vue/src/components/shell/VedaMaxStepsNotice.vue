@@ -21,7 +21,7 @@
         type="button"
         variant="secondary"
         size="sm"
-        class="h-8 gap-2 rounded-full px-3 text-xs"
+        class="h-8 gap-2 rounded-[var(--veda-radius)] px-3 text-xs"
         :disabled="loading"
         @click="emit('continue')"
       >

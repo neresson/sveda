@@ -1,4 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
+import { useVedaLauncher } from '../appearance';
 import { useVedaT } from '../i18n/index';
 
 export interface VedaBrandInfo {
@@ -23,10 +24,25 @@ export function useVedaShell(
   }
 ) {
   const t = useVedaT();
+  const launcher = useVedaLauncher();
 
   const headerTitle = computed(() => currentChat.value?.title || t('chatTitle'));
   const brandDisplayName = computed(() => brand.value?.name || 'Veda');
   const brandLogo = computed(() => brand.value?.logoUrl || null);
+  const launcherLabel = computed(() => {
+    const custom = launcher.label.trim();
+
+    return custom !== '' ? custom : brandDisplayName.value;
+  });
+  const launcherIcon = computed(() => launcher.icon);
+  const launcherImage = computed(() => {
+    const uploaded = launcher.image.trim();
+    if (uploaded !== '') {
+      return uploaded;
+    }
+
+    return brandLogo.value || '';
+  });
 
   const nonImmersiveShellClass = computed(() => {
     if (layout.isMobile.value || layout.viewMode.value === 'fixed') {
@@ -44,7 +60,7 @@ export function useVedaShell(
     if (layout.viewMode.value === 'fixed') {
       return `${base} absolute right-full top-0 z-10 h-full w-[min(20rem,40vw)] border-r border-border shadow-sm`;
     }
-    return `${base} h-full w-[min(20rem,40vw)] rounded-[10px] border border-border shadow-sm`;
+    return `${base} h-full w-[min(20rem,40vw)] rounded-[var(--veda-radius)] border border-border shadow-sm`;
   });
 
   const floatNonImmersiveShellStyle = computed(() => {
@@ -58,6 +74,9 @@ export function useVedaShell(
     headerTitle,
     brandDisplayName,
     brandLogo,
+    launcherLabel,
+    launcherIcon,
+    launcherImage,
     nonImmersiveShellClass,
     historyAsideSurfaceClass,
     floatNonImmersiveShellStyle,

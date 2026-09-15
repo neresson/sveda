@@ -63,7 +63,7 @@ const errorMessage = computed(() => {
                     class="border border-ink bg-canvas px-4 py-3.5 font-mono text-sm outline-none"
                 >
             </label>
-            <button type="submit" class="bg-ink px-4 py-4 font-semibold text-canvas">
+            <button type="submit" class="veda-hover bg-ink px-4 py-4 font-semibold text-canvas hover:bg-ink/80">
                 {{ t('setup.submit') }}
             </button>
             <p class="text-xs leading-relaxed text-muted">{{ t('setup.hint') }}</p>

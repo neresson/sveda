@@ -1,14 +1,14 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminNav from './AdminNav.vue';
 import LocaleSwitch from './LocaleSwitch.vue';
 
-defineProps({
+const props = defineProps({
     csrf: { type: String, required: true },
     logoutUrl: { type: String, required: true },
     urls: { type: Object, default: () => ({}) },
-    current: { type: String, default: 'runtime' },
+    current: { type: String, default: 'dashboard' },
 });
 
 const { t } = useI18n();
@@ -21,6 +21,13 @@ let media = null;
 const closeNav = () => {
     navOpen.value = false;
 };
+
+watch(
+    () => props.current,
+    () => {
+        closeNav();
+    },
+);
 
 const toggleNav = () => {
     navOpen.value = !navOpen.value;
@@ -51,11 +58,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="relative flex h-dvh w-full flex-col overflow-hidden border border-ink bg-canvas">
+    <div class="relative mx-auto flex h-dvh w-full max-w-7xl flex-col overflow-hidden border border-ink bg-canvas">
         <header class="flex items-center gap-3 border-b border-ink px-4 py-3 lg:gap-4 lg:px-8 lg:py-4">
             <button
                 type="button"
-                class="flex size-8 shrink-0 flex-col items-center justify-center gap-1 border border-ink lg:hidden"
+                class="veda-hover flex size-8 shrink-0 flex-col items-center justify-center gap-1 border border-ink hover:bg-grid lg:hidden"
                 :aria-expanded="navOpen"
                 aria-controls="veda-admin-nav"
                 :aria-label="navOpen ? t('common.close_menu') : t('common.open_menu')"
@@ -72,7 +79,7 @@ onUnmounted(() => {
             <LocaleSwitch class="ml-auto" />
             <form :action="logoutUrl" method="post">
                 <input type="hidden" name="_token" :value="csrf">
-                <button type="submit" class="font-mono text-[11px] tracking-[0.16em]">{{ t('common.logout') }}</button>
+                <button type="submit" class="veda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted">{{ t('common.logout') }}</button>
             </form>
         </header>
 
@@ -81,33 +88,35 @@ onUnmounted(() => {
                 <AdminNav :current="current" :urls="urls" />
             </aside>
 
-            <div
-                v-if="navOpen"
-                class="absolute inset-0 z-40 lg:hidden"
-            >
-                <button
-                    type="button"
-                    class="absolute inset-0 bg-ink/25"
-                    :aria-label="t('common.close_menu')"
-                    @click="closeNav"
-                ></button>
-                <aside
-                    id="veda-admin-nav"
-                    class="relative flex h-full w-[min(100%,20rem)] flex-col border-r border-ink bg-canvas p-5"
+            <Transition name="veda-drawer" :duration="220">
+                <div
+                    v-if="navOpen"
+                    class="absolute inset-0 z-40 lg:hidden"
                 >
-                    <div class="mb-5 flex items-center justify-between">
-                        <p class="font-mono text-xs tracking-[0.16em]">{{ t('common.menu') }}</p>
-                        <button
-                            type="button"
-                            class="font-mono text-[11px] tracking-[0.16em]"
-                            @click="closeNav"
-                        >
-                            {{ t('common.close') }}
-                        </button>
-                    </div>
-                    <AdminNav :current="current" :urls="urls" />
-                </aside>
-            </div>
+                    <button
+                        type="button"
+                        class="veda-drawer-backdrop absolute inset-0 bg-ink/25"
+                        :aria-label="t('common.close_menu')"
+                        @click="closeNav"
+                    ></button>
+                    <aside
+                        id="veda-admin-nav"
+                        class="veda-drawer-panel relative flex h-full w-[min(100%,20rem)] flex-col border-r border-ink bg-canvas p-5"
+                    >
+                        <div class="mb-5 flex items-center justify-between">
+                            <p class="font-mono text-xs tracking-[0.16em]">{{ t('common.menu') }}</p>
+                            <button
+                                type="button"
+                                class="veda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted"
+                                @click="closeNav"
+                            >
+                                {{ t('common.close') }}
+                            </button>
+                        </div>
+                        <AdminNav :current="current" :urls="urls" />
+                    </aside>
+                </div>
+            </Transition>
 
             <main class="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-6 sm:px-6 lg:gap-6 lg:px-12 lg:py-10">
                 <slot />

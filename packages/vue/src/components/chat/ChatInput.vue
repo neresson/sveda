@@ -327,14 +327,14 @@
   const hasStatusBanner = computed(() => String(props.statusBanner || '').trim() !== '');
   const controlIconClass = 'h-4 w-4';
 
-  const micIdleButtonClass = 'h-8 w-8 rounded-full text-muted-foreground hover:text-foreground';
+  const micIdleButtonClass = 'h-8 w-8 rounded-[var(--veda-radius)] text-muted-foreground hover:text-foreground';
 
-  const micStopButtonClass = 'h-8 w-8 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive';
+  const micStopButtonClass = 'h-8 w-8 rounded-[var(--veda-radius)] text-destructive hover:bg-destructive/10 hover:text-destructive';
 
   const sendButtonClass =
-    'h-8 w-8 rounded-full text-brand-primary-purple hover:bg-brand-primary-purple/10 hover:text-brand-primary-purple disabled:opacity-50 dark:text-purple-400 dark:hover:bg-purple-400/10 dark:hover:text-purple-300';
+    'h-8 w-8 rounded-[var(--veda-radius)] text-brand-primary-purple hover:bg-brand-primary-purple/10 hover:text-brand-primary-purple disabled:opacity-50 dark:text-purple-400 dark:hover:bg-purple-400/10 dark:hover:text-purple-300';
 
-  const streamStopButtonClass = 'h-8 w-8 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive';
+  const streamStopButtonClass = 'h-8 w-8 rounded-[var(--veda-radius)] text-destructive hover:bg-destructive/10 hover:text-destructive';
 
   const controlToolbarClass = 'flex items-center justify-between px-2';
 
@@ -412,7 +412,7 @@
       @change="onFileInputChange"
     />
     <div
-      class="border-input-transparent relative flex flex-col rounded-xl border bg-background shadow-sm transition-colors"
+      class="border-input-transparent relative flex flex-col rounded-[var(--veda-radius)] border bg-background shadow-sm transition-colors"
       :class="isDragActive && !attachmentToolbarDisabled ? 'border-brand-primary-purple/70 ring-1 ring-brand-primary-purple/30' : ''"
       @dragenter="onDragEnter"
       @dragleave="onDragLeave"
@@ -432,7 +432,7 @@
           <span class="truncate">{{ file.name }}</span>
           <button
             type="button"
-            class="rounded-full p-0.5 hover:bg-muted"
+            class="rounded-[var(--veda-radius)] p-0.5 hover:bg-muted"
             :disabled="attachmentToolbarDisabled"
             :aria-label="t('chatRemoveFile')"
             @click="removePendingAt(idx)"

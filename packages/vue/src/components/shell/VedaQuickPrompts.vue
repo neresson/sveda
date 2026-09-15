@@ -23,7 +23,7 @@
         type="button"
         variant="secondary"
         size="sm"
-        class="h-8 shrink-0 rounded-full border border-border/60 bg-muted/80 px-3 text-xs font-normal text-muted-foreground shadow-none hover:bg-muted hover:text-foreground"
+        class="h-8 shrink-0 rounded-[var(--veda-radius)] border border-border/60 bg-muted/80 px-3 text-xs font-normal text-muted-foreground shadow-none hover:bg-muted hover:text-foreground"
         :disabled="disabled"
         @click="$emit('select', prompt.prompt)"
       >

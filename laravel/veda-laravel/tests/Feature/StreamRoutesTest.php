@@ -50,6 +50,7 @@ class StreamRoutesTest extends TestCase
 
         $content = $response->streamedContent();
 
+        $this->assertStringContainsString(': connected', $content);
         $this->assertStringContainsString('"type":"message.start"', $content);
         $this->assertStringContainsString('"type":"text.delta"', $content);
         $this->assertStringContainsString('"delta":"Hello"', $content);

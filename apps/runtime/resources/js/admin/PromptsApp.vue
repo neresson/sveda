@@ -1,7 +1,6 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import AdminShell from './AdminShell.vue';
 import { useDocumentTitle } from './useDocumentTitle';
 
 const props = defineProps({
@@ -68,7 +67,7 @@ const save = async () => {
 </script>
 
 <template>
-    <AdminShell :csrf="csrf" :logout-url="logoutUrl" :urls="urls" current="prompts">
+    <div class="contents">
         <div>
             <p class="font-mono text-[11px] tracking-[0.18em] text-muted">{{ t('prompts.eyebrow') }}</p>
             <h1 class="mt-2 text-4xl font-bold tracking-tighter sm:text-5xl lg:text-6xl">{{ t('prompts.title') }}</h1>
@@ -101,7 +100,7 @@ const save = async () => {
             <div class="flex items-center gap-4">
                 <button
                     type="submit"
-                    class="bg-ink px-7 py-3.5 text-sm font-semibold text-canvas disabled:opacity-40"
+                    class="veda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
                     :disabled="saving"
                 >
                     {{ t('common.save') }}
@@ -110,5 +109,5 @@ const save = async () => {
                 <p v-else-if="message" class="font-mono text-sm text-muted">{{ message }}</p>
             </div>
         </form>
-    </AdminShell>
+    </div>
 </template>

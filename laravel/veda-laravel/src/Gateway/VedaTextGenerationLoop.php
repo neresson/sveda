@@ -3,6 +3,8 @@
 namespace Veda\Laravel\Gateway;
 
 use Generator;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Contracts\Tool;
@@ -18,6 +20,9 @@ use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Streaming\Events\Error;
 use Laravel\Ai\Streaming\Events\StreamEnd;
 use Laravel\Ai\Streaming\Events\ToolResult as ToolResultEvent;
+use Laravel\Ai\Tools\ToolNameResolver;
+use Throwable;
+use Veda\Laravel\Services\HostMcpToolGateway;
 use Veda\Laravel\Services\RequestContext;
 use Veda\Laravel\Streaming\Events\ContextUsage;
 use Veda\Laravel\Streaming\Events\MaxStepsReached;
@@ -46,38 +51,56 @@ class VedaTextGenerationLoop extends TextGenerationLoop
         $continuationToken = null;
         $accumulatedUsage = new Usage;
         $finalReason = null;
-        $sawError = false;
         $this->stoppedForFrontendToolCalls = false;
 
         for ($step = 0; $step < $maxSteps; $step++) {
+            $tools = $this->withLatestMcpTools($tools);
+
             $stepContext = new StepContext(
                 stepNumber: $step,
                 isFinalStep: $step + 1 >= $maxSteps,
                 continuationToken: $continuationToken,
             );
 
-            $stream = $this->gateway->generateStreamStep(
-                $invocationId,
-                $provider,
-                $model,
-                $instructions,
-                $allMessages,
-                $tools,
-                $schema,
-                $options,
-                $timeout,
-                $stepContext,
-            );
+            $stepFailed = false;
+            try {
+                $stream = $this->gateway->generateStreamStep(
+                    $invocationId,
+                    $provider,
+                    $model,
+                    $instructions,
+                    $allMessages,
+                    $tools,
+                    $schema,
+                    $options,
+                    $timeout,
+                    $stepContext,
+                );
 
-            foreach ($stream as $event) {
-                yield $event;
+                $stepFailed = false;
+                foreach ($stream as $event) {
+                    yield $event;
 
-                if ($event instanceof Error) {
-                    $sawError = true;
+                    if ($event instanceof Error) {
+                        $stepFailed = true;
+                        $finalReason = FinishReason::Error;
+                    }
                 }
+
+                $result = $stream->getReturn();
+            } catch (Throwable $e) {
+                report($e);
+                $this->logProviderFailure($e);
+
+                yield $this->providerErrorEvent($invocationId, $e);
+
+                $finalReason = FinishReason::Error;
+                break;
             }
 
-            $result = $stream->getReturn();
+            if ($stepFailed) {
+                break;
+            }
 
             if ($result !== null) {
                 $accumulatedUsage = $accumulatedUsage->add($result->usage);
@@ -131,7 +154,7 @@ class VedaTextGenerationLoop extends TextGenerationLoop
             $continuationToken = $result?->continuationToken;
         }
 
-        $reason = $finalReason ?? ($sawError ? null : FinishReason::Error);
+        $reason = $finalReason ?? FinishReason::Error;
 
         if ($reason === FinishReason::ToolCalls && ! $this->stoppedForFrontendToolCalls) {
             yield (new MaxStepsReached(
@@ -212,5 +235,68 @@ class VedaTextGenerationLoop extends TextGenerationLoop
             round(min(100, $used / $max * 100), 1),
             time(),
         ))->withInvocationId($invocationId);
+    }
+
+    /**
+     * @param  Tool[]  $tools
+     * @return Tool[]
+     */
+    protected function withLatestMcpTools(array $tools): array
+    {
+        $existing = [];
+        foreach ($tools as $tool) {
+            $existing[ToolNameResolver::resolve($tool)] = true;
+        }
+
+        foreach (app(HostMcpToolGateway::class)->tools(RequestContext::current()) as $tool) {
+            $name = ToolNameResolver::resolve($tool);
+            if (! isset($existing[$name])) {
+                $tools[] = $tool;
+            }
+        }
+
+        return $tools;
+    }
+
+    protected function providerErrorEvent(string $invocationId, Throwable $e): Error
+    {
+        return (new Error(
+            strtolower((string) Str::uuid7()),
+            'provider_error',
+            $this->providerErrorMessage($e),
+            false,
+            time(),
+        ))->withInvocationId($invocationId);
+    }
+
+    protected function providerErrorMessage(Throwable $e): string
+    {
+        if ($e instanceof RequestException && $e->response !== null) {
+            $body = $e->response->json('error.message');
+            if (! is_string($body) || $body === '') {
+                $body = $e->response->json('message');
+            }
+            if (is_string($body) && $body !== '') {
+                return $body;
+            }
+        }
+
+        $message = trim($e->getMessage());
+
+        return $message !== '' ? $message : 'The model provider rejected the request.';
+    }
+
+    protected function logProviderFailure(Throwable $e): void
+    {
+        $context = [
+            'message' => $e->getMessage(),
+        ];
+
+        if ($e instanceof RequestException && $e->response !== null) {
+            $context['status'] = $e->response->status();
+            $context['body'] = Str::limit((string) $e->response->body(), 2000);
+        }
+
+        Log::warning('veda.stream.provider_error', $context);
     }
 }

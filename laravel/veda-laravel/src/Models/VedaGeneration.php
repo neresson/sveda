@@ -4,6 +4,7 @@ namespace Veda\Laravel\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Laravel\Ai\Responses\Data\Usage;
 
 class VedaGeneration extends Model
 {
@@ -16,6 +17,7 @@ class VedaGeneration extends Model
     protected $fillable = [
         'user_id',
         'generation_type',
+        'model',
         'prompt',
         'generated_content',
         'status',
@@ -62,10 +64,31 @@ class VedaGeneration extends Model
         return $this->status === self::STATUS_FAILED;
     }
 
-    public function markAsCompleted(array $content, ?int $tokensUsed = null): void
+    /**
+     * @return array{prompt_tokens: int, completion_tokens: int, tokens_used: int}
+     */
+    public static function tokensFromUsage(Usage $usage): array
     {
+        $prompt = max(0, $usage->promptTokens) + max(0, $usage->cacheReadInputTokens);
+        $completion = max(0, $usage->completionTokens);
+
+        return [
+            'prompt_tokens' => $prompt,
+            'completion_tokens' => $completion,
+            'tokens_used' => $prompt + $completion,
+        ];
+    }
+
+    public function markAsCompleted(
+        array $content,
+        ?int $tokensUsed = null,
+        ?int $promptTokens = null,
+        ?int $completionTokens = null,
+    ): void {
         $this->generated_content = $content;
         $this->tokens_used = $tokensUsed;
+        $this->prompt_tokens = $promptTokens;
+        $this->completion_tokens = $completionTokens;
         $this->status = self::STATUS_COMPLETED;
         $this->save();
     }

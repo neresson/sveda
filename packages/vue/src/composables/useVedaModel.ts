@@ -70,7 +70,7 @@ export function useVedaModel(models: ComputedRef<VedaChatModelOption[]>) {
   const resolveStreamingSendOptions = (): Pick<VedaSendOptions, 'model' | 'options'> => ({
     model: selectedChatModel.value || undefined,
     options: {
-      thinking: selectedModelSupportsThinking.value ? thinkingEnabled.value : undefined,
+      thinking: Boolean(selectedModelSupportsThinking.value && thinkingEnabled.value),
     },
   });
 

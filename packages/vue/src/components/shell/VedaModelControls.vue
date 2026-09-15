@@ -33,7 +33,7 @@
             <Brain class="h-3.5 w-3.5 shrink-0" />
             <Switch
               v-model="thinkingEnabled"
-              class="h-5 w-9"
+              size="sm"
               :aria-label="thinkingTooltip"
             />
           </div>

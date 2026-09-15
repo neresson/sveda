@@ -19,6 +19,9 @@ class MigrationsTest extends TestCase
         $this->assertTrue(Schema::hasTable(config('veda.tables.chat_compactions')));
         $this->assertTrue(Schema::hasTable(config('veda.tables.generations')));
         $this->assertTrue(Schema::hasTable(config('veda.tables.settings')));
+        $this->assertTrue(Schema::hasTable(config('veda.tables.code_sources')));
+        $this->assertTrue(Schema::hasTable(config('veda.tables.code_index_chunks')));
+        $this->assertTrue(Schema::hasColumn((new VedaGeneration)->getTable(), 'model'));
     }
 
     public function test_table_names_come_from_config(): void
@@ -28,6 +31,8 @@ class MigrationsTest extends TestCase
         $this->assertSame('veda_chat_compactions', config('veda.tables.chat_compactions'));
         $this->assertSame('veda_generations', config('veda.tables.generations'));
         $this->assertSame('veda_settings', config('veda.tables.settings'));
+        $this->assertSame('veda_code_sources', config('veda.tables.code_sources'));
+        $this->assertSame('veda_code_index_chunks', config('veda.tables.code_index_chunks'));
     }
 
     public function test_models_use_configured_table_names(): void

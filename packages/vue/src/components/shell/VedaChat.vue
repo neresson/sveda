@@ -72,6 +72,7 @@
 <template>
   <div
     :class="[
+      'veda-chat',
       chat.isMinimized
         ? 'fixed bottom-0 right-0 z-50 min-[1872px]:bottom-4 min-[1872px]:right-4'
         : chat.isMobile
@@ -291,7 +292,7 @@
               'border-[2px] border-border': chat.viewMode === 'floating',
               'h-full min-w-0 flex-1 rounded-none border-0': chat.isMobile,
               'h-full min-w-0 flex-1 rounded-none border-b-0 border-l-[2px] border-r-0 border-t-0 border-border': chat.viewMode === 'fixed' && !chat.isMobile,
-              'rounded-[10px]': chat.viewMode === 'floating',
+              'rounded-[var(--veda-radius)]': chat.viewMode === 'floating',
               'rounded-none': chat.isMobile || chat.viewMode === 'fixed',
               'transition-[width] duration-300 ease-out': chat.isEnteringImmersiveFromDrag && chat.viewMode === 'fixed' && !chat.isMobile,
               'min-w-0 shrink-0': chat.viewMode === 'floating' && !chat.isMobile,
@@ -416,8 +417,9 @@
 
     <VedaMinimizedTrigger
       v-if="chat.isMinimized && !chat.isMobile"
-      :label="chat.brandDisplayName"
-      :logo-src="chat.brandLogo || ''"
+      :label="chat.launcherLabel"
+      :icon="chat.launcherIcon"
+      :logo-src="chat.launcherImage"
       :logo-alt="chat.t('assistantLogoAlt')"
       @open="chat.openChat"
     />

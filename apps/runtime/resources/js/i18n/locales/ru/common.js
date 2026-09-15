@@ -12,4 +12,6 @@ export default {
     language: 'Язык',
     open_menu: 'Открыть меню',
     close_menu: 'Закрыть меню',
+    prev: 'Назад',
+    next: 'Дальше',
 };

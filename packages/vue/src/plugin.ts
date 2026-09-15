@@ -1,5 +1,6 @@
 import { VedaClient } from '@veda-ai/core';
 import { inject, type App, type InjectionKey } from 'vue';
+import { applyVedaAppearance, type VedaAppearance } from './appearance';
 import {
   createVedaI18n,
   installVedaI18n,
@@ -41,6 +42,8 @@ export interface VedaPluginOptions {
   brand?: VedaBrand;
   models?: VedaModelOption[];
   quickPrompts?: VedaQuickPrompt[];
+  appearance?: VedaAppearance | null;
+  theme?: 'light' | 'dark';
 }
 
 export interface VedaConfig {
@@ -105,6 +108,17 @@ export function createVeda(options: VedaPluginOptions): VedaPlugin {
     models: options.models ?? [],
     quickPrompts: options.quickPrompts ?? [],
   };
+
+  if (options.appearance !== undefined || options.theme !== undefined) {
+    if (options.appearance === null && options.theme === undefined) {
+      applyVedaAppearance(null);
+    } else {
+      applyVedaAppearance({
+        ...(options.appearance && typeof options.appearance === 'object' ? options.appearance : {}),
+        ...(options.theme ? { theme: options.theme } : {}),
+      });
+    }
+  }
 
   return {
     client,

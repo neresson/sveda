@@ -20,7 +20,7 @@
   <Sheet v-model:open="open">
     <SheetContent
       side="bottom"
-      class="flex h-[85vh] max-h-[85vh] flex-col overflow-hidden rounded-t-xl p-0"
+      class="flex h-[85vh] max-h-[85vh] flex-col overflow-hidden rounded-t-[var(--veda-radius)] p-0"
     >
       <SheetHeader class="border-b border-border/50 p-4 pr-12 text-left">
         <SheetTitle>{{ title }}</SheetTitle>

@@ -16,9 +16,23 @@ use Veda\Laravel\Listeners\BroadcastVedaToolActivity;
 use Veda\Laravel\Providers\VedaAnthropicProvider;
 use Veda\Laravel\Providers\VedaResponsesProvider;
 use Veda\Laravel\Services\VedaModelCatalog;
+use Veda\Laravel\CodeIndex\CodeIndexSourcesContext;
+use Veda\Laravel\Tools\GetCodeSourceOverviewTool;
+use Veda\Laravel\Tools\ListCodeSourcesTool;
+use Veda\Laravel\Tools\ManageMcpCatalogTool;
+use Veda\Laravel\Tools\ReadCodeIndexFileTool;
+use Veda\Laravel\Tools\SearchCodeTool;
 
 class VedaServiceProvider extends ServiceProvider
 {
+    public const NATIVE_TOOLS = [
+        ManageMcpCatalogTool::class,
+        ListCodeSourcesTool::class,
+        GetCodeSourceOverviewTool::class,
+        SearchCodeTool::class,
+        ReadCodeIndexFileTool::class,
+    ];
+
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/veda.php', 'veda');
@@ -26,6 +40,7 @@ class VedaServiceProvider extends ServiceProvider
         $this->app->singleton(VedaManager::class, fn () => new VedaManager);
         $this->app->alias(VedaManager::class, 'veda');
         $this->app->singleton(Services\HostMcpCredentialStore::class);
+        $this->app->singleton(Services\McpCatalog::class);
         $this->app->scoped(Services\HostMcpToolGateway::class);
         $this->app->singleton(Services\VedaSettingsRepository::class);
         $this->app->singleton(VedaModelCatalog::class);
@@ -39,6 +54,7 @@ class VedaServiceProvider extends ServiceProvider
         $this->registerCorsMiddleware();
         $this->registerSettingsMiddleware();
         $this->registerAiProviders();
+        $this->registerNativeTools();
         $this->registerRoutes();
         $this->registerAdminRoutes();
         $this->registerBroadcasting();
@@ -70,6 +86,15 @@ class VedaServiceProvider extends ServiceProvider
         });
 
         $this->app->make(VedaModelCatalog::class)->registerIntoAi();
+    }
+
+    protected function registerNativeTools(): void
+    {
+        $veda = $this->app->make(VedaManager::class);
+        foreach (self::NATIVE_TOOLS as $tool) {
+            $veda->toolClass($tool);
+        }
+        $veda->contextProvider(fn (): string => app(CodeIndexSourcesContext::class)->promptSection());
     }
 
     protected function registerRoutes(): void

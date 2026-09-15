@@ -1,0 +1,568 @@
+import { reactive } from 'vue';
+
+export const VEDA_APPEARANCE_STYLE_ID = 'veda-appearance';
+
+export const VEDA_TOKEN_KEYS = [
+  'background',
+  'foreground',
+  'card',
+  'card_foreground',
+  'popover',
+  'popover_foreground',
+  'primary',
+  'primary_foreground',
+  'secondary',
+  'secondary_foreground',
+  'muted',
+  'muted_foreground',
+  'accent',
+  'accent_foreground',
+  'destructive',
+  'destructive_foreground',
+  'border',
+  'input',
+  'ring',
+  'brand',
+  'brand_foreground',
+] as const;
+
+export type VedaTokenKey = (typeof VEDA_TOKEN_KEYS)[number];
+
+export type VedaAppearanceTokens = Record<VedaTokenKey, string>;
+
+export type VedaAppearanceTheme = 'light' | 'dark';
+
+export const VEDA_LAUNCHER_ICON_IDS = [
+  'sparkles',
+  'message-circle',
+  'message-square',
+  'bot',
+  'bot-message-square',
+  'brain',
+  'zap',
+  'star',
+  'heart',
+  'circle-help',
+  'rocket',
+  'gem',
+] as const;
+
+export const VEDA_DEFAULT_LAUNCHER_ICON = 'sparkles';
+
+export const VEDA_LAUNCHER_IMAGE_MAX_BYTES = 262144;
+
+export const VEDA_LAUNCHER_IMAGE_MAX_CHARS = 360000;
+
+export type VedaLauncherIconId = (typeof VEDA_LAUNCHER_ICON_IDS)[number];
+
+export type VedaAppearanceLauncher = {
+  label: string;
+  icon: VedaLauncherIconId;
+  image: string;
+};
+
+export type VedaAppearance = {
+  preset?: string;
+  radius?: string;
+  theme?: VedaAppearanceTheme;
+  tokens?: Partial<VedaAppearanceTokens> | Record<string, string>;
+  dark_tokens?: Partial<VedaAppearanceTokens> | Record<string, string>;
+  launcher?: Partial<VedaAppearanceLauncher> | { label?: string; icon?: string; image?: string };
+};
+
+export const VEDA_APPEARANCE_PRESET_IDS = ['default', 'lms', 'ocean', 'forest', 'sunset', 'sand'] as const;
+
+export type VedaAppearancePresetId = (typeof VEDA_APPEARANCE_PRESET_IDS)[number];
+
+const NEUTRAL_LIGHT: VedaAppearanceTokens = {
+  background: '210 20% 98%',
+  foreground: '0 0% 3.9%',
+  card: '0 0% 100%',
+  card_foreground: '0 0% 3.9%',
+  popover: '0 0% 100%',
+  popover_foreground: '0 0% 3.9%',
+  primary: '0 0% 9%',
+  primary_foreground: '0 0% 98%',
+  secondary: '0 0% 92.1%',
+  secondary_foreground: '0 0% 9%',
+  muted: '0 0% 96.1%',
+  muted_foreground: '0 0% 45.1%',
+  accent: '0 0% 96.1%',
+  accent_foreground: '0 0% 9%',
+  destructive: '0 84.2% 60.2%',
+  destructive_foreground: '0 0% 98%',
+  border: '220 13% 91%',
+  input: '220 14% 96%',
+  ring: '0 0% 3.9%',
+  brand: '0 0% 9%',
+  brand_foreground: '0 0% 98%',
+};
+
+const NEUTRAL_DARK: VedaAppearanceTokens = {
+  background: '222.2 47.4% 11.2%',
+  foreground: '210 40% 98%',
+  card: '222.2 47.4% 14%',
+  card_foreground: '210 40% 98%',
+  popover: '222.2 47.4% 14%',
+  popover_foreground: '210 40% 98%',
+  primary: '210 40% 98%',
+  primary_foreground: '222.2 47.4% 11.2%',
+  secondary: '217.2 32.6% 17.5%',
+  secondary_foreground: '210 40% 98%',
+  muted: '217.2 32.6% 17.5%',
+  muted_foreground: '215 20.2% 65.1%',
+  accent: '217.2 32.6% 17.5%',
+  accent_foreground: '210 40% 98%',
+  destructive: '0 62.8% 30.6%',
+  destructive_foreground: '210 40% 98%',
+  border: '217.2 32.6% 17.5%',
+  input: '217.2 32.6% 17.5%',
+  ring: '212.7 26.8% 83.9%',
+  brand: '210 40% 98%',
+  brand_foreground: '222.2 47.4% 11.2%',
+};
+
+export const VEDA_APPEARANCE_PRESETS: Record<VedaAppearancePresetId, Required<Pick<VedaAppearance, 'preset' | 'radius'>> & {
+  tokens: VedaAppearanceTokens;
+  dark_tokens: VedaAppearanceTokens;
+}> = {
+  default: {
+    preset: 'default',
+    radius: '0px',
+    tokens: { ...NEUTRAL_LIGHT },
+    dark_tokens: { ...NEUTRAL_DARK },
+  },
+  lms: {
+    preset: 'lms',
+    radius: '0px',
+    tokens: {
+      ...NEUTRAL_LIGHT,
+      accent: '275 60% 96%',
+      ring: '275 96% 52%',
+      brand: '275 96% 52%',
+      brand_foreground: '0 0% 98%',
+    },
+    dark_tokens: {
+      ...NEUTRAL_DARK,
+      accent: '275 40% 18%',
+      ring: '275 100% 62%',
+      brand: '275 100% 42%',
+      brand_foreground: '0 0% 98%',
+    },
+  },
+  ocean: {
+    preset: 'ocean',
+    radius: '0px',
+    tokens: {
+      ...NEUTRAL_LIGHT,
+      background: '214 40% 98%',
+      accent: '214 80% 96%',
+      ring: '221 83% 53%',
+      brand: '221 83% 53%',
+      brand_foreground: '0 0% 98%',
+    },
+    dark_tokens: {
+      ...NEUTRAL_DARK,
+      accent: '217 40% 18%',
+      ring: '213 94% 68%',
+      brand: '213 94% 68%',
+      brand_foreground: '222.2 47.4% 11.2%',
+    },
+  },
+  forest: {
+    preset: 'forest',
+    radius: '0px',
+    tokens: {
+      ...NEUTRAL_LIGHT,
+      background: '168 25% 98%',
+      card: '150 20% 99%',
+      popover: '150 20% 99%',
+      accent: '166 30% 94%',
+      ring: '166 72% 32%',
+      brand: '166 72% 32%',
+      brand_foreground: '0 0% 98%',
+    },
+    dark_tokens: {
+      ...NEUTRAL_DARK,
+      accent: '166 28% 18%',
+      ring: '166 50% 52%',
+      brand: '166 50% 52%',
+      brand_foreground: '222.2 47.4% 11.2%',
+    },
+  },
+  sunset: {
+    preset: 'sunset',
+    radius: '0px',
+    tokens: {
+      ...NEUTRAL_LIGHT,
+      background: '28 45% 98%',
+      card: '30 50% 99%',
+      popover: '30 50% 99%',
+      accent: '20 70% 95%',
+      ring: '16 82% 50%',
+      brand: '16 82% 50%',
+      brand_foreground: '0 0% 98%',
+    },
+    dark_tokens: {
+      ...NEUTRAL_DARK,
+      accent: '16 40% 18%',
+      ring: '18 85% 62%',
+      brand: '18 85% 62%',
+      brand_foreground: '222.2 47.4% 11.2%',
+    },
+  },
+  sand: {
+    preset: 'sand',
+    radius: '0px',
+    tokens: {
+      ...NEUTRAL_LIGHT,
+      background: '40 33% 97%',
+      card: '40 40% 99%',
+      popover: '40 40% 99%',
+      muted: '36 24% 93%',
+      accent: '36 30% 93%',
+      border: '36 18% 86%',
+      input: '36 22% 94%',
+      ring: '28 35% 24%',
+      brand: '28 35% 24%',
+      brand_foreground: '40 33% 97%',
+    },
+    dark_tokens: {
+      ...NEUTRAL_DARK,
+      background: '30 12% 11%',
+      card: '30 10% 14%',
+      popover: '30 10% 14%',
+      accent: '30 12% 18%',
+      border: '30 10% 20%',
+      input: '30 10% 18%',
+      ring: '36 35% 72%',
+      brand: '36 35% 72%',
+      brand_foreground: '30 12% 11%',
+    },
+  },
+};
+
+const isPresetId = (value: unknown): value is VedaAppearancePresetId =>
+  typeof value === 'string' && (VEDA_APPEARANCE_PRESET_IDS as readonly string[]).includes(value);
+
+const HSL_PATTERN = /^\d{1,3}(?:\.\d+)?\s+\d{1,3}(?:\.\d+)?%\s+\d{1,3}(?:\.\d+)?%$/;
+const RADIUS_PATTERN = /^\d+(?:\.\d+)?(?:px|rem|em)$/;
+
+const tokenCssName = (key: string): string => `--veda-${key.replace(/_/g, '-')}`;
+
+export const isVedaHsl = (value: unknown): value is string =>
+  typeof value === 'string' && HSL_PATTERN.test(value.trim());
+
+export const sanitizeVedaTheme = (value: unknown): VedaAppearanceTheme | undefined =>
+  value === 'light' || value === 'dark' ? value : undefined;
+
+const isLauncherIconId = (value: unknown): value is VedaLauncherIconId =>
+  typeof value === 'string' && (VEDA_LAUNCHER_ICON_IDS as readonly string[]).includes(value);
+
+export const sanitizeVedaLauncherImage = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return '';
+  }
+
+  const dataMatch = trimmed.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,([A-Za-z0-9+/=\s]+)$/i);
+  if (dataMatch) {
+    const payload = dataMatch[2].replace(/\s+/g, '');
+    const detected = dataMatch[1].toLowerCase() === 'jpg' ? 'jpeg' : dataMatch[1].toLowerCase();
+    const normalized = `data:image/${detected};base64,${payload}`;
+    if (normalized.length > VEDA_LAUNCHER_IMAGE_MAX_CHARS) {
+      return '';
+    }
+
+    return normalized;
+  }
+
+  if (/^https?:\/\//i.test(trimmed) && trimmed.length <= 2048) {
+    try {
+      const url = new URL(trimmed);
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        return trimmed;
+      }
+    } catch {
+      return '';
+    }
+  }
+
+  if (
+    trimmed.startsWith('/') &&
+    !trimmed.startsWith('//') &&
+    !trimmed.includes('..') &&
+    !trimmed.includes('\\') &&
+    !/[\s<>"']/.test(trimmed) &&
+    trimmed.length <= 2048
+  ) {
+    return trimmed;
+  }
+
+  return '';
+};
+
+export const sanitizeVedaLauncher = (launcher: VedaAppearance['launcher'] | null | undefined): VedaAppearanceLauncher => {
+  const label = typeof launcher?.label === 'string' ? launcher.label.trim().replace(/\s+/g, ' ').slice(0, 64) : '';
+  const icon = isLauncherIconId(launcher?.icon) ? launcher.icon : VEDA_DEFAULT_LAUNCHER_ICON;
+
+  return { label, icon, image: sanitizeVedaLauncherImage(launcher?.image) };
+};
+
+export const vedaLauncher = reactive<VedaAppearanceLauncher>(sanitizeVedaLauncher(null));
+
+export const useVedaLauncher = (): VedaAppearanceLauncher => vedaLauncher;
+
+export const sanitizeVedaRadius = (value: unknown): string | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return `${Math.max(0, Math.min(64, Math.round(value)))}px`;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed === '0') {
+    return '0px';
+  }
+
+  if (!RADIUS_PATTERN.test(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
+};
+
+export const parseRadiusPx = (value: unknown): number => {
+  const raw = String(value ?? '').trim();
+  const match = raw.match(/^([\d.]+)(px|rem|em)$/);
+  if (!match) {
+    return raw === '0' ? 0 : 0;
+  }
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount)) {
+    return 0;
+  }
+
+  if (match[2] === 'px') {
+    return Math.max(0, Math.min(64, amount));
+  }
+
+  return Math.max(0, Math.min(64, amount * 16));
+};
+
+export const formatRadiusPx = (px: number): string => `${Math.round(Math.max(0, Math.min(64, px)))}px`;
+
+export const hslToHex = (hsl: string): string => {
+  const match = String(hsl)
+    .trim()
+    .match(/^([\d.]+)\s+([\d.]+)%\s+([\d.]+)%$/);
+  if (!match) {
+    return '#000000';
+  }
+
+  const h = (((Number(match[1]) % 360) + 360) % 360) / 360;
+  const s = Math.min(100, Math.max(0, Number(match[2]))) / 100;
+  const l = Math.min(100, Math.max(0, Number(match[3]))) / 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number): string => {
+    const k = (n + h * 12) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, '0');
+  };
+
+  return `#${f(0)}${f(8)}${f(4)}`;
+};
+
+export const hexToHsl = (hex: string): string => {
+  const raw = hex.replace('#', '').trim();
+  const full = raw.length === 3 ? raw.split('').map((char) => char + char).join('') : raw;
+  if (!/^[\da-f]{6}$/i.test(full)) {
+    return '0 0% 0%';
+  }
+
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0;
+  let s = 0;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      default:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h *= 60;
+  }
+
+  return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+};
+
+const unwrapHsl = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  let next = value.trim();
+  next = next.replace(/^hsla?\(/i, '');
+  next = next.replace(/\)$/, '').trim();
+
+  return HSL_PATTERN.test(next) ? next : null;
+};
+
+const overlayTokens = (tokens: VedaAppearance['tokens']): Partial<VedaAppearanceTokens> => {
+  const clean: Partial<VedaAppearanceTokens> = {};
+  if (!tokens || typeof tokens !== 'object') {
+    return clean;
+  }
+
+  for (const key of VEDA_TOKEN_KEYS) {
+    const value = unwrapHsl(tokens[key]);
+    if (value) {
+      clean[key] = value;
+    }
+  }
+
+  return clean;
+};
+
+const mergeTokens = (base: VedaAppearanceTokens, overlay: Partial<VedaAppearanceTokens>): VedaAppearanceTokens => {
+  const merged = { ...base };
+  for (const key of VEDA_TOKEN_KEYS) {
+    const value = overlay[key];
+    if (value) {
+      merged[key] = value;
+    }
+  }
+
+  return merged;
+};
+
+const sameTokens = (left: VedaAppearanceTokens, right: VedaAppearanceTokens): boolean =>
+  VEDA_TOKEN_KEYS.every((key) => left[key] === right[key]);
+
+export const resolveVedaAppearance = (appearance: VedaAppearance | null | undefined): VedaAppearance | null => {
+  if (!appearance || typeof appearance !== 'object') {
+    return null;
+  }
+
+  const legacyRounded = appearance.preset === 'rounded';
+  const namedId = isPresetId(appearance.preset)
+    ? appearance.preset
+    : legacyRounded
+      ? 'forest'
+      : 'default';
+  const named = VEDA_APPEARANCE_PRESETS[namedId];
+  const tokenOverlay = overlayTokens(appearance.tokens);
+  const darkOverlay = overlayTokens(appearance.dark_tokens);
+  const tokens =
+    Object.keys(tokenOverlay).length === 0 ? named.tokens : mergeTokens(named.tokens, tokenOverlay);
+  const darkTokens =
+    Object.keys(darkOverlay).length === 0 ? named.dark_tokens : mergeTokens(named.dark_tokens, darkOverlay);
+  const radius = Object.prototype.hasOwnProperty.call(appearance, 'radius')
+    ? (sanitizeVedaRadius(appearance.radius) ?? '0px')
+    : legacyRounded
+      ? '20px'
+      : named.radius;
+  const customTokens = !sameTokens(tokens, named.tokens) || !sameTokens(darkTokens, named.dark_tokens);
+
+  const theme = sanitizeVedaTheme(appearance.theme);
+  const launcher = sanitizeVedaLauncher(appearance.launcher);
+
+  if (appearance.preset === 'custom' || customTokens) {
+    return {
+      preset: 'custom',
+      radius,
+      ...(theme ? { theme } : {}),
+      tokens,
+      dark_tokens: darkTokens,
+      launcher,
+    };
+  }
+
+  return {
+    preset: named.preset,
+    radius,
+    ...(theme ? { theme } : {}),
+    tokens: named.tokens,
+    dark_tokens: named.dark_tokens,
+    launcher,
+  };
+};
+
+const declarations = (tokens: Record<string, string> | undefined, radius: string): string => {
+  const parts = [`--veda-radius:${radius}`];
+  for (const key of VEDA_TOKEN_KEYS) {
+    const value = unwrapHsl(tokens?.[key]);
+    if (!value) {
+      continue;
+    }
+
+    parts.push(`${tokenCssName(key)}:${value}`);
+  }
+
+  return parts.join(';');
+};
+
+export const buildAppearanceCss = (appearance: VedaAppearance | null | undefined): string => {
+  const resolved = resolveVedaAppearance(appearance);
+  if (!resolved) {
+    return '';
+  }
+
+  const radius = sanitizeVedaRadius(resolved.radius) ?? '0px';
+  const light = declarations(resolved.tokens as Record<string, string> | undefined, radius);
+  const dark = declarations(resolved.dark_tokens as Record<string, string> | undefined, radius);
+  const theme = sanitizeVedaTheme(resolved.theme);
+
+  if (theme === 'dark') {
+    return `.veda-chat{${dark}}`;
+  }
+
+  if (theme === 'light') {
+    return `.veda-chat{${light}}`;
+  }
+
+  return `.veda-chat{${light}}.dark .veda-chat,.veda-chat.dark{${dark}}`;
+};
+
+export const applyVedaAppearance = (appearance: VedaAppearance | null | undefined): void => {
+  const launcher = resolveVedaAppearance(appearance)?.launcher ?? sanitizeVedaLauncher(null);
+  vedaLauncher.label = launcher.label;
+  vedaLauncher.icon = launcher.icon;
+  vedaLauncher.image = launcher.image;
+
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  let style = document.getElementById(VEDA_APPEARANCE_STYLE_ID) as HTMLStyleElement | null;
+  if (!style) {
+    style = document.createElement('style');
+    style.id = VEDA_APPEARANCE_STYLE_ID;
+    document.head.appendChild(style);
+  }
+
+  style.textContent = buildAppearanceCss(appearance);
+};

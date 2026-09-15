@@ -14,11 +14,7 @@ class ArraySchemaConverter
      */
     public function convert(JsonSchema $schema, array $definition): array
     {
-        $properties = $definition['properties'] ?? $definition;
-        if (! is_array($properties)) {
-            return [];
-        }
-
+        $properties = $this->properties($definition);
         $required = $definition['required'] ?? [];
         if (! is_array($required)) {
             $required = [];
@@ -26,7 +22,7 @@ class ArraySchemaConverter
 
         $converted = [];
         foreach ($properties as $name => $spec) {
-            if (! is_string($name)) {
+            if (! is_string($name) || $name === '') {
                 continue;
             }
 
@@ -50,13 +46,15 @@ class ArraySchemaConverter
      */
     protected function convertProperty(JsonSchema $schema, array $spec): ?Type
     {
-        $type = match ((string) ($spec['type'] ?? 'string')) {
+        $declaredType = $this->declaredType($spec);
+
+        $type = match ($declaredType) {
             'string' => $schema->string(),
             'integer' => $schema->integer(),
             'number' => $schema->number(),
             'boolean' => $schema->boolean(),
             'array' => $schema->array(),
-            'object' => $schema->object(),
+            'object' => $schema->object($this->convert($schema, $spec)),
             default => $schema->string(),
         };
 
@@ -68,7 +66,7 @@ class ArraySchemaConverter
             $type->enum($spec['enum']);
         }
 
-        if (($spec['nullable'] ?? false) === true) {
+        if (($spec['nullable'] ?? false) === true || $this->isNullable($spec)) {
             $type->nullable();
         }
 
@@ -80,5 +78,74 @@ class ArraySchemaConverter
         }
 
         return $type;
+    }
+
+    /**
+     * @param  array<string, mixed>  $definition
+     * @return array<string, mixed>
+     */
+    protected function properties(array $definition): array
+    {
+        if (isset($definition['properties']) && is_array($definition['properties'])) {
+            return $definition['properties'];
+        }
+
+        if ($this->looksLikeJsonSchema($definition)) {
+            return [];
+        }
+
+        return $definition;
+    }
+
+    /**
+     * @param  array<string, mixed>  $definition
+     */
+    protected function looksLikeJsonSchema(array $definition): bool
+    {
+        return array_key_exists('type', $definition)
+            || array_key_exists('properties', $definition)
+            || array_key_exists('required', $definition)
+            || array_key_exists('items', $definition);
+    }
+
+    /**
+     * @param  array<string, mixed>  $spec
+     */
+    protected function declaredType(array $spec): string
+    {
+        $type = $spec['type'] ?? null;
+        if (is_array($type)) {
+            foreach ($type as $candidate) {
+                if (is_string($candidate) && $candidate !== '' && $candidate !== 'null') {
+                    return $candidate;
+                }
+            }
+
+            return 'string';
+        }
+
+        if (is_string($type) && $type !== '') {
+            return $type;
+        }
+
+        if (isset($spec['properties']) && is_array($spec['properties'])) {
+            return 'object';
+        }
+
+        if (isset($spec['items'])) {
+            return 'array';
+        }
+
+        return 'string';
+    }
+
+    /**
+     * @param  array<string, mixed>  $spec
+     */
+    protected function isNullable(array $spec): bool
+    {
+        $type = $spec['type'] ?? null;
+
+        return is_array($type) && in_array('null', $type, true);
     }
 }

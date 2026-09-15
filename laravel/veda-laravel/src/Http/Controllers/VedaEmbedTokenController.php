@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Veda\Laravel\Services\EmbedTokenService;
 use Veda\Laravel\Services\HostMcpCredentialStore;
+use Veda\Laravel\Services\HostMcpToolGateway;
+use Veda\Laravel\Services\VedaSettingsRepository;
 
 class VedaEmbedTokenController
 {
@@ -46,12 +48,17 @@ class VedaEmbedTokenController
                 $hostMcpToken,
                 $ttl,
             );
+            app(VedaSettingsRepository::class)->ensureMcpServer([
+                'id' => HostMcpToolGateway::HOST_SERVER_ID,
+                'url' => $hostMcpUrl,
+            ]);
         }
 
         return response()->json([
             'token' => $token,
             'visitor_id' => $visitorId,
             'expires_in' => max(60, $ttl),
+            'appearance' => app(VedaSettingsRepository::class)->publicAppearance(),
         ]);
     }
 

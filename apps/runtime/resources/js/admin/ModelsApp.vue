@@ -1,7 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import AdminShell from './AdminShell.vue';
 import { useDocumentTitle } from './useDocumentTitle';
 
 const props = defineProps({
@@ -196,7 +195,7 @@ const removeModel = async (id) => {
 </script>
 
 <template>
-    <AdminShell :csrf="csrf" :logout-url="logoutUrl" :urls="urls" current="models">
+    <div class="contents">
         <div>
             <p class="font-mono text-[11px] tracking-[0.18em] text-muted">{{ t('models.eyebrow') }}</p>
             <h1 class="mt-2 text-4xl font-bold tracking-tighter sm:text-5xl lg:text-6xl">{{ t('models.title') }}</h1>
@@ -256,7 +255,7 @@ const removeModel = async (id) => {
                     <button
                         v-if="isEditing"
                         type="button"
-                        class="font-mono text-[11px] tracking-[0.16em]"
+                        class="veda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted disabled:hover:text-ink"
                         :disabled="saving"
                         @click="cancelEdit"
                     >
@@ -264,7 +263,7 @@ const removeModel = async (id) => {
                     </button>
                     <button
                         type="submit"
-                        class="bg-ink px-7 py-3.5 text-sm font-semibold text-canvas disabled:opacity-40"
+                        class="veda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
                         :disabled="!canSubmit || saving"
                     >
                         {{ isEditing ? t('common.save') : t('common.add') }}
@@ -294,7 +293,7 @@ const removeModel = async (id) => {
                     <div class="flex items-center gap-4">
                         <button
                             type="button"
-                            class="font-mono text-[11px] tracking-[0.12em]"
+                            class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
                             :disabled="saving"
                             @click="startEdit(model)"
                         >
@@ -302,7 +301,7 @@ const removeModel = async (id) => {
                         </button>
                         <button
                             type="button"
-                            class="font-mono text-[11px] tracking-[0.12em]"
+                            class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
                             :disabled="saving"
                             @click="removeModel(model.id)"
                         >
@@ -338,7 +337,7 @@ const removeModel = async (id) => {
                 <div class="flex w-32 shrink-0 justify-end gap-4">
                     <button
                         type="button"
-                        class="font-mono text-[11px] tracking-[0.12em]"
+                        class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
                         :disabled="saving"
                         @click="startEdit(model)"
                     >
@@ -346,7 +345,7 @@ const removeModel = async (id) => {
                     </button>
                     <button
                         type="button"
-                        class="font-mono text-[11px] tracking-[0.12em]"
+                        class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
                         :disabled="saving"
                         @click="removeModel(model.id)"
                     >
@@ -356,5 +355,5 @@ const removeModel = async (id) => {
             </div>
             <p v-if="models.length === 0" class="px-4 py-6 font-mono text-xs text-muted">{{ t('models.empty') }}</p>
         </div>
-    </AdminShell>
+    </div>
 </template>

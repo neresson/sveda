@@ -9,14 +9,19 @@ use Veda\Laravel\Enums\ToolMode;
 
 class HostMcpVedaTool extends VedaTool
 {
-    public function __construct(protected McpClientTool $mcpTool)
-    {
+    public function __construct(
+        protected McpClientTool $mcpTool,
+        protected ?string $namePrefix = null,
+    ) {
         parent::__construct(null);
     }
 
     public function name(): string
     {
-        return $this->mcpTool->name;
+        $name = $this->mcpTool->name;
+        $prefix = trim((string) $this->namePrefix);
+
+        return $prefix === '' ? $name : $prefix.'__'.$name;
     }
 
     public function description(): Stringable|string

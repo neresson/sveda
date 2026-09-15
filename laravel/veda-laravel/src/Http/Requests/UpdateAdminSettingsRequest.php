@@ -4,6 +4,8 @@ namespace Veda\Laravel\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
+use Veda\Laravel\Services\VedaAppearance;
 
 class UpdateAdminSettingsRequest extends FormRequest
 {
@@ -67,6 +69,36 @@ class UpdateAdminSettingsRequest extends FormRequest
 
             $this->merge(['models' => $models]);
         }
+
+        $mcp = $this->input('mcp');
+        if (is_array($mcp) && isset($mcp['mcpServers']) && is_array($mcp['mcpServers'])) {
+            foreach ($mcp['mcpServers'] as $id => $server) {
+                if (! is_array($server)) {
+                    continue;
+                }
+
+                if (array_key_exists('disabled', $server)) {
+                    $mcp['mcpServers'][$id]['disabled'] = filter_var($server['disabled'], FILTER_VALIDATE_BOOLEAN);
+                }
+            }
+
+            $this->merge(['mcp' => $mcp]);
+        }
+
+        $servers = $this->input('mcp_servers');
+        if (is_array($servers)) {
+            $servers = array_values(array_filter($servers, function ($server): bool {
+                return is_array($server) && trim((string) ($server['id'] ?? '')) !== '';
+            }));
+
+            foreach ($servers as $index => $server) {
+                $servers[$index]['enabled'] = filter_var($server['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN);
+                $auth = strtolower(trim((string) ($server['auth'] ?? 'bearer')));
+                $servers[$index]['auth'] = $auth === 'session' ? 'session' : 'bearer';
+            }
+
+            $this->merge(['mcp_servers' => $servers]);
+        }
     }
 
     /**
@@ -103,6 +135,58 @@ class UpdateAdminSettingsRequest extends FormRequest
             'cors.allowed_origins.*' => ['string', 'max:2048'],
             'welcome_message' => ['nullable', 'string', 'max:5000'],
             'system_prompt' => ['nullable', 'string', 'max:20000'],
+            'appearance' => ['nullable', 'array'],
+            'appearance.preset' => ['nullable', 'string', Rule::in([...VedaAppearance::presetIds(), VedaAppearance::PRESET_CUSTOM, VedaAppearance::PRESET_ROUNDED])],
+            'appearance.radius' => ['nullable', 'string', 'max:16'],
+            'appearance.tokens' => ['nullable', 'array'],
+            'appearance.tokens.*' => ['nullable', 'string', 'max:64'],
+            'appearance.dark_tokens' => ['nullable', 'array'],
+            'appearance.dark_tokens.*' => ['nullable', 'string', 'max:64'],
+            'appearance.launcher' => ['nullable', 'array'],
+            'appearance.launcher.label' => ['nullable', 'string', 'max:64'],
+            'appearance.launcher.icon' => ['nullable', 'string', Rule::in(VedaAppearance::launcherIconIds())],
+            'appearance.launcher.image' => ['nullable', 'string', 'max:'.VedaAppearance::LAUNCHER_IMAGE_MAX_CHARS],
+            'mcp' => ['nullable', 'array'],
+            'mcp.mcpServers' => ['nullable', 'array'],
+            'mcp_servers' => ['nullable', 'array'],
+            'mcp_servers.*.id' => ['required_with:mcp_servers', 'string', 'max:128', 'distinct'],
+            'mcp_servers.*.label' => ['nullable', 'string', 'max:255'],
+            'mcp_servers.*.url' => ['nullable', 'string', 'max:2048'],
+            'mcp_servers.*.auth' => ['nullable', 'string', Rule::in(['bearer', 'session'])],
+            'mcp_servers.*.token' => ['nullable', 'string', 'max:2048'],
+            'mcp_servers.*.enabled' => ['nullable', 'boolean'],
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $servers = $this->input('mcp.mcpServers');
+                if (! is_array($servers)) {
+                    return;
+                }
+
+                if ($servers !== [] && array_is_list($servers)) {
+                    $validator->errors()->add('mcp.mcpServers', 'object');
+
+                    return;
+                }
+
+                foreach ($servers as $id => $server) {
+                    if (trim((string) $id) === '' || ! is_array($server)) {
+                        $validator->errors()->add('mcp.mcpServers', 'server');
+
+                        continue;
+                    }
+
+                    $url = trim((string) ($server['url'] ?? ''));
+                    $command = trim((string) ($server['command'] ?? ''));
+                    if ($url === '' && $command === '') {
+                        $validator->errors()->add('mcp.mcpServers.'.$id, 'endpoint');
+                    }
+                }
+            },
         ];
     }
 }

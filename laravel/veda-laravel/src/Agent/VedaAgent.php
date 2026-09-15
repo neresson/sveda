@@ -152,7 +152,7 @@ class VedaAgent implements Agent, Conversational, HasMiddleware, HasProviderOpti
     public function providerOptions(Lab|string $provider): array
     {
         $driver = $provider instanceof Lab ? $provider->value : (string) $provider;
-        $thinkingEnabled = RequestContext::current()?->thinkingEnabled !== false;
+        $thinkingEnabled = RequestContext::current()?->thinkingEnabled === true;
 
         return match ($driver) {
             'veda-responses' => [

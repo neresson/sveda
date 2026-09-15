@@ -6,8 +6,12 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\StreamableAgentResponse;
 use Laravel\Ai\Responses\StreamedAgentResponse;
+use Laravel\Ai\Streaming\Events\Error;
+use Laravel\Ai\Streaming\Events\StreamEnd;
 use Symfony\Component\HttpFoundation\Response;
 use Veda\Laravel\Agent\VedaAgent;
 use Veda\Laravel\Exceptions\UnknownVedaModelException;
@@ -46,6 +50,7 @@ class VedaStreamController
         $generation = VedaGeneration::create([
             'user_id' => $user?->getAuthIdentifier(),
             'generation_type' => 'chat',
+            'model' => $target['definition']->id,
             'prompt' => $validated['prompt'] ?? 'Continue conversation',
             'status' => VedaGeneration::STATUS_PENDING,
         ]);
@@ -54,7 +59,7 @@ class VedaStreamController
 
         $streamTimeout = (int) config('veda.stream_timeout', 1800);
         set_time_limit($streamTimeout);
-        ignore_user_abort(true);
+        ignore_user_abort(false);
 
         $providerToUse = $target['providers'];
         $modelToUse = $target['definition']->apiModel;
@@ -70,7 +75,8 @@ class VedaStreamController
         $historyScope = $this->historyScope($request);
 
         $stream->then(function (StreamedAgentResponse $response) use ($generation, $validated, $agent, $user, $historyScope, $modelToUse, $catalogModelId) {
-            $tokensUsed = $response->usage->promptTokens + $response->usage->completionTokens;
+            $tokens = VedaGeneration::tokensFromUsage($response->usage);
+            $tokensUsed = $tokens['tokens_used'];
 
             $result = [
                 'explanation' => $this->applyResponseGuard(
@@ -80,10 +86,17 @@ class VedaStreamController
                     $modelToUse,
                 ),
                 'tokens_used' => $tokensUsed,
+                'prompt_tokens' => $tokens['prompt_tokens'],
+                'completion_tokens' => $tokens['completion_tokens'],
                 'chat_id' => $agent->currentConversation(),
             ];
 
-            $generation->markAsCompleted($result, $tokensUsed);
+            $generation->markAsCompleted(
+                $result,
+                $tokensUsed,
+                $tokens['prompt_tokens'],
+                $tokens['completion_tokens'],
+            );
 
             if ($user) {
                 app(VedaManager::class)->getTokenPolicy()->recordUsage(
@@ -117,7 +130,7 @@ class VedaStreamController
             }
         });
 
-        return $this->toStreamResponse($stream, $validated['chatId'] ?? null, $this->wantsVedaProtocol($request));
+        return $this->toStreamResponse($stream, $validated['chatId'] ?? null, $this->wantsVedaProtocol($request), $generation);
     }
 
     public function message(Request $request): JsonResponse
@@ -139,6 +152,7 @@ class VedaStreamController
         $generation = VedaGeneration::create([
             'user_id' => $user?->getAuthIdentifier(),
             'generation_type' => 'chat',
+            'model' => $target['definition']->id,
             'prompt' => $validated['prompt'] ?? 'Continue conversation',
             'status' => VedaGeneration::STATUS_PENDING,
         ]);
@@ -158,7 +172,8 @@ class VedaStreamController
                 model: $modelToUse,
             );
 
-            $tokensUsed = $response->usage->promptTokens + $response->usage->completionTokens;
+            $tokens = VedaGeneration::tokensFromUsage($response->usage);
+            $tokensUsed = $tokens['tokens_used'];
 
             $result = [
                 'explanation' => $this->applyResponseGuard(
@@ -168,10 +183,17 @@ class VedaStreamController
                     $modelToUse,
                 ),
                 'tokens_used' => $tokensUsed,
+                'prompt_tokens' => $tokens['prompt_tokens'],
+                'completion_tokens' => $tokens['completion_tokens'],
                 'chat_id' => $agent->currentConversation(),
             ];
 
-            $generation->markAsCompleted($result, $tokensUsed);
+            $generation->markAsCompleted(
+                $result,
+                $tokensUsed,
+                $tokens['prompt_tokens'],
+                $tokens['completion_tokens'],
+            );
 
             if ($user) {
                 app(VedaManager::class)->getTokenPolicy()->recordUsage(
@@ -383,28 +405,68 @@ class VedaStreamController
         return $configured === 'veda';
     }
 
-    protected function toStreamResponse(StreamableAgentResponse $stream, ?string $chatId, bool $vedaProtocol): Response
+    protected function toStreamResponse(StreamableAgentResponse $stream, ?string $chatId, bool $vedaProtocol, VedaGeneration $generation): Response
     {
         $vedaMapper = new VedaWireProtocolMapper($chatId);
         $vercelMapper = new VercelDataProtocolMapper;
 
-        return response()->stream(function () use ($stream, $vedaMapper, $vercelMapper, $vedaProtocol) {
-            foreach ($stream as $event) {
-                $vedaEvent = $vedaMapper->map($event);
-                if ($vedaEvent === null) {
-                    continue;
+        return response()->stream(function () use ($stream, $vedaMapper, $vercelMapper, $vedaProtocol, $generation) {
+            echo ": connected\n\n";
+            if (ob_get_level() > 0) {
+                ob_flush();
+            }
+            flush();
+
+            try {
+                foreach ($stream as $event) {
+                    $vedaEvent = $vedaMapper->map($event);
+                    if ($vedaEvent === null) {
+                        continue;
+                    }
+
+                    $payload = $vedaProtocol ? $vedaEvent : $vercelMapper->map($vedaEvent);
+                    if ($payload === null) {
+                        continue;
+                    }
+
+                    echo 'data: '.json_encode($payload, JSON_UNESCAPED_UNICODE)."\n\n";
+                    if (ob_get_level() > 0) {
+                        ob_flush();
+                    }
+                    flush();
+                }
+            } catch (\Throwable $e) {
+                report($e);
+                if ($generation->isPending()) {
+                    $generation->markAsFailed($e->getMessage());
                 }
 
-                $payload = $vedaProtocol ? $vedaEvent : $vercelMapper->map($vedaEvent);
-                if ($payload === null) {
-                    continue;
+                $errorEvent = $vedaMapper->map(new Error(
+                    strtolower((string) Str::uuid7()),
+                    'provider_error',
+                    $e->getMessage() !== '' ? $e->getMessage() : 'The model provider rejected the request.',
+                    false,
+                    time(),
+                ));
+                if ($errorEvent !== null) {
+                    $payload = $vedaProtocol ? $errorEvent : $vercelMapper->map($errorEvent);
+                    if ($payload !== null) {
+                        echo 'data: '.json_encode($payload, JSON_UNESCAPED_UNICODE)."\n\n";
+                    }
                 }
 
-                echo 'data: '.json_encode($payload, JSON_UNESCAPED_UNICODE)."\n\n";
-                if (ob_get_level() > 0) {
-                    ob_flush();
+                $endEvent = $vedaMapper->map(new StreamEnd(
+                    strtolower((string) Str::uuid7()),
+                    'error',
+                    new Usage,
+                    time(),
+                ));
+                if ($endEvent !== null) {
+                    $payload = $vedaProtocol ? $endEvent : $vercelMapper->map($endEvent);
+                    if ($payload !== null) {
+                        echo 'data: '.json_encode($payload, JSON_UNESCAPED_UNICODE)."\n\n";
+                    }
                 }
-                flush();
             }
 
             echo "data: [DONE]\n\n";

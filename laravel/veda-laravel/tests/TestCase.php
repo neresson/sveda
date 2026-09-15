@@ -6,6 +6,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Ai\AiServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
+use Veda\Laravel\CodeIndex\CodeIndexSourcesContext;
 use Veda\Laravel\Services\RequestContext;
 use Veda\Laravel\VedaManager;
 use Veda\Laravel\VedaServiceProvider;
@@ -28,6 +29,9 @@ abstract class TestCase extends Orchestra
         $app['config']->set('veda.broadcasting.enabled', false);
         $app['config']->set('veda.preflight.enabled', false);
         $app['config']->set('veda.deepseek.key', 'test-deepseek-key');
+        $app['config']->set('veda.code_index.allow_local_paths', true);
+        $app['config']->set('veda.code_index.queue', 'sync');
+        $app['config']->set('queue.default', 'sync');
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
     }
 
@@ -49,6 +53,12 @@ abstract class TestCase extends Orchestra
         parent::setUp();
 
         $this->app->make(VedaManager::class)->flush();
+        foreach (VedaServiceProvider::NATIVE_TOOLS as $tool) {
+            $this->app->make(VedaManager::class)->toolClass($tool);
+        }
+        $this->app->make(VedaManager::class)->contextProvider(
+            fn (): string => app(CodeIndexSourcesContext::class)->promptSection()
+        );
     }
 
     protected function tearDown(): void

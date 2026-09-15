@@ -307,7 +307,10 @@ export class VedaChatSession {
         break;
 
       case 'error':
+        this.status = 'error';
+        this.emitter.emit('status', this.status);
         this.emitter.emit('error', event);
+        this.abortController?.abort();
         break;
     }
   }

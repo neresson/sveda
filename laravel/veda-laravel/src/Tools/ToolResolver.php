@@ -33,7 +33,7 @@ class ToolResolver
                 $user,
                 $this->toolName($tool),
                 $this->toolMode($tool),
-            )
+            ) && $this->availableInSession($tool)
         );
 
         $isEmbed = $context?->isEmbedMode ?? false;
@@ -43,6 +43,7 @@ class ToolResolver
             $instances = array_filter(
                 $instances,
                 fn (Tool $tool): bool => $this->toolMode($tool) === ToolMode::Read
+                    || $this->allowsEmbedWrite($tool)
             );
         }
 
@@ -122,5 +123,15 @@ class ToolResolver
     protected function embedWriteToolsEnabled(?Authenticatable $user): bool
     {
         return (bool) config('veda.embed.write_tools_enabled', false);
+    }
+
+    protected function availableInSession(Tool $tool): bool
+    {
+        return ! $tool instanceof VedaTool || $tool->availableInSession();
+    }
+
+    protected function allowsEmbedWrite(Tool $tool): bool
+    {
+        return $tool instanceof VedaTool && $tool->allowedDuringEmbedWriteFilter();
     }
 }

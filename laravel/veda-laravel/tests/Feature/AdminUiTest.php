@@ -185,4 +185,209 @@ class AdminUiTest extends TestCase
             ->assertJsonPath('system_prompt', 'Always answer in Russian.')
             ->assertJsonPath('models.0.id', 'deepseek-v4-flash-responses');
     }
+
+    public function test_session_json_can_save_mcp_json_catalog(): void
+    {
+        $this->post('/veda/admin/login', [
+            'key' => 'veda-admin-secret',
+        ]);
+
+        $this->postJson('/veda/admin/settings', [
+            'mcp' => [
+                'mcpServers' => [
+                    'docs' => [
+                        'url' => 'https://docs.example.test/mcp',
+                        'headers' => [
+                            'Authorization' => 'Bearer mcp-secret',
+                            'X-Tenant' => 'acme',
+                        ],
+                    ],
+                ],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('mcp.mcpServers.docs.url', 'https://docs.example.test/mcp')
+            ->assertJsonPath('mcp.mcpServers.docs.headers.Authorization', '••••••••')
+            ->assertJsonPath('mcp.mcpServers.docs.headers.X-Tenant', 'acme');
+    }
+
+    public function test_session_json_can_add_lms_http_server(): void
+    {
+        $this->post('/veda/admin/login', [
+            'key' => 'veda-admin-secret',
+        ]);
+
+        $response = $this->postJson('/veda/admin/settings', [
+            'mcp' => [
+                'mcpServers' => [
+                    'lms' => [
+                        'url' => 'https://lms.example.test/mcp/veda',
+                    ],
+                ],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('mcp.mcpServers.lms.url', 'https://lms.example.test/mcp/veda');
+
+        $this->assertEmpty($response->json('mcp.mcpServers.lms.headers') ?? []);
+    }
+
+    public function test_session_json_keeps_mcp_header_secret_when_masked(): void
+    {
+        $this->post('/veda/admin/login', [
+            'key' => 'veda-admin-secret',
+        ]);
+
+        $this->postJson('/veda/admin/settings', [
+            'mcp' => [
+                'mcpServers' => [
+                    'docs' => [
+                        'url' => 'https://docs.example.test/mcp',
+                        'headers' => [
+                            'Authorization' => 'Bearer mcp-secret',
+                        ],
+                    ],
+                ],
+            ],
+        ])->assertOk();
+
+        $this->postJson('/veda/admin/settings', [
+            'mcp' => [
+                'mcpServers' => [
+                    'docs' => [
+                        'url' => 'https://docs.example.test/mcp/v2',
+                        'headers' => [
+                            'Authorization' => '••••••••',
+                        ],
+                        'disabled' => true,
+                    ],
+                ],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('mcp.mcpServers.docs.url', 'https://docs.example.test/mcp/v2')
+            ->assertJsonPath('mcp.mcpServers.docs.disabled', true)
+            ->assertJsonPath('mcp.mcpServers.docs.headers.Authorization', '••••••••');
+    }
+
+    public function test_updating_models_does_not_wipe_mcp_catalog(): void
+    {
+        $this->post('/veda/admin/login', [
+            'key' => 'veda-admin-secret',
+        ]);
+
+        $this->postJson('/veda/admin/settings', [
+            'mcp' => [
+                'mcpServers' => [
+                    'docs' => [
+                        'url' => 'https://docs.example.test/mcp',
+                        'headers' => [
+                            'Authorization' => 'Bearer mcp-secret',
+                        ],
+                    ],
+                ],
+            ],
+        ])->assertOk();
+
+        $this->postJson('/veda/admin/settings', [
+            'models' => [
+                [
+                    'id' => 'custom-flash',
+                    'label' => 'Custom Flash',
+                    'protocol' => 'responses',
+                    'api_model' => 'flash',
+                    'url' => 'https://api.example.test',
+                    'key' => 'model-secret',
+                ],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('models.0.id', 'custom-flash')
+            ->assertJsonPath('mcp.mcpServers.docs.url', 'https://docs.example.test/mcp')
+            ->assertJsonPath('mcp.mcpServers.docs.headers.Authorization', '••••••••');
+    }
+
+    public function test_session_json_can_save_stdio_mcp_server(): void
+    {
+        $this->post('/veda/admin/login', [
+            'key' => 'veda-admin-secret',
+        ]);
+
+        $this->postJson('/veda/admin/settings', [
+            'mcp' => [
+                'mcpServers' => [
+                    'local' => [
+                        'command' => 'php',
+                        'args' => ['server.php'],
+                        'env' => [
+                            'API_KEY' => 'process-secret',
+                        ],
+                        'envFile' => '${workspaceFolder}/.env',
+                        'cwd' => '${workspaceFolder}',
+                        'disabled' => true,
+                    ],
+                ],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('mcp.mcpServers.local.command', 'php')
+            ->assertJsonPath('mcp.mcpServers.local.args.0', 'server.php')
+            ->assertJsonPath('mcp.mcpServers.local.env.API_KEY', '••••••••')
+            ->assertJsonPath('mcp.mcpServers.local.envFile', '${workspaceFolder}/.env')
+            ->assertJsonPath('mcp.mcpServers.local.cwd', '${workspaceFolder}')
+            ->assertJsonPath('mcp.mcpServers.local.disabled', true);
+    }
+
+    public function test_session_json_can_save_appearance_preset(): void
+    {
+        $this->post('/veda/admin/login', [
+            'key' => 'veda-admin-secret',
+        ]);
+
+        $this->postJson('/veda/admin/settings', [
+            'appearance' => [
+                'preset' => 'rounded',
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('appearance.preset', 'forest')
+            ->assertJsonPath('appearance.radius', '20px')
+            ->assertJsonPath('appearance.tokens.brand', '166 72% 32%')
+            ->assertJsonPath('models.0.id', 'deepseek-v4-flash-responses');
+    }
+
+    public function test_unauthenticated_admin_json_visit_is_unauthorized(): void
+    {
+        $this->getJson('/veda/admin/usage')
+            ->assertUnauthorized();
+    }
+
+    public function test_authenticated_admin_pages_return_json_payload_for_spa_visits(): void
+    {
+        $this->post('/veda/admin/login', [
+            'key' => 'veda-admin-secret',
+        ])->assertRedirect('/veda/admin');
+
+        $dashboard = $this->getJson('/veda/admin')
+            ->assertOk()
+            ->assertJsonPath('page', 'dashboard')
+            ->assertJsonStructure(['csrf', 'stats', 'chat', 'urls']);
+
+        $this->assertStringContainsString('/veda/admin/usage', (string) $dashboard->json('urls.usage'));
+        $this->assertStringContainsString('/veda/admin/appearance', (string) $dashboard->json('urls.appearance'));
+        $this->assertStringContainsString('/veda/admin/sources', (string) $dashboard->json('urls.sources'));
+        $this->assertStringContainsString('/veda/admin/code-index/sources', (string) $dashboard->json('codeIndex.sources'));
+        $this->assertSame('default', $dashboard->json('settings.appearance.preset'));
+        $this->assertArrayHasKey('lms', $dashboard->json('appearancePresets'));
+
+        $this->getJson('/veda/admin/usage')
+            ->assertOk()
+            ->assertJsonPath('page', 'usage')
+            ->assertJsonStructure(['usage', 'csrf', 'urls']);
+
+        $this->getJson('/veda/admin/appearance')
+            ->assertOk()
+            ->assertJsonPath('page', 'appearance')
+            ->assertJsonPath('settings.appearance.preset', 'default');
+    }
 }

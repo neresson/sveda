@@ -1,8 +1,13 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
+
+const root = dirname(fileURLToPath(import.meta.url));
+const vedaPackages = resolve(root, '../../packages');
 
 export default defineConfig({
     plugins: [
@@ -29,6 +34,14 @@ export default defineConfig({
         }),
         tailwindcss(),
     ],
+    resolve: {
+        alias: {
+            '@veda-ai/protocol': resolve(vedaPackages, 'protocol/src'),
+            '@veda-ai/core': resolve(vedaPackages, 'core/src'),
+            '@veda-ai/vue': resolve(vedaPackages, 'vue/src'),
+        },
+        dedupe: ['vue'],
+    },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],

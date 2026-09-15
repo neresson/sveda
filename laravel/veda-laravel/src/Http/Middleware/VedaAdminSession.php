@@ -12,13 +12,22 @@ class VedaAdminSession
     public function handle(Request $request, Closure $next): Response
     {
         if (! app(VedaAdminAccess::class)->isConfigured()) {
-            return redirect()->route('veda.admin');
+            return $this->deny($request);
         }
 
         if ($request->session()->get('veda.admin') !== true) {
-            return redirect()->route('veda.admin');
+            return $this->deny($request);
         }
 
         return $next($request);
+    }
+
+    protected function deny(Request $request): Response
+    {
+        if ($request->expectsJson()) {
+            abort(401);
+        }
+
+        return redirect()->route('veda.admin');
     }
 }

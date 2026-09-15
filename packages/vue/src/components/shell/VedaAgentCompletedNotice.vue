@@ -15,7 +15,7 @@
       type="button"
       variant="secondary"
       size="sm"
-      class="h-8 gap-2 rounded-full border border-border bg-background/95 px-3 text-xs shadow-sm backdrop-blur"
+      class="h-8 gap-2 rounded-[var(--veda-radius)] border border-border bg-background/95 px-3 text-xs shadow-sm backdrop-blur"
       @click="emit('scroll')"
     >
       <span>{{ label }}</span>

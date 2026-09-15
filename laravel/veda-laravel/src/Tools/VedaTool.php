@@ -35,6 +35,16 @@ abstract class VedaTool implements Tool
         return 'other';
     }
 
+    public function availableInSession(): bool
+    {
+        return true;
+    }
+
+    public function allowedDuringEmbedWriteFilter(): bool
+    {
+        return false;
+    }
+
     public function handle(Request $request): Stringable|string
     {
         $toolName = ToolNameResolver::resolve($this);

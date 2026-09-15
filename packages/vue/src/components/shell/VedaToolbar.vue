@@ -41,7 +41,7 @@
     if (props.isMobile || props.viewMode === 'fixed') {
       return `${base} rounded-none`;
     }
-    return `${base} rounded-t-xl`;
+    return `${base} rounded-t-[var(--veda-radius)]`;
   });
 </script>
 

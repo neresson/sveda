@@ -73,6 +73,10 @@ class AdminSettingsRouteTest extends TestCase
         $this->assertArrayHasKey('compaction', $response->json());
         $this->assertArrayHasKey('cors', $response->json());
         $this->assertArrayHasKey('failover', $response->json());
+        $this->assertArrayHasKey('mcp', $response->json());
+        $this->assertArrayHasKey('appearance', $response->json());
+        $this->assertSame('default', $response->json('appearance.preset'));
+        $this->assertSame('0px', $response->json('appearance.radius'));
         $this->assertContains($response->json('models.0.key'), ['', '••••••••']);
     }
 
@@ -161,6 +165,16 @@ class AdminSettingsRouteTest extends TestCase
             'deepseek' => [
                 'key' => 'must-not-leak-shared',
             ],
+            'mcp' => [
+                'mcpServers' => [
+                    'docs' => [
+                        'url' => 'https://docs.example.test/mcp',
+                        'headers' => [
+                            'Authorization' => 'Bearer must-not-leak-mcp',
+                        ],
+                    ],
+                ],
+            ],
         ], [
             'X-Veda-Admin-Key' => 'veda-admin-secret',
         ])->assertOk();
@@ -177,10 +191,94 @@ class AdminSettingsRouteTest extends TestCase
         $response->assertJsonPath('model', 'deepseek-v4-flash-responses');
         $response->assertJsonPath('models.0.id', 'deepseek-v4-flash-responses');
         $response->assertJsonPath('models.0.protocol', 'responses');
+        $response->assertJsonPath('appearance.preset', 'default');
+        $response->assertJsonPath('appearance.radius', '0px');
         $this->assertTrue((bool) $response->json('models.0.supportsThinking'));
         $this->assertArrayNotHasKey('deepseek', $response->json());
         $this->assertArrayNotHasKey('system_prompt', $response->json());
+        $this->assertArrayNotHasKey('mcp', $response->json());
+        $this->assertArrayNotHasKey('mcp_servers', $response->json());
         $this->assertStringNotContainsString('must-not-leak', (string) $response->getContent());
+    }
+
+    public function test_public_embed_config_includes_saved_appearance(): void
+    {
+        $this->putJson('/veda/admin/settings', [
+            'appearance' => [
+                'preset' => 'lms',
+                'theme' => 'dark',
+            ],
+        ], [
+            'X-Veda-Admin-Key' => 'veda-admin-secret',
+        ])
+            ->assertOk()
+            ->assertJsonPath('appearance.preset', 'lms')
+            ->assertJsonMissingPath('appearance.theme');
+
+        $token = app(EmbedTokenService::class)->issue('visitor-appearance');
+
+        $this->getJson('/veda/embed/config', [
+            'X-Veda-Embed-Token' => $token,
+        ])
+            ->assertOk()
+            ->assertJsonPath('appearance.preset', 'lms')
+            ->assertJsonPath('appearance.radius', '0px')
+            ->assertJsonPath('appearance.tokens.brand', '275 96% 52%');
+    }
+
+    public function test_public_embed_config_includes_saved_launcher(): void
+    {
+        $this->putJson('/veda/admin/settings', [
+            'appearance' => [
+                'preset' => 'lms',
+                'launcher' => [
+                    'label' => 'Ask Veda',
+                    'icon' => 'bot',
+                ],
+            ],
+        ], [
+            'X-Veda-Admin-Key' => 'veda-admin-secret',
+        ])
+            ->assertOk()
+            ->assertJsonPath('appearance.launcher.label', 'Ask Veda')
+            ->assertJsonPath('appearance.launcher.icon', 'bot');
+
+        $token = app(EmbedTokenService::class)->issue('visitor-launcher');
+
+        $this->getJson('/veda/embed/config', [
+            'X-Veda-Embed-Token' => $token,
+        ])
+            ->assertOk()
+            ->assertJsonPath('appearance.launcher.label', 'Ask Veda')
+            ->assertJsonPath('appearance.launcher.icon', 'bot');
+    }
+
+    public function test_public_embed_config_includes_saved_launcher_image(): void
+    {
+        $png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+        $this->putJson('/veda/admin/settings', [
+            'appearance' => [
+                'preset' => 'lms',
+                'launcher' => [
+                    'label' => 'Ask Veda',
+                    'icon' => 'bot',
+                    'image' => $png,
+                ],
+            ],
+        ], [
+            'X-Veda-Admin-Key' => 'veda-admin-secret',
+        ])
+            ->assertOk()
+            ->assertJsonPath('appearance.launcher.image', $png);
+
+        $token = app(EmbedTokenService::class)->issue('visitor-launcher-image');
+
+        $this->getJson('/veda/embed/config', [
+            'X-Veda-Embed-Token' => $token,
+        ])
+            ->assertOk()
+            ->assertJsonPath('appearance.launcher.image', $png);
     }
 
     public function test_public_embed_config_requires_embed_token(): void

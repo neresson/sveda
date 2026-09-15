@@ -17,10 +17,45 @@ export type {
   VedaQuickPrompt,
 } from './plugin';
 
+export {
+  applyVedaAppearance,
+  buildAppearanceCss,
+  formatRadiusPx,
+  hexToHsl,
+  hslToHex,
+  isVedaHsl,
+  parseRadiusPx,
+  resolveVedaAppearance,
+  sanitizeVedaLauncher,
+  sanitizeVedaLauncherImage,
+  sanitizeVedaRadius,
+  sanitizeVedaTheme,
+  useVedaLauncher,
+  VEDA_APPEARANCE_PRESET_IDS,
+  VEDA_APPEARANCE_PRESETS,
+  VEDA_APPEARANCE_STYLE_ID,
+  VEDA_DEFAULT_LAUNCHER_ICON,
+  VEDA_LAUNCHER_ICON_IDS,
+  VEDA_LAUNCHER_IMAGE_MAX_BYTES,
+  VEDA_LAUNCHER_IMAGE_MAX_CHARS,
+  VEDA_TOKEN_KEYS,
+} from './appearance';
+export type {
+  VedaAppearance,
+  VedaAppearanceLauncher,
+  VedaAppearancePresetId,
+  VedaAppearanceTheme,
+  VedaAppearanceTokens,
+  VedaLauncherIconId,
+  VedaTokenKey,
+} from './appearance';
+export { vedaLauncherIconComponent, vedaLauncherIconMap } from './launcherIcons';
+
 export { createVedaI18n, installVedaI18n, useVedaT, VedaI18nKey } from './i18n/index';
 export type { VedaI18n, VedaI18nOptions, VedaMessages } from './i18n/index';
 
 export { default as VedaChat } from './components/shell/VedaChat.vue';
+export { default as Toaster } from './ui/toast/Toaster.vue';
 export { default as VedaToolbar } from './components/shell/VedaToolbar.vue';
 export { default as VedaTabs } from './components/shell/VedaTabs.vue';
 export { default as VedaLandingView } from './components/shell/VedaLandingView.vue';

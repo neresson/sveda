@@ -7,6 +7,7 @@ use Laravel\Ai\Ai;
 use Veda\Laravel\Agent\VedaAgent;
 use Veda\Laravel\Services\EmbedTokenService;
 use Veda\Laravel\Services\HostMcpCredentialStore;
+use Veda\Laravel\Services\VedaSettingsRepository;
 use Veda\Laravel\Tests\TestCase;
 
 class EmbedTokenRouteTest extends TestCase
@@ -29,6 +30,9 @@ class EmbedTokenRouteTest extends TestCase
 
         $this->assertNotNull($payload);
         $this->assertSame('visitor-abc', $payload['visitor_id']);
+        $this->assertSame('default', $response->json('appearance.preset'));
+        $this->assertSame('0px', $response->json('appearance.radius'));
+        $this->assertArrayHasKey('brand', $response->json('appearance.tokens'));
     }
 
     public function test_embed_token_grants_access_to_history_routes(): void
@@ -105,6 +109,35 @@ class EmbedTokenRouteTest extends TestCase
         $this->assertNotNull($stored);
         $this->assertSame('http://127.0.0.1:8001/mcp/veda', $stored['url']);
         $this->assertSame('mcp-secret-token', $stored['token']);
+
+        $mcp = app(VedaSettingsRepository::class)->document()['mcp']['mcpServers'] ?? [];
+        $this->assertSame('http://127.0.0.1:8001/mcp/veda', $mcp['lms']['url'] ?? null);
+    }
+
+    public function test_embed_token_does_not_replace_an_existing_lms_catalog_entry(): void
+    {
+        config()->set('veda.embed.host_api_key', 'sidecar-host-secret');
+        app(VedaSettingsRepository::class)->update([
+            'mcp' => [
+                'mcpServers' => [
+                    'lms' => [
+                        'url' => 'https://lms.example.test/mcp/veda',
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->postJson('/veda/embed/token', [
+            'visitor_id' => 'visitor-keep-lms',
+            'host_mcp_url' => 'http://127.0.0.1:8001/mcp/veda',
+            'host_mcp_token' => 'mcp-secret-token',
+        ], [
+            'X-Veda-Host-Key' => 'sidecar-host-secret',
+        ])->assertOk();
+
+        $mcp = app(VedaSettingsRepository::class)->document()['mcp']['mcpServers'] ?? [];
+        $this->assertCount(1, $mcp);
+        $this->assertSame('https://lms.example.test/mcp/veda', $mcp['lms']['url'] ?? null);
     }
 
     public function test_ignores_host_mcp_credentials_when_host_api_key_is_unconfigured(): void

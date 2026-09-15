@@ -12,13 +12,14 @@ class ToolCapabilityDetector
 {
     /**
      * @param  array<int, mixed>  $tools
-     * @return array{has_tool_search: bool, has_write: bool, has_read: bool}
+     * @return array{has_tool_search: bool, has_write: bool, has_read: bool, has_mcp_catalog: bool}
      */
     public function detect(array $tools): array
     {
         $hasSearch = false;
         $hasWrite = false;
         $hasRead = false;
+        $hasMcpCatalog = false;
 
         foreach ($tools as $tool) {
             $name = $this->toolName($tool);
@@ -28,6 +29,10 @@ class ToolCapabilityDetector
 
             if (ToolDeferralPolicy::isSearchTool($name)) {
                 $hasSearch = true;
+            }
+
+            if ($name === 'manage_mcp_catalog') {
+                $hasMcpCatalog = true;
             }
 
             $mode = $this->toolMode($tool);
@@ -42,11 +47,12 @@ class ToolCapabilityDetector
             'has_tool_search' => $hasSearch,
             'has_write' => $hasWrite,
             'has_read' => $hasRead,
+            'has_mcp_catalog' => $hasMcpCatalog,
         ];
     }
 
     /**
-     * @param  array{has_tool_search: bool, has_write: bool, has_read: bool}  $capabilities
+     * @param  array{has_tool_search: bool, has_write: bool, has_read: bool, has_mcp_catalog?: bool}  $capabilities
      */
     public function buildToolUseInstructions(array $capabilities): string
     {
@@ -64,6 +70,10 @@ class ToolCapabilityDetector
             $lines[] = 'When mutating data, use write tools and confirm outcomes from tool results.';
         } else {
             $lines[] = 'This session is read-only: do not claim create/update/delete actions.';
+        }
+
+        if ($capabilities['has_mcp_catalog'] ?? false) {
+            $lines[] = 'You cannot browse the public internet. When the user asks to use an HTTP MCP server, connect it with the MCP catalog tool, then call the returned tools in the next step. Do not tell the user to paste mcp.json unless that tool is unavailable.';
         }
 
         return implode("\n", $lines);

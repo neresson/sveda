@@ -6,6 +6,7 @@ use Veda\Laravel\Prompts\PromptBuilder;
 use Veda\Laravel\Tests\Fixtures\DummyReadTool;
 use Veda\Laravel\Tests\Fixtures\DummyWriteTool;
 use Veda\Laravel\Tests\TestCase;
+use Veda\Laravel\Tools\ManageMcpCatalogTool;
 
 class PromptBuilderTest extends TestCase
 {
@@ -79,6 +80,16 @@ class PromptBuilderTest extends TestCase
         $prompt = $builder->buildSystemPrompt([], [new DummyReadTool]);
 
         $this->assertStringContainsString('read-only', $prompt);
+    }
+
+    public function test_mcp_catalog_tool_adds_connect_instructions(): void
+    {
+        $builder = new PromptBuilder;
+
+        $prompt = $builder->buildSystemPrompt([], [new ManageMcpCatalogTool]);
+
+        $this->assertStringContainsString('cannot browse the public internet', $prompt);
+        $this->assertStringContainsString('MCP catalog tool', $prompt);
     }
 
     public function test_includes_instance_system_prompt(): void
