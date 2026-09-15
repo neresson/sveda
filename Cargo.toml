@@ -1,0 +1,39 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/veda-protocol",
+    "crates/veda-llm",
+    "crates/veda-agent",
+    "crates/veda-mcp",
+    "crates/veda-store",
+    "crates/veda-index",
+    "crates/veda-server",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+version = "0.1.0"
+
+[workspace.dependencies]
+async-stream = "0.3"
+axum = { version = "0.8", features = ["multipart", "form"] }
+base64 = "0.22"
+bytes = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+eventsource-stream = "0.2"
+futures-util = { version = "0.3", default-features = false, features = ["std", "async-await"] }
+hex = "0.4"
+hmac = "0.12"
+http-body-util = "0.1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["cors", "fs"] }
+uuid = { version = "1", features = ["v4"] }
+wiremock = "0.6"
+redis = { version = "0.27", default-features = false }

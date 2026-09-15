@@ -10,7 +10,8 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts"
     },
-    "./schemas/*": "./schemas/*"
+    "./schemas/*": "./schemas/*",
+    "./contracts/*": "./contracts/*"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -20,10 +21,11 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
       },
-      "./schemas/*": "./schemas/*"
+      "./schemas/*": "./schemas/*",
+      "./contracts/*": "./contracts/*"
     }
   },
-  "files": ["dist", "src", "schemas"],
+  "files": ["dist", "src", "schemas", "contracts"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",

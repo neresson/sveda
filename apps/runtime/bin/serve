@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+RUNTIME="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ -f "$RUNTIME/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$RUNTIME/.env"
+  set +a
+fi
+export VEDA_BIND="${VEDA_BIND:-127.0.0.1:8787}"
+export VEDA_APP_KEY="${VEDA_APP_KEY:-${APP_KEY:-}}"
+export VEDA_EMBED_ENABLED="${VEDA_EMBED_ENABLED:-true}"
+export VEDA_ADMIN_DIST="${VEDA_ADMIN_DIST:-$RUNTIME/public/build}"
+cd "$ROOT"
+exec cargo run -p veda-server
