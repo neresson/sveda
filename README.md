@@ -10,6 +10,8 @@ Open-source embeddable AI copilot framework with a universal wire protocol, fram
 | `@veda-ai/core` | Framework-agnostic client — streaming, tools, context registries |
 | `@veda-ai/vue` | Vue 3 SDK — `<VedaChat>`, composables, default UI theme |
 | `@veda-ai/element` | Web component `<veda-chat>` for script-tag embedding |
+| [`veda-ai/client`](https://github.com/neresson/veda-client) | PHP SDK — sidecar HTTP API (embed tokens, streaming, histories) |
+| [`veda-ai/laravel-client`](https://github.com/neresson/veda-laravel-client) | Laravel host SDK — HTTP client + automatic MCP server |
 | `veda-ai/laravel` | Laravel runtime — agent, providers, Tool/Context API, storage |
 
 ## Development
