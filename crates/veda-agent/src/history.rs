@@ -44,7 +44,10 @@ pub fn strip_trailing_empty_assistant(messages: &[Value]) -> Vec<Value> {
         if last.get("role").and_then(|role| role.as_str()) != Some("assistant") {
             break;
         }
-        if message_text(last).is_empty() && tool_calls_from(last).is_empty() {
+        if message_text(last).is_empty()
+            && tool_calls_from(last).is_empty()
+            && reasoning_from(last).is_empty()
+        {
             items.pop();
             continue;
         }
@@ -78,6 +81,7 @@ pub fn to_chat_message(message: &Value) -> Option<ChatMessage> {
     Some(ChatMessage {
         role,
         content: message_text(message),
+        reasoning: reasoning_from(message),
         tool_calls: tool_calls_from(message),
         tool_call_id: tool_call_id_from(message),
     })
@@ -88,6 +92,9 @@ pub fn chat_to_json(message: &ChatMessage) -> Value {
         "role": message.role,
         "content": message.content,
     });
+    if !message.reasoning.trim().is_empty() {
+        value["reasoning"] = json!(message.reasoning);
+    }
     if !message.tool_calls.is_empty() {
         value["tool_calls"] = json!(message
             .tool_calls
@@ -117,6 +124,7 @@ pub fn json_to_chat(message: &Value) -> Option<ChatMessage> {
                 .and_then(|value| value.as_str())
                 .unwrap_or("")
                 .to_string(),
+            reasoning: reasoning_from(message),
             tool_calls: tool_calls_from(message),
             tool_call_id: message
                 .get("tool_call_id")
@@ -165,7 +173,12 @@ pub fn preview_from(messages: &[Value], prompt: &str) -> String {
     clip(prompt, 160)
 }
 
-pub fn conversation_json(history: &[ChatMessage], prompt: &str, assistant: &str) -> Vec<Value> {
+pub fn conversation_json(
+    history: &[ChatMessage],
+    prompt: &str,
+    assistant: &str,
+    reasoning: &str,
+) -> Vec<Value> {
     let mut items: Vec<Value> = history.iter().map(chat_to_json).collect();
     if !prompt.trim().is_empty() {
         items.push(json!({
@@ -173,10 +186,12 @@ pub fn conversation_json(history: &[ChatMessage], prompt: &str, assistant: &str)
             "content": prompt,
         }));
     }
-    if !assistant.trim().is_empty() {
-        items.push(json!({
-            "role": "assistant",
-            "content": assistant,
+    if !assistant.trim().is_empty() || !reasoning.trim().is_empty() {
+        items.push(chat_to_json(&ChatMessage {
+            role: "assistant".into(),
+            content: assistant.to_string(),
+            reasoning: reasoning.to_string(),
+            ..Default::default()
         }));
     }
     items
@@ -188,6 +203,31 @@ fn clip(text: &str, max: usize) -> String {
         return trimmed.to_string();
     }
     trimmed.chars().take(max).collect()
+}
+
+fn reasoning_from(message: &Value) -> String {
+    if let Some(reasoning) = message.get("reasoning").and_then(|value| value.as_str()) {
+        let trimmed = reasoning.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+    let Some(parts) = message.get("parts").and_then(|value| value.as_array()) else {
+        return String::new();
+    };
+    let texts: Vec<&str> = parts
+        .iter()
+        .filter(|part| {
+            matches!(
+                part.get("type").and_then(|value| value.as_str()),
+                Some("reasoning") | Some("reasoning_text")
+            )
+        })
+        .filter_map(|part| part.get("text").and_then(|value| value.as_str()))
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+        .collect();
+    texts.join("\n")
 }
 
 fn tool_calls_from(message: &Value) -> Vec<StoredToolCall> {

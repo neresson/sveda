@@ -31,6 +31,7 @@ export {
   sanitizeVedaRadius,
   sanitizeVedaTheme,
   useVedaLauncher,
+  vedaLauncher,
   VEDA_APPEARANCE_PRESET_IDS,
   VEDA_APPEARANCE_PRESETS,
   VEDA_APPEARANCE_STYLE_ID,
@@ -71,40 +72,6 @@ export { default as VedaMaxStepsNotice } from './components/shell/VedaMaxStepsNo
 export { default as VedaContextUsageBar } from './components/shell/VedaContextUsageBar.vue';
 export { default as VedaResizeHandles } from './components/shell/VedaResizeHandles.vue';
 export { default as VedaMinimizedTrigger } from './components/shell/VedaMinimizedTrigger.vue';
-
-export {
-  applyVedaAppearance,
-  buildAppearanceCss,
-  formatRadiusPx,
-  hexToHsl,
-  hslToHex,
-  parseRadiusPx,
-  resolveVedaAppearance,
-  sanitizeVedaLauncher,
-  sanitizeVedaLauncherImage,
-  sanitizeVedaRadius,
-  sanitizeVedaTheme,
-  useVedaLauncher,
-  vedaLauncher,
-  VEDA_APPEARANCE_PRESET_IDS,
-  VEDA_APPEARANCE_PRESETS,
-  VEDA_APPEARANCE_STYLE_ID,
-  VEDA_DEFAULT_LAUNCHER_ICON,
-  VEDA_LAUNCHER_ICON_IDS,
-  VEDA_LAUNCHER_IMAGE_MAX_BYTES,
-  VEDA_LAUNCHER_IMAGE_MAX_CHARS,
-  VEDA_TOKEN_KEYS,
-} from './appearance';
-export type {
-  VedaAppearance,
-  VedaAppearanceLauncher,
-  VedaAppearancePresetId,
-  VedaAppearanceTheme,
-  VedaAppearanceTokens,
-  VedaLauncherIconId,
-  VedaTokenKey,
-} from './appearance';
-export { vedaLauncherIconComponent, vedaLauncherIconMap } from './launcherIcons';
 
 export { useVedaChat } from './composables/useVedaChat';
 export type { VedaChatHistory, VedaChatState } from './composables/useVedaChat';

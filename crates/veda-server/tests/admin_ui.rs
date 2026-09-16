@@ -138,7 +138,7 @@ async fn login_rejects_wrong_key() {
 }
 
 #[tokio::test]
-async fn runtime_page_renders_after_login() {
+async fn dashboard_page_renders_after_login() {
     let state = admin_state();
     let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
@@ -146,10 +146,24 @@ async fn runtime_page_renders_after_login() {
     let (status, _, body) = send(state, "GET", "/veda/admin", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let html = String::from_utf8(body).unwrap();
-    assert!(html.contains("\"page\":\"runtime\""));
+    assert!(html.contains("\"page\":\"dashboard\""));
     assert!(html.contains("/veda/admin/models"));
+    assert!(html.contains("/veda/admin/mcp"));
+    assert!(html.contains("/veda/admin/appearance"));
     assert!(html.contains("/veda/admin/prompts"));
     assert!(html.contains("/veda/admin/settings"));
+}
+
+#[tokio::test]
+async fn runtime_page_renders_after_login() {
+    let state = admin_state();
+    let cookie = login_cookie(state.clone()).await;
+    let mut headers = HeaderMap::new();
+    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    let (status, _, body) = send(state, "GET", "/veda/admin/runtime", headers, Body::empty()).await;
+    assert_eq!(status, StatusCode::OK);
+    let html = String::from_utf8(body).unwrap();
+    assert!(html.contains("\"page\":\"runtime\""));
 }
 
 #[tokio::test]
@@ -162,6 +176,47 @@ async fn models_page_renders_after_login() {
     assert_eq!(status, StatusCode::OK);
     let html = String::from_utf8(body).unwrap();
     assert!(html.contains("\"page\":\"models\""));
+}
+
+#[tokio::test]
+async fn mcp_and_appearance_pages_render_after_login() {
+    let state = admin_state();
+    let cookie = login_cookie(state.clone()).await;
+    for page in ["mcp", "appearance", "usage", "sources"] {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::COOKIE, cookie.parse().unwrap());
+        let (status, _, body) = send(
+            state.clone(),
+            "GET",
+            &format!("/veda/admin/{page}"),
+            headers,
+            Body::empty(),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{page}");
+        let html = String::from_utf8(body).unwrap();
+        assert!(html.contains(&format!("\"page\":\"{page}\"")), "{page}");
+    }
+}
+
+#[tokio::test]
+async fn admin_spa_accepts_json() {
+    let state = admin_state();
+    let cookie = login_cookie(state.clone()).await;
+    let mut headers = HeaderMap::new();
+    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert(header::ACCEPT, "application/json".parse().unwrap());
+    let (status, response_headers, body) =
+        send(state, "GET", "/veda/admin/mcp", headers, Body::empty()).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(response_headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("")
+        .contains("application/json"));
+    let payload: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(payload["page"], "mcp");
+    assert_eq!(payload["urls"]["appearance"], "/veda/admin/appearance");
 }
 
 #[tokio::test]
@@ -225,5 +280,5 @@ async fn setup_creates_admin_key() {
     let (status, _, body) = send(state, "GET", "/veda/admin", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let html = String::from_utf8(body).unwrap();
-    assert!(html.contains("\"page\":\"runtime\""));
+    assert!(html.contains("\"page\":\"dashboard\""));
 }

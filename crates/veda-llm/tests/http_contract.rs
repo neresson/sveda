@@ -1,6 +1,9 @@
 use futures_util::StreamExt;
 use serde_json::json;
-use veda_llm::{ChatMessage, HttpClient, LlmChunk, LlmClient, ModelSpec, Protocol, StepRequest};
+use veda_llm::{
+    ChatMessage, HttpClient, LlmChunk, LlmClient, ModelSpec, Protocol, StepRequest, StoredToolCall,
+    ToolSpec,
+};
 use wiremock::matchers::{body_partial_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -165,4 +168,139 @@ async fn http_429_is_failoverable() {
     let mut stream = HttpClient::from_timeout(5).stream_step(&model, request(true));
     let err = stream.next().await.unwrap().unwrap_err();
     assert!(err.is_failoverable());
+}
+
+fn tool_followup(thinking: bool) -> StepRequest {
+    StepRequest {
+        messages: vec![
+            ChatMessage {
+                role: "user".into(),
+                content: "что ты умеешь?".into(),
+                ..Default::default()
+            },
+            ChatMessage {
+                role: "assistant".into(),
+                reasoning: "check tools".into(),
+                tool_calls: vec![StoredToolCall {
+                    id: "call-1".into(),
+                    name: "search_agent_tools".into(),
+                    arguments: "{}".into(),
+                }],
+                ..Default::default()
+            },
+            ChatMessage {
+                role: "tool".into(),
+                content: "ok".into(),
+                tool_call_id: Some("call-1".into()),
+                ..Default::default()
+            },
+        ],
+        instructions: None,
+        thinking,
+        tools: vec![ToolSpec {
+            name: "search_agent_tools".into(),
+            description: "Search tools".into(),
+            parameters: json!({ "type": "object", "properties": {} }),
+        }],
+    }
+}
+
+#[tokio::test]
+async fn deepseek_thinking_posts_reasoning_text_with_function_call() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/responses"))
+        .and(body_partial_json(json!({
+            "input": [
+                { "role": "user", "content": "что ты умеешь?" },
+                {
+                    "type": "reasoning",
+                    "content": [{ "type": "reasoning_text", "text": "check tools" }]
+                },
+                {
+                    "type": "function_call",
+                    "call_id": "call-1",
+                    "name": "search_agent_tools",
+                    "arguments": "{}"
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call-1",
+                    "output": "ok"
+                }
+            ]
+        })))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "text/event-stream")
+                .set_body_string(responses_sse()),
+        )
+        .mount(&server)
+        .await;
+
+    let model = ModelSpec {
+        id: "deepseek-v4-flash-responses".into(),
+        label: "flash".into(),
+        protocol: Protocol::Responses,
+        api_model: "deepseek-v4-flash".into(),
+        url: server.uri(),
+        key: "k".into(),
+        aliases: Vec::new(),
+    };
+    let mut stream = HttpClient::from_timeout(5).stream_step(&model, tool_followup(true));
+    let mut texts = Vec::new();
+    while let Some(item) = stream.next().await {
+        if let Ok(LlmChunk::TextDelta(text)) = item {
+            texts.push(text);
+        }
+    }
+    assert_eq!(texts, vec!["Hello from responses".to_string()]);
+}
+
+#[tokio::test]
+async fn openai_thinking_does_not_post_plaintext_reasoning() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/responses"))
+        .and(body_partial_json(json!({
+            "input": [
+                { "role": "user", "content": "что ты умеешь?" },
+                {
+                    "type": "function_call",
+                    "call_id": "call-1",
+                    "name": "search_agent_tools",
+                    "arguments": "{}"
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call-1",
+                    "output": "ok"
+                }
+            ]
+        })))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "text/event-stream")
+                .set_body_string(responses_sse()),
+        )
+        .mount(&server)
+        .await;
+
+    let model = ModelSpec {
+        id: "gpt-4o".into(),
+        label: "GPT".into(),
+        protocol: Protocol::Responses,
+        api_model: "gpt-4o".into(),
+        url: server.uri(),
+        key: "k".into(),
+        aliases: Vec::new(),
+    };
+    let mut stream = HttpClient::from_timeout(5).stream_step(&model, tool_followup(true));
+    let mut texts = Vec::new();
+    while let Some(item) = stream.next().await {
+        if let Ok(LlmChunk::TextDelta(text)) = item {
+            texts.push(text);
+        }
+    }
+    assert_eq!(texts, vec!["Hello from responses".to_string()]);
 }

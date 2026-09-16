@@ -41,6 +41,11 @@ impl ModelSpec {
             .iter()
             .any(|alias| alias.eq_ignore_ascii_case(&needle))
     }
+
+    pub fn uses_plaintext_reasoning(&self) -> bool {
+        let haystack = format!("{} {} {}", self.url, self.api_model, self.id).to_ascii_lowercase();
+        haystack.contains("deepseek")
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -169,5 +174,42 @@ impl Catalog {
             chain.push(candidate.clone());
         }
         chain
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builtin_deepseek_models_use_plaintext_reasoning() {
+        let catalog = Catalog::builtin("k");
+        for model in &catalog.models {
+            assert!(model.uses_plaintext_reasoning());
+        }
+    }
+
+    #[test]
+    fn non_deepseek_providers_keep_native_reasoning() {
+        let openai = ModelSpec {
+            id: "gpt-4o".into(),
+            label: "GPT".into(),
+            protocol: Protocol::Responses,
+            api_model: "gpt-4o".into(),
+            url: "https://api.openai.com/v1".into(),
+            key: "k".into(),
+            aliases: Vec::new(),
+        };
+        let claude = ModelSpec {
+            id: "claude".into(),
+            label: "Claude".into(),
+            protocol: Protocol::Anthropic,
+            api_model: "claude-sonnet-4".into(),
+            url: "https://api.anthropic.com".into(),
+            key: "k".into(),
+            aliases: Vec::new(),
+        };
+        assert!(!openai.uses_plaintext_reasoning());
+        assert!(!claude.uses_plaintext_reasoning());
     }
 }

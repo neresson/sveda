@@ -128,6 +128,7 @@ fn run_loop(
             let mut finish_reason = String::from("stop");
             let mut tool_calls: Vec<(String, String, serde_json::Value)> = Vec::new();
             let mut assistant_text = String::new();
+            let mut assistant_reasoning = String::new();
             let mut had_result = false;
 
             while let Some(item) = llm_stream.next().await {
@@ -158,6 +159,7 @@ fn run_loop(
                             });
                             started = true;
                         }
+                        assistant_reasoning.push_str(&delta);
                         yield stamp(StreamEvent::ReasoningDelta {
                             delta,
                             chat_id: None,
@@ -239,6 +241,7 @@ fn run_loop(
                 messages.push(ChatMessage {
                     role: "assistant".into(),
                     content: assistant_text,
+                    reasoning: assistant_reasoning,
                     ..Default::default()
                 });
                 continue;
@@ -266,6 +269,7 @@ fn run_loop(
                 messages.push(ChatMessage {
                     role: "assistant".into(),
                     content: assistant_text,
+                    reasoning: assistant_reasoning,
                     tool_calls: executable
                         .iter()
                         .map(|(id, name, input)| StoredToolCall {
@@ -274,7 +278,7 @@ fn run_loop(
                             arguments: input.to_string(),
                         })
                         .collect(),
-                    tool_call_id: None,
+                    ..Default::default()
                 });
                 for (id, name, input) in executable {
                     let outcome = runtime.execute(&name, input).await;
@@ -830,6 +834,81 @@ mod tests {
             }
             other => panic!("expected message.end, got {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn thinking_tool_loop_keeps_reasoning_on_assistant() {
+        let llm = Arc::new(ScriptedClient::queue(vec![
+            vec![
+                Ok(LlmChunk::ReasoningDelta("check tools".into())),
+                Ok(LlmChunk::ToolCall {
+                    id: "call-1".into(),
+                    name: "get_calendar_events".into(),
+                    input: json!({ "limit": 1 }),
+                }),
+                Ok(LlmChunk::Usage {
+                    prompt_tokens: 10,
+                    completion_tokens: 5,
+                }),
+                Ok(LlmChunk::End {
+                    finish_reason: "tool_calls".into(),
+                }),
+            ],
+            vec![
+                Ok(LlmChunk::TextDelta("Done".into())),
+                Ok(LlmChunk::Usage {
+                    prompt_tokens: 8,
+                    completion_tokens: 4,
+                }),
+                Ok(LlmChunk::End {
+                    finish_reason: "stop".into(),
+                }),
+            ],
+        ]));
+        let runtime = ToolRuntime::memory(
+            MemoryBackend::new(
+                [(
+                    "get_calendar_events".into(),
+                    json!({ "success": true, "data": { "events": [] } }),
+                )]
+                .into_iter()
+                .collect(),
+            ),
+            vec![calendar_tool()],
+        )
+        .with_defer(false, 14);
+        let catalog = Catalog::builtin("");
+        let mut stream = run_with_tools(
+            llm.clone() as Arc<dyn LlmClient>,
+            catalog,
+            AgentConfig::default(),
+            request(),
+            runtime,
+        )
+        .expect("catalog");
+        while stream.next().await.is_some() {}
+        let steps = llm.last_messages.lock().expect("messages");
+        assert_eq!(steps.len(), 2);
+        let assistant = steps[1]
+            .iter()
+            .find(|message| message.role == "assistant")
+            .expect("assistant");
+        assert_eq!(assistant.reasoning, "check tools");
+        assert_eq!(assistant.tool_calls[0].name, "get_calendar_events");
+    }
+
+    #[test]
+    fn chat_json_roundtrips_reasoning() {
+        let message = ChatMessage {
+            role: "assistant".into(),
+            content: "hi".into(),
+            reasoning: "plan".into(),
+            ..Default::default()
+        };
+        let value = chat_to_json(&message);
+        let restored = json_to_chat(&value).expect("chat");
+        assert_eq!(restored.reasoning, "plan");
+        assert_eq!(restored.content, "hi");
     }
 
     #[tokio::test]

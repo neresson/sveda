@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -30,6 +30,7 @@ pub struct StoredToolCall {
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
+    pub reasoning: String,
     pub tool_calls: Vec<StoredToolCall>,
     pub tool_call_id: Option<String>,
 }
@@ -156,9 +157,29 @@ pub fn stream_with_failover(
 }
 
 pub fn responses_body(model: &str, request: &StepRequest) -> Value {
+    responses_payload(model, request, false)
+}
+
+pub fn responses_body_for(spec: &ModelSpec, request: &StepRequest) -> Value {
+    responses_payload(
+        &spec.api_model,
+        request,
+        spec.uses_plaintext_reasoning() && request.thinking,
+    )
+}
+
+pub fn anthropic_body_for(spec: &ModelSpec, request: &StepRequest) -> Value {
+    anthropic_payload(
+        &spec.api_model,
+        request,
+        spec.uses_plaintext_reasoning() && request.thinking,
+    )
+}
+
+fn responses_payload(model: &str, request: &StepRequest, replay_reasoning: bool) -> Value {
     let mut body = json!({
         "model": model,
-        "input": map_responses_input(&request.messages),
+        "input": map_responses_input(&request.messages, replay_reasoning),
         "stream": true,
         "store": false,
         "reasoning": {
@@ -181,9 +202,13 @@ pub fn responses_body(model: &str, request: &StepRequest) -> Value {
 }
 
 pub fn anthropic_body(model: &str, request: &StepRequest) -> Value {
+    anthropic_payload(model, request, false)
+}
+
+fn anthropic_payload(model: &str, request: &StepRequest, replay_thinking: bool) -> Value {
     let mut body = json!({
         "model": model,
-        "messages": map_anthropic_messages(&request.messages),
+        "messages": map_anthropic_messages(&request.messages, replay_thinking),
         "max_tokens": 16384,
         "stream": true,
         "thinking": if request.thinking {
@@ -208,51 +233,150 @@ pub fn anthropic_body(model: &str, request: &StepRequest) -> Value {
     body
 }
 
-fn map_responses_input(messages: &[ChatMessage]) -> Vec<Value> {
+fn map_responses_input(messages: &[ChatMessage], replay_reasoning: bool) -> Vec<Value> {
     let mut input = Vec::new();
     for message in messages {
-        if message.role == "system" {
-            continue;
-        }
-        if message.role == "tool" {
-            if let Some(call_id) = &message.tool_call_id {
-                input.push(json!({
-                    "type": "function_call_output",
-                    "call_id": call_id,
-                    "output": message.content,
-                }));
+        match message.role.as_str() {
+            "system" => continue,
+            "tool" => {
+                if let Some(call_id) = &message.tool_call_id {
+                    input.push(json!({
+                        "type": "function_call_output",
+                        "call_id": call_id,
+                        "output": message.content,
+                    }));
+                }
             }
-            continue;
-        }
-        if message.role == "assistant" && !message.tool_calls.is_empty() {
-            if !message.content.trim().is_empty() {
+            "assistant" => {
+                if !message.content.trim().is_empty() {
+                    input.push(json!({
+                        "role": "assistant",
+                        "content": message.content,
+                    }));
+                }
+                let must_replay = !message.tool_calls.is_empty();
+                if replay_reasoning {
+                    for call in &message.tool_calls {
+                        input.push(responses_reasoning_item(&message.reasoning, must_replay));
+                        input.push(json!({
+                            "type": "function_call",
+                            "call_id": call.id,
+                            "name": call.name,
+                            "arguments": call.arguments,
+                        }));
+                    }
+                    if message.tool_calls.is_empty() {
+                        if let Some(item) =
+                            optional_responses_reasoning_item(&message.reasoning, must_replay)
+                        {
+                            input.push(item);
+                        }
+                    }
+                } else {
+                    for call in &message.tool_calls {
+                        input.push(json!({
+                            "type": "function_call",
+                            "call_id": call.id,
+                            "name": call.name,
+                            "arguments": call.arguments,
+                        }));
+                    }
+                }
+            }
+            _ => {
+                if message.content.trim().is_empty() {
+                    continue;
+                }
                 input.push(json!({
-                    "role": "assistant",
+                    "role": message.role,
                     "content": message.content,
                 }));
             }
-            for call in &message.tool_calls {
-                input.push(json!({
-                    "type": "function_call",
-                    "call_id": call.id,
-                    "name": call.name,
-                    "arguments": call.arguments,
-                }));
-            }
-            continue;
         }
-        if message.content.trim().is_empty() {
-            continue;
-        }
-        input.push(json!({
-            "role": message.role,
-            "content": message.content,
-        }));
     }
-    input
+    pair_function_call_outputs(input)
 }
 
-fn map_anthropic_messages(messages: &[ChatMessage]) -> Vec<Value> {
+fn responses_reasoning_item(reasoning: &str, must_replay: bool) -> Value {
+    json!({
+        "type": "reasoning",
+        "content": [{
+            "type": "reasoning_text",
+            "text": replay_reasoning_text(reasoning, must_replay),
+        }],
+    })
+}
+
+fn optional_responses_reasoning_item(reasoning: &str, must_replay: bool) -> Option<Value> {
+    let text = replay_reasoning_text(reasoning, must_replay);
+    if text.is_empty() {
+        None
+    } else {
+        Some(json!({
+            "type": "reasoning",
+            "content": [{ "type": "reasoning_text", "text": text }],
+        }))
+    }
+}
+
+fn replay_reasoning_text(reasoning: &str, must_replay: bool) -> String {
+    let trimmed = reasoning.trim();
+    if !trimmed.is_empty() {
+        return trimmed.to_string();
+    }
+    if must_replay {
+        ".".into()
+    } else {
+        String::new()
+    }
+}
+
+fn pair_function_call_outputs(input: Vec<Value>) -> Vec<Value> {
+    let mut outputs: HashMap<String, Value> = HashMap::new();
+    let mut outputs_without_id = Vec::new();
+    let mut rest = Vec::new();
+    for item in input {
+        if item.get("type").and_then(Value::as_str) != Some("function_call_output") {
+            rest.push(item);
+            continue;
+        }
+        match item
+            .get("call_id")
+            .and_then(Value::as_str)
+            .filter(|id| !id.is_empty())
+        {
+            Some(id) => {
+                outputs.insert(id.to_string(), item);
+            }
+            None => outputs_without_id.push(item),
+        }
+    }
+    let mut paired = Vec::new();
+    for item in rest {
+        let call_id = if item.get("type").and_then(Value::as_str) == Some("function_call") {
+            item.get("call_id")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+        } else {
+            None
+        };
+        paired.push(item);
+        if let Some(id) = call_id {
+            if let Some(output) = outputs.remove(&id) {
+                paired.push(output);
+            } else if !outputs_without_id.is_empty() {
+                let mut output = outputs_without_id.remove(0);
+                output["call_id"] = json!(id);
+                paired.push(output);
+            }
+        }
+    }
+    paired.extend(outputs.into_values());
+    paired.extend(outputs_without_id);
+    paired
+}
+
+fn map_anthropic_messages(messages: &[ChatMessage], replay_thinking: bool) -> Vec<Value> {
     let mut mapped = Vec::new();
     for message in messages {
         if message.role == "system" {
@@ -278,8 +402,18 @@ fn map_anthropic_messages(messages: &[ChatMessage]) -> Vec<Value> {
             }));
             continue;
         }
-        if message.role == "assistant" && !message.tool_calls.is_empty() {
+        if message.role == "assistant" {
             let mut content = Vec::new();
+            let must_replay = !message.tool_calls.is_empty();
+            if replay_thinking {
+                let thinking = replay_reasoning_text(&message.reasoning, must_replay);
+                if !thinking.is_empty() {
+                    content.push(json!({
+                        "type": "thinking",
+                        "thinking": thinking,
+                    }));
+                }
+            }
             if !message.content.trim().is_empty() {
                 content.push(json!({ "type": "text", "text": message.content }));
             }
@@ -291,6 +425,9 @@ fn map_anthropic_messages(messages: &[ChatMessage]) -> Vec<Value> {
                     "name": call.name,
                     "input": input,
                 }));
+            }
+            if content.is_empty() {
+                continue;
             }
             mapped.push(json!({
                 "role": "assistant",
@@ -426,6 +563,147 @@ mod tests {
         request.thinking = false;
         let body = anthropic_body("deepseek-v4-flash", &request);
         assert_eq!(body["thinking"]["type"], "disabled");
+    }
+
+    fn tool_followup(thinking: bool, reasoning: &str) -> StepRequest {
+        StepRequest {
+            messages: vec![
+                ChatMessage {
+                    role: "user".into(),
+                    content: "что ты умеешь?".into(),
+                    ..Default::default()
+                },
+                ChatMessage {
+                    role: "assistant".into(),
+                    content: String::new(),
+                    reasoning: reasoning.into(),
+                    tool_calls: vec![StoredToolCall {
+                        id: "call-1".into(),
+                        name: "search_agent_tools".into(),
+                        arguments: "{}".into(),
+                    }],
+                    tool_call_id: None,
+                },
+                ChatMessage {
+                    role: "tool".into(),
+                    content: "{\"ok\":true}".into(),
+                    tool_call_id: Some("call-1".into()),
+                    ..Default::default()
+                },
+            ],
+            instructions: Some("You are Veda.".into()),
+            thinking,
+            tools: vec![ToolSpec {
+                name: "search_agent_tools".into(),
+                description: "Search tools".into(),
+                parameters: json!({ "type": "object", "properties": {} }),
+            }],
+        }
+    }
+
+    fn openai_spec() -> ModelSpec {
+        ModelSpec {
+            id: "gpt-4o".into(),
+            label: "GPT".into(),
+            protocol: Protocol::Responses,
+            api_model: "gpt-4o".into(),
+            url: "https://api.openai.com/v1".into(),
+            key: "k".into(),
+            aliases: Vec::new(),
+        }
+    }
+
+    fn claude_spec() -> ModelSpec {
+        ModelSpec {
+            id: "claude-sonnet".into(),
+            label: "Claude".into(),
+            protocol: Protocol::Anthropic,
+            api_model: "claude-sonnet-4".into(),
+            url: "https://api.anthropic.com".into(),
+            key: "k".into(),
+            aliases: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn deepseek_specs_use_plaintext_reasoning() {
+        let catalog = Catalog::builtin("k");
+        for model in &catalog.models {
+            assert!(
+                model.uses_plaintext_reasoning(),
+                "{} should replay plaintext reasoning",
+                model.id
+            );
+        }
+        assert!(!openai_spec().uses_plaintext_reasoning());
+        assert!(!claude_spec().uses_plaintext_reasoning());
+    }
+
+    #[test]
+    fn deepseek_responses_replay_reasoning_before_function_call() {
+        let spec = Catalog::builtin("k")
+            .resolve(Some("deepseek-v4-flash-responses"))
+            .expect("model")
+            .clone();
+        let body = responses_body_for(&spec, &tool_followup(true, "check tools"));
+        let input = body["input"].as_array().expect("input");
+        assert_eq!(input[0]["role"], "user");
+        assert_eq!(input[1]["type"], "reasoning");
+        assert_eq!(input[1]["content"][0]["type"], "reasoning_text");
+        assert_eq!(input[1]["content"][0]["text"], "check tools");
+        assert_eq!(input[2]["type"], "function_call");
+        assert_eq!(input[2]["call_id"], "call-1");
+        assert_eq!(input[3]["type"], "function_call_output");
+        assert_eq!(input[3]["call_id"], "call-1");
+        assert_eq!(input[3]["output"], "{\"ok\":true}");
+    }
+
+    #[test]
+    fn deepseek_responses_placeholder_when_thinking_has_no_text() {
+        let spec = Catalog::builtin("k")
+            .resolve(Some("deepseek-v4-flash-responses"))
+            .expect("model")
+            .clone();
+        let body = responses_body_for(&spec, &tool_followup(true, ""));
+        let input = body["input"].as_array().expect("input");
+        assert_eq!(input[1]["type"], "reasoning");
+        assert_eq!(input[1]["content"][0]["text"], ".");
+        assert_eq!(input[2]["type"], "function_call");
+    }
+
+    #[test]
+    fn openai_responses_do_not_replay_plaintext_reasoning() {
+        let body = responses_body_for(&openai_spec(), &tool_followup(true, "check tools"));
+        let input = body["input"].as_array().expect("input");
+        assert!(input
+            .iter()
+            .all(|item| item.get("type").and_then(Value::as_str) != Some("reasoning")));
+        assert_eq!(input[1]["type"], "function_call");
+        assert_eq!(input[2]["type"], "function_call_output");
+    }
+
+    #[test]
+    fn deepseek_anthropic_replays_thinking_block() {
+        let spec = Catalog::builtin("k")
+            .resolve(Some("deepseek-v4-flash-anthropic"))
+            .expect("model")
+            .clone();
+        let body = anthropic_body_for(&spec, &tool_followup(true, "check tools"));
+        let content = body["messages"][1]["content"].as_array().expect("content");
+        assert_eq!(content[0]["type"], "thinking");
+        assert_eq!(content[0]["thinking"], "check tools");
+        assert_eq!(content[1]["type"], "tool_use");
+        assert!(content[0].get("signature").is_none());
+    }
+
+    #[test]
+    fn official_anthropic_does_not_inject_unsigned_thinking() {
+        let body = anthropic_body_for(&claude_spec(), &tool_followup(true, "check tools"));
+        let content = body["messages"][1]["content"].as_array().expect("content");
+        assert!(content
+            .iter()
+            .all(|item| item.get("type").and_then(Value::as_str) != Some("thinking")));
+        assert_eq!(content[0]["type"], "tool_use");
     }
 
     #[test]

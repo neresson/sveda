@@ -141,11 +141,13 @@ fn finalize_turn(
     stream! {
         let mut events = events;
         let mut assistant = String::new();
+        let mut reasoning = String::new();
         let mut tokens = 0u64;
         let mut errored = false;
         while let Some(event) = events.next().await {
             match &event {
                 StreamEvent::TextDelta { delta, .. } => assistant.push_str(delta),
+                StreamEvent::ReasoningDelta { delta, .. } => reasoning.push_str(delta),
                 StreamEvent::MessageEnd { usage, .. } => {
                     tokens = usage
                         .as_ref()
@@ -184,7 +186,7 @@ fn finalize_turn(
         }
 
         let messages = display_messages(&incoming, &prompt, &assistant, "assistant_turn");
-        let conversation = conversation_json(&full_history, &prompt, &assistant);
+        let conversation = conversation_json(&full_history, &prompt, &assistant, &reasoning);
         state.store.checkpoint(Checkpoint {
             visitor_id: visitor_id.clone(),
             chat_id: chat_id.clone(),

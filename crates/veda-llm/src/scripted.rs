@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use futures_util::Stream;
 
-use crate::{queued_stream, LlmChunk, LlmClient, LlmError, ModelSpec, StepRequest};
+use crate::{queued_stream, ChatMessage, LlmChunk, LlmClient, LlmError, ModelSpec, StepRequest};
 
 pub struct ScriptedClient {
     queue: Mutex<Vec<Vec<Result<LlmChunk, LlmError>>>>,
@@ -14,6 +14,7 @@ pub struct ScriptedClient {
     pub last_thinking: Mutex<Option<bool>>,
     pub last_tools: Mutex<Vec<Vec<String>>>,
     pub last_message_counts: Mutex<Vec<usize>>,
+    pub last_messages: Mutex<Vec<Vec<ChatMessage>>>,
     pub last_instructions: Mutex<Option<String>>,
 }
 
@@ -26,6 +27,7 @@ impl ScriptedClient {
             last_thinking: Mutex::new(None),
             last_tools: Mutex::new(Vec::new()),
             last_message_counts: Mutex::new(Vec::new()),
+            last_messages: Mutex::new(Vec::new()),
             last_instructions: Mutex::new(None),
         }
     }
@@ -73,6 +75,10 @@ impl LlmClient for ScriptedClient {
             .lock()
             .expect("counts lock")
             .push(request.messages.len());
+        self.last_messages
+            .lock()
+            .expect("messages lock")
+            .push(request.messages.clone());
         let mut queue = self.queue.lock().expect("script lock");
         let chunks = if queue.is_empty() {
             vec![Err(LlmError::Other("script exhausted".into()))]

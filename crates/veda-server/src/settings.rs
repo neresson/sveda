@@ -18,6 +18,10 @@ pub struct SettingsDocument {
     pub cors: CorsSettings,
     pub welcome_message: String,
     pub system_prompt: String,
+    #[serde(default = "default_mcp")]
+    pub mcp: Value,
+    #[serde(default = "default_appearance")]
+    pub appearance: Value,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -74,6 +78,8 @@ pub struct SettingsPatch {
     pub cors: Option<CorsPatch>,
     pub welcome_message: Option<String>,
     pub system_prompt: Option<String>,
+    pub mcp: Option<Value>,
+    pub appearance: Option<Value>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -114,6 +120,8 @@ impl SettingsDocument {
             },
             welcome_message: String::new(),
             system_prompt: config.system_prompt.clone(),
+            mcp: default_mcp(),
+            appearance: default_appearance(),
         }
     }
 
@@ -163,6 +171,12 @@ impl SettingsDocument {
         }
         if let Some(system_prompt) = patch.system_prompt {
             next.system_prompt = system_prompt;
+        }
+        if let Some(mcp) = patch.mcp {
+            next.mcp = mcp;
+        }
+        if let Some(appearance) = patch.appearance {
+            next.appearance = appearance;
         }
         next
     }
@@ -216,6 +230,7 @@ impl SettingsDocument {
                 "supportsThinking": model.thinking,
             })).collect::<Vec<_>>(),
             "welcome_message": self.welcome_message,
+            "appearance": self.appearance.clone(),
         })
     }
 
@@ -313,6 +328,14 @@ fn normalize_models(models: Vec<ModelSettings>, existing: &[ModelSettings]) -> V
             model
         })
         .collect()
+}
+
+fn default_mcp() -> Value {
+    json!({ "mcpServers": {} })
+}
+
+fn default_appearance() -> Value {
+    json!({})
 }
 
 fn string_list(values: Vec<String>) -> Vec<String> {

@@ -9,8 +9,8 @@ use reqwest::Client;
 
 use crate::parse::ProviderParser;
 use crate::{
-    anthropic_body, join_endpoint, responses_body, LlmChunk, LlmClient, LlmError, ModelSpec,
-    Protocol, StepRequest,
+    anthropic_body_for, join_endpoint, responses_body_for, LlmChunk, LlmClient, LlmError,
+    ModelSpec, Protocol, StepRequest,
 };
 
 #[derive(Clone)]
@@ -44,7 +44,7 @@ impl LlmClient for HttpClient {
             let (url, body, headers) = match model.protocol {
                 Protocol::Responses => (
                     join_endpoint(&model.url, "responses"),
-                    responses_body(&model.api_model, &request),
+                    responses_body_for(&model, &request),
                     match responses_headers(&model.key) {
                         Ok(headers) => headers,
                         Err(error) => {
@@ -55,7 +55,7 @@ impl LlmClient for HttpClient {
                 ),
                 Protocol::Anthropic => (
                     join_endpoint(&model.url, "messages"),
-                    anthropic_body(&model.api_model, &request),
+                    anthropic_body_for(&model, &request),
                     match anthropic_headers(&model.key) {
                         Ok(headers) => headers,
                         Err(error) => {

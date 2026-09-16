@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use axum::extract::{Form, Path, Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect, Response};
+use axum::Json;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
@@ -11,7 +12,16 @@ use crate::token;
 use crate::{keys_match, AppState};
 
 const COOKIE_NAME: &str = "veda_admin";
-const ADMIN_PAGES: &[&str] = &["runtime", "models", "prompts"];
+const ADMIN_PAGES: &[&str] = &[
+    "dashboard",
+    "usage",
+    "runtime",
+    "models",
+    "mcp",
+    "prompts",
+    "appearance",
+    "sources",
+];
 
 #[derive(Debug, Deserialize)]
 pub struct AdminQuery {
@@ -42,7 +52,7 @@ pub async fn show(
     headers: HeaderMap,
     Query(query): Query<AdminQuery>,
 ) -> Response {
-    render(&state, &headers, "runtime", query.error)
+    render(&state, &headers, "dashboard", query.error)
 }
 
 pub async fn section(
@@ -121,6 +131,14 @@ fn render(state: &AppState, headers: &HeaderMap, page: &str, error: String) -> R
     } else {
         settings_payload(state, page)
     };
+    if wants_json(headers) {
+        if payload.get("page").and_then(Value::as_str) == Some("login")
+            || payload.get("page").and_then(Value::as_str) == Some("setup")
+        {
+            return StatusCode::UNAUTHORIZED.into_response();
+        }
+        return Json(payload).into_response();
+    }
     Html(shell(&payload)).into_response()
 }
 
@@ -139,12 +157,69 @@ fn settings_payload(state: &AppState, page: &str) -> Value {
         "logoutUrl": "/veda/admin/logout",
         "urls": {
             "dashboard": "/veda/admin",
+            "usage": "/veda/admin/usage",
             "runtime": "/veda/admin/runtime",
             "models": "/veda/admin/models",
+            "mcp": "/veda/admin/mcp",
             "prompts": "/veda/admin/prompts",
+            "appearance": "/veda/admin/appearance",
+            "sources": "/veda/admin/sources",
         },
+        "codeIndex": {
+            "sources": "/veda/admin/code-index/sources",
+            "progress": "/veda/admin/code-index/progress",
+            "store": "/veda/admin/code-index/store",
+            "sourceBase": "/veda/admin/code-index/sources",
+            "localBrowse": "/veda/admin/code-index/local-browse",
+            "localPreview": "/veda/admin/code-index/local-preview",
+            "estimate": "/veda/admin/code-index/estimate",
+        },
+        "appearancePresets": {},
         "settings": state.settings.document().masked(),
+        "stats": empty_stats(),
+        "usage": empty_usage(),
     })
+}
+
+fn empty_stats() -> Value {
+    json!({
+        "period_days": 14,
+        "requests": 0,
+        "completed": 0,
+        "failed": 0,
+        "pending": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "tokens_used": 0,
+        "unsplit_tokens": 0,
+        "users": 0,
+        "conversations": 0,
+        "avg_tokens": 0,
+        "success_rate": 0,
+        "series": [],
+    })
+}
+
+fn empty_usage() -> Value {
+    json!({
+        "by_model": [],
+        "requests": {
+            "data": [],
+            "current_page": 1,
+            "last_page": 1,
+            "per_page": 25,
+            "total": 0,
+            "prev_page_url": null,
+            "next_page_url": null,
+        }
+    })
+}
+
+fn wants_json(headers: &HeaderMap) -> bool {
+    headers
+        .get(header::ACCEPT)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.contains("application/json"))
 }
 
 fn shell(payload: &Value) -> String {
