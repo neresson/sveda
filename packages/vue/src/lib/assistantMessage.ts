@@ -1,11 +1,11 @@
-export interface VedaResourceLink {
+export interface SvedaResourceLink {
   label: string;
   url: string;
   icon?: string;
   kind?: 'created' | 'reference';
 }
 
-export type VedaAssistantMessagePart = {
+export type SvedaAssistantMessagePart = {
   type?: string;
   text?: string;
   state?: string;
@@ -21,7 +21,7 @@ export type VedaAssistantMessagePart = {
   renderData?: Record<string, unknown>;
 };
 
-export type VedaLegacyActivity = {
+export type SvedaLegacyActivity = {
   phase?: string;
   steps?: Array<{
     id: string;
@@ -35,15 +35,15 @@ export type VedaLegacyActivity = {
   }>;
 };
 
-export type VedaChatMessageLike = {
+export type SvedaChatMessageLike = {
   id?: string;
   role?: string;
   content?: string;
-  parts?: VedaAssistantMessagePart[];
+  parts?: SvedaAssistantMessagePart[];
   reasoningStream?: string;
-  activity?: VedaLegacyActivity;
-  toolInvocations?: VedaAssistantMessagePart[];
-  resources?: VedaResourceLink[];
+  activity?: SvedaLegacyActivity;
+  toolInvocations?: SvedaAssistantMessagePart[];
+  resources?: SvedaResourceLink[];
   streaming?: boolean;
   isError?: boolean;
   attachmentNames?: string[];
@@ -56,8 +56,8 @@ export type AssistantMessageSegment =
   | {
       kind: 'activity';
       id: string;
-      invocations: VedaAssistantMessagePart[];
-      legacyActivity?: VedaLegacyActivity;
+      invocations: SvedaAssistantMessagePart[];
+      legacyActivity?: SvedaLegacyActivity;
     }
   | {
       kind: 'comment';
@@ -78,7 +78,7 @@ export type AssistantMessageSegment =
       streaming: boolean;
     };
 
-export function isAssistantToolPart(part: VedaAssistantMessagePart | null | undefined): boolean {
+export function isAssistantToolPart(part: SvedaAssistantMessagePart | null | undefined): boolean {
   if (!part || typeof part.type !== 'string') {
     return false;
   }
@@ -88,10 +88,10 @@ export function isAssistantToolPart(part: VedaAssistantMessagePart | null | unde
   return part.type === 'dynamic-tool' || part.type.startsWith('tool-');
 }
 
-function vedaToolPartToInvocation(
-  call: VedaAssistantMessagePart | undefined,
-  result: VedaAssistantMessagePart | undefined
-): VedaAssistantMessagePart {
+function svedaToolPartToInvocation(
+  call: SvedaAssistantMessagePart | undefined,
+  result: SvedaAssistantMessagePart | undefined
+): SvedaAssistantMessagePart {
   return {
     type: 'dynamic-tool',
     toolCallId: call?.toolCallId ?? result?.toolCallId ?? '',
@@ -105,7 +105,7 @@ function vedaToolPartToInvocation(
 }
 
 export function buildAssistantMessageSegments(
-  message: VedaChatMessageLike
+  message: SvedaChatMessageLike
 ): AssistantMessageSegment[] {
   const parts = Array.isArray(message.parts) ? message.parts : [];
 
@@ -149,7 +149,7 @@ export function buildAssistantMessageSegments(
     return segments;
   }
 
-  const resultsByCallId = new Map<string, VedaAssistantMessagePart>();
+  const resultsByCallId = new Map<string, SvedaAssistantMessagePart>();
   for (const part of parts) {
     if (part.type === 'tool-result' && part.toolCallId) {
       resultsByCallId.set(part.toolCallId, part);
@@ -158,8 +158,8 @@ export function buildAssistantMessageSegments(
   const consumedResultIds = new Set<string>();
 
   const segments: AssistantMessageSegment[] = [];
-  let toolBuffer: VedaAssistantMessagePart[] = [];
-  const textBuffer: Array<{ part: VedaAssistantMessagePart; index: number }> = [];
+  let toolBuffer: SvedaAssistantMessagePart[] = [];
+  const textBuffer: Array<{ part: SvedaAssistantMessagePart; index: number }> = [];
 
   const lastTextPartIndex = parts.reduce((lastIndex, part, index) => {
     if (part.type === 'text' && part.text?.trim()) {
@@ -213,7 +213,7 @@ export function buildAssistantMessageSegments(
       if (result && part.toolCallId) {
         consumedResultIds.add(part.toolCallId);
       }
-      toolBuffer.push(vedaToolPartToInvocation(part, result));
+      toolBuffer.push(svedaToolPartToInvocation(part, result));
       continue;
     }
 
@@ -224,7 +224,7 @@ export function buildAssistantMessageSegments(
       if (textBuffer.length > 0) {
         flushText();
       }
-      toolBuffer.push(vedaToolPartToInvocation(undefined, part));
+      toolBuffer.push(svedaToolPartToInvocation(undefined, part));
       continue;
     }
 
@@ -336,7 +336,7 @@ export function getActivityGroupLabel(_toolName: string, translatedToolName: str
   return translatedToolName;
 }
 
-function normalizeResourceLink(raw: unknown): VedaResourceLink | null {
+function normalizeResourceLink(raw: unknown): SvedaResourceLink | null {
   if (!raw || typeof raw !== 'object') {
     return null;
   }
@@ -353,7 +353,7 @@ function normalizeResourceLink(raw: unknown): VedaResourceLink | null {
   return { label: label.trim(), url: url.trim(), ...(icon ? { icon } : {}) };
 }
 
-function pushResourceLink(resources: VedaResourceLink[], resource: VedaResourceLink): void {
+function pushResourceLink(resources: SvedaResourceLink[], resource: SvedaResourceLink): void {
   if (!resource.label || !resource.url) {
     return;
   }
@@ -363,8 +363,8 @@ function pushResourceLink(resources: VedaResourceLink[], resource: VedaResourceL
   resources.push(resource);
 }
 
-export function collectResourceLinks(message: VedaChatMessageLike): VedaResourceLink[] {
-  const collected: VedaResourceLink[] = [];
+export function collectResourceLinks(message: SvedaChatMessageLike): SvedaResourceLink[] {
+  const collected: SvedaResourceLink[] = [];
   const parts = [
     ...(Array.isArray(message.toolInvocations) ? message.toolInvocations : []),
     ...(Array.isArray(message.parts) ? message.parts : []),
@@ -419,7 +419,7 @@ export function collectResourceLinks(message: VedaChatMessageLike): VedaResource
 }
 
 export function enrichMessagesWithResourceLinks<
-  T extends { role?: string; resources?: VedaResourceLink[] },
+  T extends { role?: string; resources?: SvedaResourceLink[] },
 >(messages: T[]): T[] {
   return messages.map(message => {
     if (message.role !== 'assistant') {

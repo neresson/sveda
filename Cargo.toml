@@ -1,13 +1,13 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/veda-protocol",
-    "crates/veda-llm",
-    "crates/veda-agent",
-    "crates/veda-mcp",
-    "crates/veda-store",
-    "crates/veda-index",
-    "crates/veda-server",
+    "crates/sveda-protocol",
+    "crates/sveda-llm",
+    "crates/sveda-agent",
+    "crates/sveda-mcp",
+    "crates/sveda-store",
+    "crates/sveda-index",
+    "crates/sveda-server",
 ]
 
 [workspace.package]
@@ -37,3 +37,4 @@ tower-http = { version = "0.6", features = ["cors", "fs"] }
 uuid = { version = "1", features = ["v4"] }
 wiremock = "0.6"
 redis = { version = "0.27", default-features = false }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "migrate", "chrono", "json", "macros"] }

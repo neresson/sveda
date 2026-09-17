@@ -1,0 +1,43 @@
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @sveda-ai/protocol --filter @sveda-ai/core --filter @sveda-ai/vue run build
+      - name: Build element
+        working-directory: apps/runtime
+        run: |
+          npm ci
+          npx vite build --config vite.embed.config.js
+          pnpm --dir ../../packages/element run build
+      - name: Publish unpublished packages
+        run: |
+          set -euo pipefail
+          for dir in protocol core vue element; do
+            name="$(node -p "require('./packages/${dir}/package.json').name")"
+            ver="$(node -p "require('./packages/${dir}/package.json').version")"
+            if npm view "${name}@${ver}" version >/dev/null 2>&1; then
+              echo "${name}@${ver} already on npm, skip"
+              continue
+            fi
+            pnpm --filter "${name}" publish --access public --no-git-checks
+          done

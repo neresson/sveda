@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda models',
+    document_title: 'Sveda models',
     eyebrow: 'Каталог',
     title: 'Модели.',
     subtitle: 'Добавляй и правь провайдеров, которых sidecar сможет вызывать.',

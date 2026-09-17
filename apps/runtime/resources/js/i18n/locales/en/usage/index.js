@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda usage',
+    document_title: 'Sveda usage',
     eyebrow: 'Usage',
     title: 'Usage.',
     subtitle: 'Models and requests without chat history.',

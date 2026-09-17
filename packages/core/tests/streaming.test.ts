@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { iterateVedaStream } from '../src/streaming.js';
+import { iterateSvedaStream } from '../src/streaming.js';
 
 function sseResponse(lines: string[]): Response {
   const encoder = new TextEncoder();
@@ -18,16 +18,16 @@ function sseResponse(lines: string[]): Response {
   });
 }
 
-async function collect(response: Response, mode: 'veda' | 'vercel' = 'veda') {
+async function collect(response: Response, mode: 'sveda' | 'vercel' = 'sveda') {
   const events = [];
-  for await (const event of iterateVedaStream(response, mode)) {
+  for await (const event of iterateSvedaStream(response, mode)) {
     events.push(event);
   }
   return events;
 }
 
-describe('iterateVedaStream', () => {
-  it('parses veda protocol SSE frames', async () => {
+describe('iterateSvedaStream', () => {
+  it('parses sveda protocol SSE frames', async () => {
     const response = sseResponse([
       'data: {"type":"message.start","chatId":"c1"}',
       '',

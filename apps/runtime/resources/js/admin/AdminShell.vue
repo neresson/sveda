@@ -62,9 +62,9 @@ onUnmounted(() => {
         <header class="flex items-center gap-3 border-b border-ink px-4 py-3 lg:gap-4 lg:px-8 lg:py-4">
             <button
                 type="button"
-                class="veda-hover flex size-8 shrink-0 flex-col items-center justify-center gap-1 border border-ink hover:bg-grid lg:hidden"
+                class="sveda-hover flex size-8 shrink-0 flex-col items-center justify-center gap-1 border border-ink hover:bg-grid lg:hidden"
                 :aria-expanded="navOpen"
-                aria-controls="veda-admin-nav"
+                aria-controls="sveda-admin-nav"
                 :aria-label="navOpen ? t('common.close_menu') : t('common.open_menu')"
                 @click="toggleNav"
             >
@@ -79,7 +79,7 @@ onUnmounted(() => {
             <LocaleSwitch class="ml-auto" />
             <form :action="logoutUrl" method="post">
                 <input type="hidden" name="_token" :value="csrf">
-                <button type="submit" class="veda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted">{{ t('common.logout') }}</button>
+                <button type="submit" class="sveda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted">{{ t('common.logout') }}</button>
             </form>
         </header>
 
@@ -88,26 +88,26 @@ onUnmounted(() => {
                 <AdminNav :current="current" :urls="urls" />
             </aside>
 
-            <Transition name="veda-drawer" :duration="220">
+            <Transition name="sveda-drawer" :duration="220">
                 <div
                     v-if="navOpen"
                     class="absolute inset-0 z-40 lg:hidden"
                 >
                     <button
                         type="button"
-                        class="veda-drawer-backdrop absolute inset-0 bg-ink/25"
+                        class="sveda-drawer-backdrop absolute inset-0 bg-ink/25"
                         :aria-label="t('common.close_menu')"
                         @click="closeNav"
                     ></button>
                     <aside
-                        id="veda-admin-nav"
-                        class="veda-drawer-panel relative flex h-full w-[min(100%,20rem)] flex-col border-r border-ink bg-canvas p-5"
+                        id="sveda-admin-nav"
+                        class="sveda-drawer-panel relative flex h-full w-[min(100%,20rem)] flex-col border-r border-ink bg-canvas p-5"
                     >
                         <div class="mb-5 flex items-center justify-between">
                             <p class="font-mono text-xs tracking-[0.16em]">{{ t('common.menu') }}</p>
                             <button
                                 type="button"
-                                class="veda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted"
+                                class="sveda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted"
                                 @click="closeNav"
                             >
                                 {{ t('common.close') }}

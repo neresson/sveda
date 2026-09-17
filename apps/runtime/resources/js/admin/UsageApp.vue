@@ -99,7 +99,7 @@ const barWidth = (value) => {
                     </div>
                     <div class="h-3 w-full bg-grid">
                         <div
-                            class="h-full bg-ink veda-bar-x"
+                            class="h-full bg-ink sveda-bar-x"
                             :style="{ width: barWidth(row.tokens_used) }"
                         ></div>
                     </div>
@@ -144,7 +144,7 @@ const barWidth = (value) => {
                 <a
                     v-if="usage.requests.prev_page_url"
                     :href="usage.requests.prev_page_url"
-                    class="veda-hover font-mono text-[11px] tracking-[0.14em] text-ink no-underline hover:text-muted"
+                    class="sveda-hover font-mono text-[11px] tracking-[0.14em] text-ink no-underline hover:text-muted"
                 >
                     {{ t('common.prev') }}
                 </a>
@@ -155,7 +155,7 @@ const barWidth = (value) => {
                 <a
                     v-if="usage.requests.next_page_url"
                     :href="usage.requests.next_page_url"
-                    class="veda-hover font-mono text-[11px] tracking-[0.14em] text-ink no-underline hover:text-muted"
+                    class="sveda-hover font-mono text-[11px] tracking-[0.14em] text-ink no-underline hover:text-muted"
                 >
                     {{ t('common.next') }}
                 </a>

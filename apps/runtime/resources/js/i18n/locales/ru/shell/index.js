@@ -1,4 +1,4 @@
 export default {
-    brand: 'VEDA / ADMIN',
-    brand_setup: 'VEDA / SETUP',
+    brand: 'SVEDA / ADMIN',
+    brand_setup: 'SVEDA / SETUP',
 };

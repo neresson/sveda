@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda sources',
+    document_title: 'Sveda sources',
     eyebrow: 'Code index',
     title: 'Sources.',
     subtitle: 'Index a local folder or a Git HTTPS clone so the assistant can search the code.',
@@ -7,7 +7,7 @@ export default {
     sources_list_title: 'Connected sources',
     sources_empty: 'No sources yet. Add a local folder or a Git repository.',
     name: 'Name',
-    name_placeholder: 'e.g. Veda runtime',
+    name_placeholder: 'e.g. Sveda runtime',
     ai_context_label: 'AI context',
     ai_context_hint:
         'Briefly describe what lives here: product area, modules, synonyms. The assistant reads this before searching.',
@@ -16,9 +16,9 @@ export default {
     provider_github_https: 'Git (HTTPS)',
     local_path: 'Absolute path',
     local_path_placeholder: '/home/you/projects/app',
-    local_path_hint: 'The folder lives on the machine that runs Veda, not in your browser.',
+    local_path_hint: 'The folder lives on the machine that runs Sveda, not in your browser.',
     local_path_must_verify: 'Verify the path or pick a folder before adding the source.',
-    local_indexing_disabled: 'Local folders are disabled. Set VEDA_CODE_INDEX_ALLOW_LOCAL_PATHS=true.',
+    local_indexing_disabled: 'Local folders are disabled. Set SVEDA_CODE_INDEX_ALLOW_LOCAL_PATHS=true.',
     local_choose_folder: 'Browse…',
     local_verify_path: 'Verify path',
     git_url: 'HTTPS clone URL',
@@ -59,7 +59,7 @@ export default {
     footprint_chunks: 'Chunks: {count}',
     footprint_estimated_cost: 'Estimated cost: ~{cost} ₽ (rate {rate} ₽ / 1M tokens)',
     local_browse_title: 'Choose folder',
-    local_browse_description: 'Folders are on the machine that runs Veda. Pick a folder, then confirm.',
+    local_browse_description: 'Folders are on the machine that runs Sveda. Pick a folder, then confirm.',
     local_browse_anchor_label: 'Start from absolute path',
     local_browse_anchor_placeholder: '/home/you/projects',
     local_browse_anchor_required: 'Enter an absolute path.',
@@ -83,7 +83,7 @@ export default {
     indexing_cancelled_message: 'Indexing was stopped.',
     index_errors: {
         local_paths_disabled_set_allow_local_paths_true:
-            'Indexing a local folder is disabled. Set VEDA_CODE_INDEX_ALLOW_LOCAL_PATHS=true.',
+            'Indexing a local folder is disabled. Set SVEDA_CODE_INDEX_ALLOW_LOCAL_PATHS=true.',
         local_path_not_found: 'This path does not exist or is not a directory.',
         workspace_not_resolved: 'Could not resolve the indexing workspace.',
         workspace_not_ready: 'The workspace is not ready yet. Wait a few seconds and try again.',

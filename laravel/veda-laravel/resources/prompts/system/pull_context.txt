@@ -1,3 +1,0 @@
-Context policy:
-- Do not rely on large page dumps in this system message. Fetch context through tools when needed.
-- Each tool result is capped; if truncated, call the tool again with narrower parameters or use chunked readers.

@@ -22,15 +22,49 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
-  php:
+  rust:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sveda
+          POSTGRES_PASSWORD: sveda
+          POSTGRES_DB: sveda
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sveda -d sveda"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SVEDA_TEST_DATABASE_URL: postgres://sveda:sveda@localhost:5432/sveda
+      SVEDA_TEST_REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --workspace
+
+  helm:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: mbstring, pdo, sqlite
-      - working-directory: laravel/veda-laravel
-        run: composer install --no-interaction --prefer-dist
-      - working-directory: laravel/veda-laravel
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist
+      - uses: azure/setup-helm@v4
+      - run: helm lint charts/sveda-server
+      - run: >
+          helm template sveda charts/sveda-server
+          --set secrets.appKey=ci
+          --set secrets.adminApiKey=ci-admin-key-16
+          --set postgresql.enabled=true
+          --set redis.enabled=true
+          >/dev/null

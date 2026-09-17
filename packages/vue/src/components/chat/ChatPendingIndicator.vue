@@ -1,5 +1,5 @@
 <script setup>
-  import { VedaI18nKey, useVedaT } from '../../i18n/index.js';
+  import { SvedaI18nKey, useSvedaT } from '../../i18n/index.js';
   import { buildPendingStatusRotation } from '../../lib/pendingStatusRotation.js';
   import { computed, inject, onUnmounted, ref, watch } from 'vue';
 
@@ -18,9 +18,9 @@
     },
   });
 
-  const t = useVedaT();
-  const vedaI18n = inject(VedaI18nKey, null);
-  const locale = computed(() => vedaI18n?.locale ?? '');
+  const t = useSvedaT();
+  const svedaI18n = inject(SvedaI18nKey, null);
+  const locale = computed(() => svedaI18n?.locale ?? '');
 
   const sourceStatusMessages = computed(() => {
     const provided = props.statusMessages.filter(

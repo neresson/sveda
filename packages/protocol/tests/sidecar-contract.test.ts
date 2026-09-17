@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { VEDA_PROTOCOL_VERSION, VEDA_STREAM_EVENTS } from '../src/index.js';
+import { SVEDA_PROTOCOL_VERSION, SVEDA_STREAM_EVENTS } from '../src/index.js';
 
 const contractPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -19,7 +19,7 @@ type SidecarContract = {
   version: string;
   prefix: string;
   accept: {
-    vedaStream: string;
+    svedaStream: string;
     sse: string;
   };
   headers: {
@@ -58,15 +58,15 @@ type SidecarContract = {
 };
 
 const requiredRoutes: SidecarRoute[] = [
-  { method: 'POST', path: '/veda/stream', mode: 'sse' },
-  { method: 'POST', path: '/veda/message', mode: 'json' },
-  { method: 'GET', path: '/veda/chat-histories', mode: 'json' },
-  { method: 'GET', path: '/veda/chat-histories/{chatId}', mode: 'json' },
-  { method: 'PATCH', path: '/veda/chat-histories/{chatId}', mode: 'json' },
-  { method: 'DELETE', path: '/veda/chat-histories/{chatId}', mode: 'json' },
-  { method: 'POST', path: '/veda/documents/extract', mode: 'json' },
-  { method: 'GET', path: '/veda/embed/config', mode: 'json' },
-  { method: 'POST', path: '/veda/embed/token', mode: 'json' },
+  { method: 'POST', path: '/sveda/stream', mode: 'sse' },
+  { method: 'POST', path: '/sveda/message', mode: 'json' },
+  { method: 'GET', path: '/sveda/chat-histories', mode: 'json' },
+  { method: 'GET', path: '/sveda/chat-histories/{chatId}', mode: 'json' },
+  { method: 'PATCH', path: '/sveda/chat-histories/{chatId}', mode: 'json' },
+  { method: 'DELETE', path: '/sveda/chat-histories/{chatId}', mode: 'json' },
+  { method: 'POST', path: '/sveda/documents/extract', mode: 'json' },
+  { method: 'GET', path: '/sveda/embed/config', mode: 'json' },
+  { method: 'POST', path: '/sveda/embed/token', mode: 'json' },
 ];
 
 describe('sidecar HTTP contract v1', () => {
@@ -77,26 +77,26 @@ describe('sidecar HTTP contract v1', () => {
   it('locks the host-facing HTTP surface', () => {
     const contract = JSON.parse(readFileSync(contractPath, 'utf8')) as SidecarContract;
 
-    expect(contract.version).toBe(VEDA_PROTOCOL_VERSION);
-    expect(contract.prefix).toBe('/veda');
-    expect(contract.accept.vedaStream).toBe('application/vnd.veda.stream+json');
+    expect(contract.version).toBe(SVEDA_PROTOCOL_VERSION);
+    expect(contract.prefix).toBe('/sveda');
+    expect(contract.accept.svedaStream).toBe('application/vnd.sveda.stream+json');
     expect(contract.accept.sse).toBe('text/event-stream');
     expect(contract.sseDoneLine).toBe('data: [DONE]');
-    expect(contract.streamEvents).toEqual([...VEDA_STREAM_EVENTS]);
-    expect(contract.headers.streamResponse['X-Veda-Protocol-Version']).toBe(VEDA_PROTOCOL_VERSION);
+    expect(contract.streamEvents).toEqual([...SVEDA_STREAM_EVENTS]);
+    expect(contract.headers.streamResponse['X-Sveda-Protocol-Version']).toBe(SVEDA_PROTOCOL_VERSION);
     expect(contract.headers.inbound).toEqual(
       expect.arrayContaining([
         'Authorization',
-        'X-Veda-Embed-Token',
-        'X-Veda-Host-Key',
-        'X-Veda-Admin-Key',
-        'X-Veda-Protocol',
+        'X-Sveda-Embed-Token',
+        'X-Sveda-Host-Key',
+        'X-Sveda-Admin-Key',
+        'X-Sveda-Protocol',
         'Accept',
         'Content-Type',
       ]),
     );
     expect(contract.headers.mcpOutbound).toEqual(
-      expect.arrayContaining(['X-Veda-Page-Context', 'X-Veda-Chat-Id']),
+      expect.arrayContaining(['X-Sveda-Page-Context', 'X-Sveda-Chat-Id']),
     );
     expect(contract.cors.allowedHeaders).toEqual(
       expect.arrayContaining(contract.headers.inbound),

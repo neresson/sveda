@@ -1,18 +1,18 @@
-import type { VedaStreamEvent, VedaStreamRequest } from '@veda-ai/protocol';
-import { VedaContextRegistry } from './context.js';
-import { iterateVedaStream, type VedaStreamProtocolMode } from './streaming.js';
-import { VedaToolRegistry } from './tools.js';
+import type { SvedaStreamEvent, SvedaStreamRequest } from '@sveda-ai/protocol';
+import { SvedaContextRegistry } from './context.js';
+import { iterateSvedaStream, type SvedaStreamProtocolMode } from './streaming.js';
+import { SvedaToolRegistry } from './tools.js';
 import {
   createMessageId,
   messageText,
-  type VedaChatHistoryDetail,
-  type VedaChatHistorySummary,
-  type VedaDisplayMessage,
-  type VedaMessagePart,
-  type VedaSessionStatus,
+  type SvedaChatHistoryDetail,
+  type SvedaChatHistorySummary,
+  type SvedaDisplayMessage,
+  type SvedaMessagePart,
+  type SvedaSessionStatus,
 } from './types.js';
 
-export interface VedaClientEndpoints {
+export interface SvedaClientEndpoints {
   stream: string;
   message?: string;
   histories?: string;
@@ -20,18 +20,18 @@ export interface VedaClientEndpoints {
   documentsExtract?: string;
 }
 
-export interface VedaClientOptions {
-  endpoints: VedaClientEndpoints;
-  protocolMode?: VedaStreamProtocolMode;
+export interface SvedaClientOptions {
+  endpoints: SvedaClientEndpoints;
+  protocolMode?: SvedaStreamProtocolMode;
   headers?: Record<string, string> | (() => Record<string, string>);
   credentials?: RequestCredentials;
-  tools?: VedaToolRegistry;
-  context?: VedaContextRegistry;
+  tools?: SvedaToolRegistry;
+  context?: SvedaContextRegistry;
   autoSubmitFrontendToolResults?: boolean;
   fetchFn?: typeof fetch;
 }
 
-export interface VedaSendOptions {
+export interface SvedaSendOptions {
   context?: Record<string, unknown>;
   model?: string;
   provider?: string;
@@ -64,22 +64,22 @@ class SessionEmitter {
   }
 }
 
-export class VedaChatSession {
+export class SvedaChatSession {
   readonly chatId: string;
 
-  messages: VedaDisplayMessage[] = [];
+  messages: SvedaDisplayMessage[] = [];
 
-  status: VedaSessionStatus = 'idle';
+  status: SvedaSessionStatus = 'idle';
 
   private readonly emitter = new SessionEmitter();
 
   private abortController: AbortController | null = null;
 
-  private pendingFrontendResults: VedaDisplayMessage[] = [];
+  private pendingFrontendResults: SvedaDisplayMessage[] = [];
 
   constructor(
     chatId: string,
-    private readonly client: VedaClient
+    private readonly client: SvedaClient
   ) {
     this.chatId = chatId;
   }
@@ -92,7 +92,7 @@ export class VedaChatSession {
     return this.status === 'streaming' || this.status === 'submitted';
   }
 
-  setMessages(messages: VedaDisplayMessage[]): void {
+  setMessages(messages: SvedaDisplayMessage[]): void {
     this.messages = messages;
     this.emitter.emit('messages', this.messages);
   }
@@ -101,14 +101,14 @@ export class VedaChatSession {
     this.abortController?.abort();
   }
 
-  async send(text: string, sendOptions: VedaSendOptions = {}): Promise<void> {
-    const userMessage: VedaDisplayMessage = {
+  async send(text: string, sendOptions: SvedaSendOptions = {}): Promise<void> {
+    const userMessage: SvedaDisplayMessage = {
       id: createMessageId(),
       role: 'user',
       parts: [
         { type: 'text', text },
         ...(sendOptions.files ?? []).map(
-          (file): VedaMessagePart => ({
+          (file): SvedaMessagePart => ({
             type: 'file',
             name: file.name,
             mediaType: file.mediaType,
@@ -124,11 +124,11 @@ export class VedaChatSession {
     await this.streamRequest(text, sendOptions);
   }
 
-  async continueAfterMaxSteps(sendOptions: VedaSendOptions = {}): Promise<void> {
+  async continueAfterMaxSteps(sendOptions: SvedaSendOptions = {}): Promise<void> {
     await this.streamRequest('Continue', sendOptions);
   }
 
-  private buildRequestBody(prompt: string, sendOptions: VedaSendOptions): VedaStreamRequest {
+  private buildRequestBody(prompt: string, sendOptions: SvedaSendOptions): SvedaStreamRequest {
     const context: Record<string, unknown> = {
       ...this.client.contextRegistry.snapshot(),
       ...(sendOptions.context ?? {}),
@@ -151,14 +151,14 @@ export class VedaChatSession {
     };
   }
 
-  private async streamRequest(prompt: string, sendOptions: VedaSendOptions): Promise<void> {
+  private async streamRequest(prompt: string, sendOptions: SvedaSendOptions): Promise<void> {
     const requestBody = this.buildRequestBody(prompt, sendOptions);
 
     this.status = 'submitted';
     this.emitter.emit('status', this.status);
     this.abortController = new AbortController();
 
-    const assistantMessage: VedaDisplayMessage = {
+    const assistantMessage: SvedaDisplayMessage = {
       id: createMessageId(),
       role: 'assistant',
       parts: [],
@@ -180,13 +180,13 @@ export class VedaChatSession {
       });
 
       if (!response.ok) {
-        throw new Error(`[veda] Stream request failed: ${response.status}`);
+        throw new Error(`[sveda] Stream request failed: ${response.status}`);
       }
 
       this.status = 'streaming';
       this.emitter.emit('status', this.status);
 
-      for await (const event of iterateVedaStream(response, this.client.protocolMode)) {
+      for await (const event of iterateSvedaStream(response, this.client.protocolMode)) {
         this.applyStreamEvent(event);
       }
 
@@ -217,7 +217,7 @@ export class VedaChatSession {
     }
   }
 
-  private applyStreamEvent(event: VedaStreamEvent): void {
+  private applyStreamEvent(event: SvedaStreamEvent): void {
     this.emitter.emit('event', event);
 
     const assistant = this.messages[this.messages.length - 1];
@@ -225,8 +225,8 @@ export class VedaChatSession {
       return;
     }
 
-    const mutate = (mutator: (parts: VedaMessagePart[]) => VedaMessagePart[]) => {
-      const updated: VedaDisplayMessage = {
+    const mutate = (mutator: (parts: SvedaMessagePart[]) => SvedaMessagePart[]) => {
+      const updated: SvedaDisplayMessage = {
         ...assistant,
         parts: mutator(assistant.parts),
       };
@@ -316,7 +316,7 @@ export class VedaChatSession {
   }
 
   private async executeFrontendTool(
-    event: Extract<VedaStreamEvent, { type: 'tool.call' }>
+    event: Extract<SvedaStreamEvent, { type: 'tool.call' }>
   ): Promise<void> {
     let output: unknown;
     try {
@@ -343,14 +343,14 @@ export class VedaChatSession {
   }
 }
 
-export class VedaClient {
-  readonly endpoints: VedaClientEndpoints;
+export class SvedaClient {
+  readonly endpoints: SvedaClientEndpoints;
 
-  readonly protocolMode: VedaStreamProtocolMode;
+  readonly protocolMode: SvedaStreamProtocolMode;
 
-  readonly toolRegistry: VedaToolRegistry;
+  readonly toolRegistry: SvedaToolRegistry;
 
-  readonly contextRegistry: VedaContextRegistry;
+  readonly contextRegistry: SvedaContextRegistry;
 
   readonly autoSubmitFrontendToolResults: boolean;
 
@@ -360,15 +360,15 @@ export class VedaClient {
 
   private readonly headers?: Record<string, string> | (() => Record<string, string>);
 
-  private sessions = new Map<string, VedaChatSession>();
+  private sessions = new Map<string, SvedaChatSession>();
 
-  constructor(options: VedaClientOptions) {
+  constructor(options: SvedaClientOptions) {
     this.endpoints = options.endpoints;
-    this.protocolMode = options.protocolMode ?? 'veda';
+    this.protocolMode = options.protocolMode ?? 'sveda';
     this.headers = options.headers;
     this.credentials = options.credentials;
-    this.toolRegistry = options.tools ?? new VedaToolRegistry();
-    this.contextRegistry = options.context ?? new VedaContextRegistry();
+    this.toolRegistry = options.tools ?? new SvedaToolRegistry();
+    this.contextRegistry = options.context ?? new SvedaContextRegistry();
     this.autoSubmitFrontendToolResults = options.autoSubmitFrontendToolResults ?? true;
     this.fetchImpl = options.fetchFn ?? ((input, init) => globalThis.fetch(input, init));
   }
@@ -382,22 +382,22 @@ export class VedaClient {
   }
 
   streamAcceptHeaders(): Record<string, string> {
-    if (this.protocolMode === 'veda') {
-      return { Accept: 'application/vnd.veda.stream+json' };
+    if (this.protocolMode === 'sveda') {
+      return { Accept: 'application/vnd.sveda.stream+json' };
     }
 
-    return { Accept: 'text/event-stream', 'X-Veda-Protocol': 'vercel' };
+    return { Accept: 'text/event-stream', 'X-Sveda-Protocol': 'vercel' };
   }
 
-  session(chatId: string): VedaChatSession {
+  session(chatId: string): SvedaChatSession {
     if (!this.sessions.has(chatId)) {
-      this.sessions.set(chatId, new VedaChatSession(chatId, this));
+      this.sessions.set(chatId, new SvedaChatSession(chatId, this));
     }
 
     return this.sessions.get(chatId)!;
   }
 
-  createSession(chatId: string = createMessageId()): VedaChatSession {
+  createSession(chatId: string = createMessageId()): SvedaChatSession {
     return this.session(chatId);
   }
 
@@ -408,7 +408,7 @@ export class VedaClient {
 
   private historiesUrl(): string {
     if (!this.endpoints.histories) {
-      throw new Error('[veda] histories endpoint is not configured');
+      throw new Error('[sveda] histories endpoint is not configured');
     }
 
     return this.endpoints.histories;
@@ -422,31 +422,31 @@ export class VedaClient {
     return `${this.historiesUrl().replace(/\/$/, '')}/${encodeURIComponent(chatId)}`;
   }
 
-  async listHistories(): Promise<VedaChatHistorySummary[]> {
+  async listHistories(): Promise<SvedaChatHistorySummary[]> {
     const response = await this.fetchImpl(this.historiesUrl(), {
       headers: { Accept: 'application/json', ...this.resolveHeaders() },
       credentials: this.credentials,
     });
 
     if (!response.ok) {
-      throw new Error(`[veda] Failed to load chat histories: ${response.status}`);
+      throw new Error(`[sveda] Failed to load chat histories: ${response.status}`);
     }
 
-    const data = (await response.json()) as { histories?: VedaChatHistorySummary[] };
+    const data = (await response.json()) as { histories?: SvedaChatHistorySummary[] };
     return (data.histories ?? []).map(history => this.normalizeHistory(history));
   }
 
-  async getHistory(chatId: string): Promise<VedaChatHistoryDetail> {
+  async getHistory(chatId: string): Promise<SvedaChatHistoryDetail> {
     const response = await this.fetchImpl(this.historyUrl(chatId), {
       headers: { Accept: 'application/json', ...this.resolveHeaders() },
       credentials: this.credentials,
     });
 
     if (!response.ok) {
-      throw new Error(`[veda] Failed to load chat history ${chatId}: ${response.status}`);
+      throw new Error(`[sveda] Failed to load chat history ${chatId}: ${response.status}`);
     }
 
-    const data = (await response.json()) as { history: VedaChatHistoryDetail };
+    const data = (await response.json()) as { history: SvedaChatHistoryDetail };
     return this.normalizeHistory(data.history);
   }
 
@@ -463,7 +463,7 @@ export class VedaClient {
     });
 
     if (!response.ok) {
-      throw new Error(`[veda] Failed to rename chat ${chatId}: ${response.status}`);
+      throw new Error(`[sveda] Failed to rename chat ${chatId}: ${response.status}`);
     }
   }
 
@@ -475,11 +475,11 @@ export class VedaClient {
     });
 
     if (!response.ok) {
-      throw new Error(`[veda] Failed to delete chat ${chatId}: ${response.status}`);
+      throw new Error(`[sveda] Failed to delete chat ${chatId}: ${response.status}`);
     }
   }
 
-  private normalizeHistory<T extends VedaChatHistorySummary>(history: T): T {
+  private normalizeHistory<T extends SvedaChatHistorySummary>(history: T): T {
     const fromChatId = typeof history.chatId === 'string' ? history.chatId.trim() : '';
     if (fromChatId !== '') {
       return { ...history, chatId: fromChatId };

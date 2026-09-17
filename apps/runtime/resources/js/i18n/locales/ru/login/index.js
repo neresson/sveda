@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda admin',
+    document_title: 'Sveda admin',
     title: 'Войти.',
     subtitle: 'Введи ключ администратора, чтобы управлять этим sidecar.',
     admin_key: 'Ключ администратора',

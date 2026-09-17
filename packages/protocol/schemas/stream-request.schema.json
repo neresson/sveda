@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://veda-ai.dev/schemas/v1/stream-request.schema.json",
-  "title": "Veda Wire Protocol v1 — Stream Request",
-  "description": "Client-to-server POST body for /veda/stream.",
+  "$id": "https://sveda-ai.dev/schemas/v1/stream-request.schema.json",
+  "title": "Sveda Wire Protocol v1 — Stream Request",
+  "description": "Client-to-server POST body for /sveda/stream.",
   "type": "object",
   "required": ["messages"],
   "properties": {

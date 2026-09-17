@@ -1,12 +1,12 @@
-import { userMessageHasVisibleContent, type VedaUserMessageLike } from './userMessage';
+import { userMessageHasVisibleContent, type SvedaUserMessageLike } from './userMessage';
 
-export type VedaTabChat = {
+export type SvedaTabChat = {
   id: string;
   title?: string;
-  messages?: VedaUserMessageLike[];
+  messages?: SvedaUserMessageLike[];
 };
 
-export const isNewChatPlaceholder = (chat: VedaTabChat, newChatLabel: string): boolean => {
+export const isNewChatPlaceholder = (chat: SvedaTabChat, newChatLabel: string): boolean => {
   const messages = chat.messages || [];
   if (messages.some(userMessageHasVisibleContent)) {
     return false;
@@ -30,7 +30,7 @@ export const isNewChatPlaceholder = (chat: VedaTabChat, newChatLabel: string): b
 };
 
 export const buildChatTabTitleMap = (
-  tabs: VedaTabChat[],
+  tabs: SvedaTabChat[],
   translate: (key: string, params?: Record<string, unknown>) => string
 ): Map<string, string> => {
   const newChatLabel = translate('newChat');

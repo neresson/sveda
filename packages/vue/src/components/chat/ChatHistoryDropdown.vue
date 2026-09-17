@@ -2,11 +2,11 @@
   import { Button } from '../../ui/button/index.js';
   import { Input } from '../../ui/input/index.js';
   import { ScrollArea } from '../../ui/scroll-area/index.js';
-  import { useVedaT } from '../../i18n/index.js';
+  import { useSvedaT } from '../../i18n/index.js';
   import { Search, SquarePen, Trash2, X } from 'lucide-vue-next';
   import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-  const t = useVedaT();
+  const t = useSvedaT();
 
   const props = defineProps({
     show: {

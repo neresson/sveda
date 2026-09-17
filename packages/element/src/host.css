@@ -1,0 +1,120 @@
+sveda-chat {
+    display: block;
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 999999;
+    width: var(--sveda-embed-width, 24rem);
+    height: var(--sveda-embed-height, 37.5rem);
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 2rem);
+    font-family: var(--font-sans, 'Geist', ui-sans-serif, system-ui, sans-serif);
+    font-size: 16px;
+    line-height: 1.5;
+    color: hsl(var(--sveda-foreground, 0 0% 3.9%));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    pointer-events: none;
+}
+
+:where(sveda-chat) *,
+:where(sveda-chat) *::before,
+:where(sveda-chat) *::after {
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: solid;
+    border-color: hsl(var(--sveda-border, 220 13% 91%));
+}
+
+:where(sveda-chat) h1,
+:where(sveda-chat) h2,
+:where(sveda-chat) h3,
+:where(sveda-chat) h4,
+:where(sveda-chat) p,
+:where(sveda-chat) ol,
+:where(sveda-chat) ul {
+    margin: 0;
+    padding: 0;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+:where(sveda-chat) ol,
+:where(sveda-chat) ul {
+    list-style: none;
+}
+
+:where(sveda-chat) a {
+    color: inherit;
+    text-decoration: inherit;
+}
+
+:where(sveda-chat) button,
+:where(sveda-chat) input,
+:where(sveda-chat) textarea,
+:where(sveda-chat) select {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    background-color: transparent;
+    border: 0;
+    padding: 0;
+    margin: 0;
+}
+
+:where(sveda-chat) button,
+:where(sveda-chat) [type='button'],
+:where(sveda-chat) [type='submit'] {
+    cursor: pointer;
+}
+
+:where(sveda-chat) textarea {
+    resize: none;
+}
+
+:where(sveda-chat) img,
+:where(sveda-chat) svg,
+:where(sveda-chat) video,
+:where(sveda-chat) canvas {
+    display: block;
+    max-width: 100%;
+}
+
+sveda-chat[data-sveda-open='true'] {
+    pointer-events: auto;
+}
+
+sveda-chat:not([data-sveda-open='true']) {
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+sveda-chat:not([data-sveda-open='true']) * {
+    pointer-events: none;
+}
+
+sveda-chat[data-sveda-open='true'] > .sveda-chat {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+sveda-chat ol.pointer-events-none {
+    height: auto;
+    max-height: 12rem;
+    justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+    sveda-chat[data-sveda-open='true'] {
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+    }
+}

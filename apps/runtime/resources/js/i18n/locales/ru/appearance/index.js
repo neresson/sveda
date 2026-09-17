@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda appearance',
+    document_title: 'Sveda appearance',
     eyebrow: 'Вид',
     title: 'Внешний вид.',
     subtitle: 'Пресет вида, цвета и скругление чата. У каждого пресета есть тёмная тема.',
@@ -28,7 +28,7 @@ export default {
     radius_hint: 'Кнопки, поля, панели и углы в режиме float.',
     launcher: 'Кнопка чата',
     launcher_label: 'Надпись',
-    launcher_label_placeholder: 'VEDA / ADMIN',
+    launcher_label_placeholder: 'SVEDA / ADMIN',
     launcher_label_hint: 'Текст на свёрнутой кнопке. Пустое поле оставляет имя бренда.',
     launcher_icon: 'Иконка',
     launcher_icon_hint: 'Иконка слева от надписи. Картинка ниже заменяет её.',

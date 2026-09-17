@@ -1,3 +1,0 @@
-Connected indexed code sources for this instance (read-only consultation). Pick source_id from the list below, then search and read files as needed. Administrator descriptions explain what each source covers.
-
-{{sources_block}}

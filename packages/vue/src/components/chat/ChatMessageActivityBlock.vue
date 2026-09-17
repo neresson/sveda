@@ -5,7 +5,7 @@
     getToolNameFromPart,
     parseToolResultOutput,
   } from '../../lib/assistantMessage.js';
-  import { useVedaT } from '../../i18n/index.js';
+  import { useSvedaT } from '../../i18n/index.js';
   import { CheckCircle, ChevronDown, ChevronRight, CircleStop, ExternalLink, Search, Terminal, XCircle } from 'lucide-vue-next';
   import { computed, ref, watch } from 'vue';
   import AnimatedStreamBlock from './AnimatedStreamBlock.vue';
@@ -27,7 +27,7 @@
 
   const emit = defineEmits(['activity-link-click']);
 
-  const t = useVedaT();
+  const t = useSvedaT();
 
   const translateToolName = toolName => {
     if (!toolName) {

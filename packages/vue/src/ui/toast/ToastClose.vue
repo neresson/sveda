@@ -16,7 +16,7 @@ const delegatedProps = computed(() => {
 </script>
 
 <template>
-  <ToastClose v-bind="delegatedProps" :class="cn('absolute right-2 top-2 rounded-[var(--veda-radius)] p-1 text-inherit opacity-0 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-destructive-foreground/70 group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive', props.class)" aria-label="Close notification">
+  <ToastClose v-bind="delegatedProps" :class="cn('absolute right-2 top-2 rounded-[var(--sveda-radius)] p-1 text-inherit opacity-0 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-destructive-foreground/70 group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive', props.class)" aria-label="Close notification">
     <X class="h-4 w-4" />
   </ToastClose>
 </template>

@@ -1,3 +1,3 @@
-import { defineVedaChatElement } from './veda-chat-element';
+import { defineSvedaChatElement } from './sveda-chat-element';
 
-defineVedaChatElement();
+defineSvedaChatElement();

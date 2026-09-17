@@ -1,4 +1,4 @@
-export type VedaMergeableChatHistory<TMessage> = {
+export type SvedaMergeableChatHistory<TMessage> = {
   id: string;
   title: string;
   preview?: string;
@@ -10,7 +10,7 @@ export type VedaMergeableChatHistory<TMessage> = {
   messagesLoaded: boolean;
 };
 
-export const mergeServerChatHistories = <T extends VedaMergeableChatHistory<unknown>>(
+export const mergeServerChatHistories = <T extends SvedaMergeableChatHistory<unknown>>(
   serverHistories: T[],
   currentChat: T | null
 ): T[] => {
@@ -47,7 +47,7 @@ export const resolveMergedCurrentChat = <T extends { id: string }>(
   return histories.find(chat => chat.id === currentChat.id) ?? currentChat;
 };
 
-export const upsertChatHistoryMessages = <T extends VedaMergeableChatHistory<unknown>>(
+export const upsertChatHistoryMessages = <T extends SvedaMergeableChatHistory<unknown>>(
   histories: T[],
   currentChat: T | null,
   chatId: string,

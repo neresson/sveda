@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda setup',
+    document_title: 'Sveda setup',
     title_lead: 'Создай',
     title_tail: 'ключ.',
     subtitle: 'Им будешь пользоваться здесь и в JSON API. Минимум 16 символов.',

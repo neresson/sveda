@@ -3,10 +3,10 @@ import {
   mergeServerChatHistories,
   resolveMergedCurrentChat,
   upsertChatHistoryMessages,
-  type VedaMergeableChatHistory,
+  type SvedaMergeableChatHistory,
 } from '../src/lib/chatHistoryMerge';
 
-type TestChat = VedaMergeableChatHistory<{ role: string; content?: string }>;
+type TestChat = SvedaMergeableChatHistory<{ role: string; content?: string }>;
 
 const chat = (id: string, overrides: Partial<TestChat> = {}): TestChat => ({
   id,

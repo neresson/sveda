@@ -1,0 +1,5 @@
+1. `kubectl get svc {{ include "sveda-server.fullname" . }}`
+2. Runtime listens on port {{ .Values.service.port }}.
+3. Liveness: `/sveda/health`. Readiness: `/sveda/ready`.
+4. Bundled Postgres/Redis (`postgresql.enabled` / `redis.enabled`) are for local clusters only. Production should set `databaseUrl` and `redisUrl`.
+5. `SVEDA_INDEX_ROOT` is optional and per-pod; it is not a shared search cluster.

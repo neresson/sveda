@@ -7,7 +7,7 @@ const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
-      '@veda-ai/protocol': path.resolve(packageRoot, '../protocol/src'),
+      '@sveda-ai/protocol': path.resolve(packageRoot, '../protocol/src'),
     },
   },
   test: {

@@ -165,7 +165,7 @@ watch(
                         >
                         <button
                             type="button"
-                            class="veda-hover bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80"
+                            class="sveda-hover bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80"
                             :disabled="loading"
                             @click="openAnchorPath"
                         >
@@ -190,7 +190,7 @@ watch(
                     <li v-for="entry in entries" :key="entry.path">
                         <button
                             type="button"
-                            class="veda-hover w-full border-b border-grid px-3 py-2 text-left font-mono text-sm last:border-b-0 hover:bg-grid"
+                            class="sveda-hover w-full border-b border-grid px-3 py-2 text-left font-mono text-sm last:border-b-0 hover:bg-grid"
                             @click="loadBrowse(entry.path)"
                         >
                             {{ entry.name }}
@@ -222,7 +222,7 @@ watch(
                 <button
                     v-if="step === 'browse'"
                     type="button"
-                    class="veda-hover bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40"
+                    class="sveda-hover bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40"
                     :disabled="!canPreviewHere() || loading"
                     @click="goToConfirm"
                 >
@@ -231,7 +231,7 @@ watch(
                 <button
                     v-else
                     type="button"
-                    class="veda-hover bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80"
+                    class="sveda-hover bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80"
                     @click="confirm"
                 >
                     {{ t('sources.local_browse_confirm') }}

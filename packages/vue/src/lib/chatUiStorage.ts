@@ -1,4 +1,4 @@
-export const VEDA_CHAT_MINIMIZED_STORAGE_KEY = 'veda.chat-minimized';
+export const SVEDA_CHAT_MINIMIZED_STORAGE_KEY = 'sveda.chat-minimized';
 
 export const readPersistedMinimized = (): boolean => {
   if (typeof window === 'undefined') {
@@ -6,7 +6,7 @@ export const readPersistedMinimized = (): boolean => {
   }
 
   try {
-    const saved = localStorage.getItem(VEDA_CHAT_MINIMIZED_STORAGE_KEY);
+    const saved = localStorage.getItem(SVEDA_CHAT_MINIMIZED_STORAGE_KEY);
     if (saved === 'true') {
       return true;
     }
@@ -26,7 +26,7 @@ export const writePersistedMinimized = (isMinimized: boolean): void => {
   }
 
   try {
-    localStorage.setItem(VEDA_CHAT_MINIMIZED_STORAGE_KEY, isMinimized ? 'true' : 'false');
+    localStorage.setItem(SVEDA_CHAT_MINIMIZED_STORAGE_KEY, isMinimized ? 'true' : 'false');
   } catch {
     return;
   }

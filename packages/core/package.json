@@ -1,8 +1,15 @@
 {
-  "name": "@veda-ai/core",
+  "name": "@sveda-ai/core",
   "version": "0.1.0",
   "type": "module",
   "license": "MIT",
+  "description": "Framework-agnostic Sveda JS client — streaming, tools, and session.send.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neresson/sveda.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/neresson/sveda/tree/main/packages/core",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -12,6 +19,7 @@
     }
   },
   "publishConfig": {
+    "access": "public",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
@@ -29,7 +37,7 @@
     "lint": "echo 'no lint configured'"
   },
   "dependencies": {
-    "@veda-ai/protocol": "workspace:*"
+    "@sveda-ai/protocol": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.8.2",

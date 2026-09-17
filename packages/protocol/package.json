@@ -1,8 +1,15 @@
 {
-  "name": "@veda-ai/protocol",
+  "name": "@sveda-ai/protocol",
   "version": "0.1.0",
   "type": "module",
   "license": "MIT",
+  "description": "Sveda Wire Protocol — stream event schemas and constants.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neresson/sveda.git",
+    "directory": "packages/protocol"
+  },
+  "homepage": "https://github.com/neresson/sveda/tree/main/packages/protocol",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -14,6 +21,7 @@
     "./contracts/*": "./contracts/*"
   },
   "publishConfig": {
+    "access": "public",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {

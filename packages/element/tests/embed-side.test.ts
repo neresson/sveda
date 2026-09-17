@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createVedaEmbedProtocol } from '../src/embed-protocol';
-import { initVedaEmbedHost, type VedaEmbedHost } from '../src/embed-side';
+import { createSvedaEmbedProtocol } from '../src/embed-protocol';
+import { initSvedaEmbedHost, type SvedaEmbedHost } from '../src/embed-side';
 
 const HOST_ORIGIN = 'https://host.example.com';
 
@@ -20,8 +20,8 @@ function dispatchToEmbed(data: unknown, origin: string, source: unknown): void {
   window.dispatchEvent(event);
 }
 
-describe('initVedaEmbedHost', () => {
-  const hosts: VedaEmbedHost[] = [];
+describe('initSvedaEmbedHost', () => {
+  const hosts: SvedaEmbedHost[] = [];
 
   afterEach(() => {
     while (hosts.length > 0) {
@@ -31,11 +31,11 @@ describe('initVedaEmbedHost', () => {
   });
 
   const init = (
-    handlers: Parameters<typeof initVedaEmbedHost>[0] = {},
-    options: Parameters<typeof initVedaEmbedHost>[1] = {}
+    handlers: Parameters<typeof initSvedaEmbedHost>[0] = {},
+    options: Parameters<typeof initSvedaEmbedHost>[1] = {}
   ) => {
     const fake = createFakeTarget();
-    const host = initVedaEmbedHost(handlers, {
+    const host = initSvedaEmbedHost(handlers, {
       target: fake.target,
       targetOrigin: HOST_ORIGIN,
       readyRetryInterval: 0,
@@ -50,7 +50,7 @@ describe('initVedaEmbedHost', () => {
 
     expect(posted).toHaveLength(1);
     expect(posted[0].data).toMatchObject({
-      source: 'veda-embed',
+      source: 'sveda-embed',
       version: 1,
       type: 'ready',
     });
@@ -64,7 +64,7 @@ describe('initVedaEmbedHost', () => {
       { onAck },
       { readyRetryInterval: 100, maxReadyAttempts: 10 }
     );
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
 
     expect(host.acknowledged).toBe(false);
     vi.advanceTimersByTime(250);
@@ -94,7 +94,7 @@ describe('initVedaEmbedHost', () => {
       onSetTheme: vi.fn(),
     };
     const { target } = init(handlers);
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
 
     dispatchToEmbed(protocol.encode('setContext', { context: { page: 'dashboard' } }), HOST_ORIGIN, target);
     dispatchToEmbed(protocol.encode('setAuthToken', { token: 'abc' }), HOST_ORIGIN, target);
@@ -116,7 +116,7 @@ describe('initVedaEmbedHost', () => {
   it('rejects commands from disallowed origins when configured', () => {
     const onOpen = vi.fn();
     const { target } = init({ onOpen }, { allowedOrigins: [HOST_ORIGIN] });
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
 
     dispatchToEmbed(protocol.encode('open', {}), 'https://evil.example.com', target);
     expect(onOpen).not.toHaveBeenCalled();
@@ -129,7 +129,7 @@ describe('initVedaEmbedHost', () => {
     const onSendMessage = vi.fn();
     const onSetTheme = vi.fn();
     const { target } = init({ onSendMessage, onSetTheme });
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
 
     dispatchToEmbed({ type: 'sendMessage', payload: { text: 'hi' } }, HOST_ORIGIN, target);
     dispatchToEmbed(protocol.encode('sendMessage', { text: '' }), HOST_ORIGIN, target);

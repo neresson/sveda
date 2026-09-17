@@ -1,87 +1,95 @@
-import { VedaClient } from '@veda-ai/core';
+import { SvedaClient } from '@sveda-ai/core';
 import { inject, type App, type InjectionKey } from 'vue';
-import { applyVedaAppearance, type VedaAppearance } from './appearance';
+import { applySvedaAppearance, type SvedaAppearance } from './appearance';
 import {
-  createVedaI18n,
-  installVedaI18n,
-  type VedaI18n,
-  type VedaMessages,
+  createSvedaI18n,
+  installSvedaI18n,
+  type SvedaI18n,
+  type SvedaMessages,
 } from './i18n/index';
 import en from './i18n/locales/en';
 import ru from './i18n/locales/ru';
 import { chatComponentI18nKeys } from './lib/chatI18nKeys';
 
-export interface VedaModelOption {
+export interface SvedaModelOption {
   id: string;
   label: string;
   supportsThinking?: boolean;
 }
 
-export interface VedaQuickPrompt {
+export interface SvedaQuickPrompt {
   label: string;
   prompt: string;
 }
 
-export interface VedaBrand {
+export interface SvedaBrand {
   name?: string;
   logoUrl?: string;
 }
 
-export interface VedaPluginOptions {
+export interface SvedaPluginOptions {
   endpoints: {
     stream: string;
     message?: string;
     histories?: string;
     documentsExtract?: string;
   };
-  protocolMode?: 'veda' | 'vercel';
+  protocolMode?: 'sveda' | 'vercel';
   headers?: Record<string, string> | (() => Record<string, string>);
   credentials?: RequestCredentials;
   locale?: string;
   messages?: Record<string, Record<string, string>>;
-  brand?: VedaBrand;
-  models?: VedaModelOption[];
-  quickPrompts?: VedaQuickPrompt[];
-  appearance?: VedaAppearance | null;
+  brand?: SvedaBrand;
+  models?: SvedaModelOption[];
+  quickPrompts?: SvedaQuickPrompt[];
+  appearance?: SvedaAppearance | null;
   theme?: 'light' | 'dark';
+  hostEmbed?: boolean;
+  hideLauncher?: boolean;
 }
 
-export interface VedaConfig {
+export interface SvedaConfig {
   brand: {
     name: string;
     logoUrl: string | null;
   };
-  models: VedaModelOption[];
-  quickPrompts: VedaQuickPrompt[];
+  models: SvedaModelOption[];
+  quickPrompts: SvedaQuickPrompt[];
 }
 
-export interface VedaPlugin {
-  client: VedaClient;
-  i18n: VedaI18n;
-  config: VedaConfig;
+export interface SvedaPlugin {
+  client: SvedaClient;
+  i18n: SvedaI18n;
+  config: SvedaConfig;
   install(app: App): void;
 }
 
-export const VedaClientKey: InjectionKey<VedaClient> = Symbol('veda-client');
+export const SvedaClientKey: InjectionKey<SvedaClient> = Symbol('sveda-client');
 
-export const VedaConfigKey: InjectionKey<VedaConfig> = Symbol('veda-config');
+export const SvedaConfigKey: InjectionKey<SvedaConfig> = Symbol('sveda-config');
 
-const DEFAULT_CONFIG: VedaConfig = {
-  brand: { name: 'Veda', logoUrl: null },
+export const SvedaHostEmbedKey: InjectionKey<boolean> = Symbol('sveda-host-embed');
+
+export const SvedaFillHostKey: InjectionKey<boolean> = Symbol('sveda-fill-host');
+
+export const SvedaHideLauncherKey: InjectionKey<boolean> = Symbol('sveda-hide-launcher');
+
+const DEFAULT_CONFIG: SvedaConfig = {
+  brand: { name: 'Sveda', logoUrl: null },
   models: [],
   quickPrompts: [],
 };
 
-export function createVeda(options: VedaPluginOptions): VedaPlugin {
-  const client = new VedaClient({
+export function createSveda(options: SvedaPluginOptions): SvedaPlugin {
+  const client = new SvedaClient({
     endpoints: options.endpoints,
     protocolMode: options.protocolMode,
     headers: options.headers,
     credentials: options.credentials,
   });
 
-  const messages: Record<string, VedaMessages> = {};
-  const mergeMessages = (locale: string, localeMessages: VedaMessages) => {
+  const messages: Record<string, SvedaMessages> = {};
+  const mergeMessages = (locale: string, localeMessages: SvedaMessages) => {
     messages[locale] = { ...(messages[locale] ?? {}), ...localeMessages };
   };
 
@@ -95,14 +103,14 @@ export function createVeda(options: VedaPluginOptions): VedaPlugin {
     mergeMessages(locale, localeMessages);
   }
 
-  const i18n = createVedaI18n({
+  const i18n = createSvedaI18n({
     locale: options.locale ?? 'en',
     messages,
   });
 
-  const config: VedaConfig = {
+  const config: SvedaConfig = {
     brand: {
-      name: options.brand?.name ?? 'Veda',
+      name: options.brand?.name ?? 'Sveda',
       logoUrl: options.brand?.logoUrl ?? null,
     },
     models: options.models ?? [],
@@ -111,9 +119,9 @@ export function createVeda(options: VedaPluginOptions): VedaPlugin {
 
   if (options.appearance !== undefined || options.theme !== undefined) {
     if (options.appearance === null && options.theme === undefined) {
-      applyVedaAppearance(null);
+      applySvedaAppearance(null);
     } else {
-      applyVedaAppearance({
+      applySvedaAppearance({
         ...(options.appearance && typeof options.appearance === 'object' ? options.appearance : {}),
         ...(options.theme ? { theme: options.theme } : {}),
       });
@@ -125,30 +133,32 @@ export function createVeda(options: VedaPluginOptions): VedaPlugin {
     i18n,
     config,
     install(app: App) {
-      app.provide(VedaClientKey, client);
-      app.provide(VedaConfigKey, config);
-      installVedaI18n(app, i18n);
+      app.provide(SvedaClientKey, client);
+      app.provide(SvedaConfigKey, config);
+      app.provide(SvedaHostEmbedKey, Boolean(options.hostEmbed));
+      app.provide(SvedaHideLauncherKey, Boolean(options.hideLauncher));
+      installSvedaI18n(app, i18n);
     },
   };
 }
 
-export function useVedaClient(): VedaClient {
-  const client = inject(VedaClientKey, null);
+export function useSvedaClient(): SvedaClient {
+  const client = inject(SvedaClientKey, null);
   if (!client) {
-    throw new Error('[veda] Veda plugin is not installed. Call app.use(createVeda(...)) first.');
+    throw new Error('[sveda] Sveda plugin is not installed. Call app.use(createSveda(...)) first.');
   }
 
   return client;
 }
 
-export function useVedaConfig(): VedaConfig {
-  return inject(VedaConfigKey, DEFAULT_CONFIG);
+export function useSvedaConfig(): SvedaConfig {
+  return inject(SvedaConfigKey, DEFAULT_CONFIG);
 }
 
-const vedaPlugin = {
-  install(app: App, options: VedaPluginOptions) {
-    createVeda(options).install(app);
+const svedaPlugin = {
+  install(app: App, options: SvedaPluginOptions) {
+    createSveda(options).install(app);
   },
 };
 
-export default vedaPlugin;
+export default svedaPlugin;

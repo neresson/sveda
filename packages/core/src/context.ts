@@ -1,13 +1,13 @@
-export interface VedaContextReadable {
+export interface SvedaContextReadable {
   description: string;
   value: unknown | (() => unknown);
 }
 
-export class VedaContextRegistry {
-  private readables = new Map<string, VedaContextReadable>();
+export class SvedaContextRegistry {
+  private readables = new Map<string, SvedaContextReadable>();
 
   register(description: string, value: unknown | (() => unknown)): () => void {
-    const readable: VedaContextReadable = { description, value };
+    const readable: SvedaContextReadable = { description, value };
     this.readables.set(description, readable);
 
     return () => this.unregister(description);

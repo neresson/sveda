@@ -1,14 +1,14 @@
 import {
-  createVedaEmbedProtocol,
-  VEDA_EMBED_VERSION,
-  type VedaEmbedSendMessagePayload,
-  type VedaEmbedSetAuthTokenPayload,
-  type VedaEmbedSetContextPayload,
-  type VedaEmbedSetLocalePayload,
-  type VedaEmbedSetThemePayload,
+  createSvedaEmbedProtocol,
+  SVEDA_EMBED_VERSION,
+  type SvedaEmbedSendMessagePayload,
+  type SvedaEmbedSetAuthTokenPayload,
+  type SvedaEmbedSetContextPayload,
+  type SvedaEmbedSetLocalePayload,
+  type SvedaEmbedSetThemePayload,
 } from './embed-protocol';
 
-export interface VedaEmbedHostHandlers {
+export interface SvedaEmbedHostHandlers {
   onAck?: () => void;
   onSetContext?: (context: Record<string, unknown>) => void;
   onSetAuthToken?: (token: string | null) => void;
@@ -19,7 +19,7 @@ export interface VedaEmbedHostHandlers {
   onSetTheme?: (theme: string) => void;
 }
 
-export interface VedaEmbedHostOptions {
+export interface SvedaEmbedHostOptions {
   allowedOrigins?: string[];
   target?: Window;
   targetOrigin?: string;
@@ -27,7 +27,7 @@ export interface VedaEmbedHostOptions {
   maxReadyAttempts?: number;
 }
 
-export interface VedaEmbedHost {
+export interface SvedaEmbedHost {
   readonly acknowledged: boolean;
   postReady(): void;
   postResize(height: number): void;
@@ -40,11 +40,11 @@ export interface VedaEmbedHost {
 const DEFAULT_READY_RETRY_INTERVAL = 250;
 const DEFAULT_MAX_READY_ATTEMPTS = 40;
 
-export function initVedaEmbedHost(
-  handlers: VedaEmbedHostHandlers = {},
-  options: VedaEmbedHostOptions = {}
-): VedaEmbedHost {
-  const protocol = createVedaEmbedProtocol();
+export function initSvedaEmbedHost(
+  handlers: SvedaEmbedHostHandlers = {},
+  options: SvedaEmbedHostOptions = {}
+): SvedaEmbedHost {
+  const protocol = createSvedaEmbedProtocol();
   const target = options.target ?? (window.parent !== window ? window.parent : null);
   const targetOrigin = options.targetOrigin ?? '*';
   const allowedOrigins = options.allowedOrigins ? new Set(options.allowedOrigins) : null;
@@ -70,7 +70,7 @@ export function initVedaEmbedHost(
   };
 
   const postReady = (): void => {
-    post('ready', { version: VEDA_EMBED_VERSION });
+    post('ready', { version: SVEDA_EMBED_VERSION });
   };
 
   const handleMessage = (event: MessageEvent): void => {
@@ -92,10 +92,10 @@ export function initVedaEmbedHost(
         handlers.onAck?.();
         break;
       case 'setContext':
-        handlers.onSetContext?.((envelope.payload as VedaEmbedSetContextPayload)?.context ?? {});
+        handlers.onSetContext?.((envelope.payload as SvedaEmbedSetContextPayload)?.context ?? {});
         break;
       case 'setAuthToken':
-        handlers.onSetAuthToken?.((envelope.payload as VedaEmbedSetAuthTokenPayload)?.token ?? null);
+        handlers.onSetAuthToken?.((envelope.payload as SvedaEmbedSetAuthTokenPayload)?.token ?? null);
         break;
       case 'open':
         handlers.onOpen?.();
@@ -104,21 +104,21 @@ export function initVedaEmbedHost(
         handlers.onClose?.();
         break;
       case 'sendMessage': {
-        const payload = envelope.payload as VedaEmbedSendMessagePayload;
+        const payload = envelope.payload as SvedaEmbedSendMessagePayload;
         if (typeof payload?.text === 'string' && payload.text) {
           handlers.onSendMessage?.(payload.text, payload.context);
         }
         break;
       }
       case 'setLocale': {
-        const payload = envelope.payload as VedaEmbedSetLocalePayload;
+        const payload = envelope.payload as SvedaEmbedSetLocalePayload;
         if (typeof payload?.locale === 'string' && payload.locale) {
           handlers.onSetLocale?.(payload.locale);
         }
         break;
       }
       case 'setTheme': {
-        const payload = envelope.payload as VedaEmbedSetThemePayload;
+        const payload = envelope.payload as SvedaEmbedSetThemePayload;
         if (payload?.theme === 'light' || payload?.theme === 'dark') {
           handlers.onSetTheme?.(payload.theme);
         }

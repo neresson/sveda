@@ -255,7 +255,7 @@ const removeModel = async (id) => {
                     <button
                         v-if="isEditing"
                         type="button"
-                        class="veda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted disabled:hover:text-ink"
+                        class="sveda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted disabled:hover:text-ink"
                         :disabled="saving"
                         @click="cancelEdit"
                     >
@@ -263,7 +263,7 @@ const removeModel = async (id) => {
                     </button>
                     <button
                         type="submit"
-                        class="veda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
+                        class="sveda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
                         :disabled="!canSubmit || saving"
                     >
                         {{ isEditing ? t('common.save') : t('common.add') }}
@@ -293,7 +293,7 @@ const removeModel = async (id) => {
                     <div class="flex items-center gap-4">
                         <button
                             type="button"
-                            class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                            class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
                             :disabled="saving"
                             @click="startEdit(model)"
                         >
@@ -301,7 +301,7 @@ const removeModel = async (id) => {
                         </button>
                         <button
                             type="button"
-                            class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                            class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
                             :disabled="saving"
                             @click="removeModel(model.id)"
                         >
@@ -337,7 +337,7 @@ const removeModel = async (id) => {
                 <div class="flex w-32 shrink-0 justify-end gap-4">
                     <button
                         type="button"
-                        class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                        class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
                         :disabled="saving"
                         @click="startEdit(model)"
                     >
@@ -345,7 +345,7 @@ const removeModel = async (id) => {
                     </button>
                     <button
                         type="button"
-                        class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                        class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
                         :disabled="saving"
                         @click="removeModel(model.id)"
                     >

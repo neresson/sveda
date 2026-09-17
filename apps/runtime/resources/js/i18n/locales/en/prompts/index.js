@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda prompts',
+    document_title: 'Sveda prompts',
     eyebrow: 'Voice',
     title: 'Prompts.',
     subtitle: 'What the agent says first, and how it behaves.',

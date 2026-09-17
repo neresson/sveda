@@ -3,13 +3,13 @@
   import { renderMarkdown } from '../../lib/markdown.js';
   import { useAnimatedText } from '../../lib/useAnimatedText.js';
   import { getUserMessageAttachmentNames, getUserMessageText } from '../../lib/userMessage.js';
-  import { useVedaT } from '../../i18n/index.js';
+  import { useSvedaT } from '../../i18n/index.js';
   import { Paperclip } from 'lucide-vue-next';
   import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
   import ChatMessageActivityBlock from './ChatMessageActivityBlock.vue';
   import ReasoningStream from './ReasoningStream.vue';
 
-  const t = useVedaT();
+  const t = useSvedaT();
 
   const props = defineProps({
     message: {

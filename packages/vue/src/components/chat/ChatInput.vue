@@ -14,13 +14,13 @@
   import { Textarea } from '../../ui/textarea/index.js';
   import { useToast } from '../../ui/toast/index.js';
   import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../ui/tooltip/index.js';
-  import { VedaI18nKey, useVedaT } from '../../i18n/index.js';
+  import { SvedaI18nKey, useSvedaT } from '../../i18n/index.js';
   import { Loader2, Mic, Paperclip, Send, Square, X } from 'lucide-vue-next';
   import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-  const t = useVedaT();
-  const vedaI18n = inject(VedaI18nKey, null);
-  const locale = computed(() => vedaI18n?.locale ?? '');
+  const t = useSvedaT();
+  const svedaI18n = inject(SvedaI18nKey, null);
+  const locale = computed(() => svedaI18n?.locale ?? '');
   const { toast } = useToast();
 
   const inputMessage = defineModel('modelValue', {
@@ -327,14 +327,14 @@
   const hasStatusBanner = computed(() => String(props.statusBanner || '').trim() !== '');
   const controlIconClass = 'h-4 w-4';
 
-  const micIdleButtonClass = 'h-8 w-8 rounded-[var(--veda-radius)] text-muted-foreground hover:text-foreground';
+  const micIdleButtonClass = 'h-8 w-8 rounded-[var(--sveda-radius)] text-muted-foreground hover:text-foreground';
 
-  const micStopButtonClass = 'h-8 w-8 rounded-[var(--veda-radius)] text-destructive hover:bg-destructive/10 hover:text-destructive';
+  const micStopButtonClass = 'h-8 w-8 rounded-[var(--sveda-radius)] text-destructive hover:bg-destructive/10 hover:text-destructive';
 
   const sendButtonClass =
-    'h-8 w-8 rounded-[var(--veda-radius)] text-brand-primary-purple hover:bg-brand-primary-purple/10 hover:text-brand-primary-purple disabled:opacity-50 dark:text-purple-400 dark:hover:bg-purple-400/10 dark:hover:text-purple-300';
+    'h-8 w-8 rounded-[var(--sveda-radius)] text-brand-primary-purple hover:bg-brand-primary-purple/10 hover:text-brand-primary-purple disabled:opacity-50 dark:text-purple-400 dark:hover:bg-purple-400/10 dark:hover:text-purple-300';
 
-  const streamStopButtonClass = 'h-8 w-8 rounded-[var(--veda-radius)] text-destructive hover:bg-destructive/10 hover:text-destructive';
+  const streamStopButtonClass = 'h-8 w-8 rounded-[var(--sveda-radius)] text-destructive hover:bg-destructive/10 hover:text-destructive';
 
   const controlToolbarClass = 'flex items-center justify-between px-2';
 
@@ -393,7 +393,7 @@
     :class="
       noBorder
         ? 'flex flex-shrink-0 flex-col bg-transparent p-4'
-        : 'veda-chat-surface flex flex-shrink-0 flex-col border-t border-border/50 p-4 dark:border-slate-700'
+        : 'sveda-chat-surface flex flex-shrink-0 flex-col border-t border-border/50 p-4 dark:border-slate-700'
     "
   >
     <div
@@ -412,7 +412,7 @@
       @change="onFileInputChange"
     />
     <div
-      class="border-input-transparent relative flex flex-col rounded-[var(--veda-radius)] border bg-background shadow-sm transition-colors"
+      class="border-input-transparent relative flex flex-col rounded-[var(--sveda-radius)] border bg-background shadow-sm transition-colors"
       :class="isDragActive && !attachmentToolbarDisabled ? 'border-brand-primary-purple/70 ring-1 ring-brand-primary-purple/30' : ''"
       @dragenter="onDragEnter"
       @dragleave="onDragLeave"
@@ -432,7 +432,7 @@
           <span class="truncate">{{ file.name }}</span>
           <button
             type="button"
-            class="rounded-[var(--veda-radius)] p-0.5 hover:bg-muted"
+            class="rounded-[var(--sveda-radius)] p-0.5 hover:bg-muted"
             :disabled="attachmentToolbarDisabled"
             :aria-label="t('chatRemoveFile')"
             @click="removePendingAt(idx)"
@@ -450,7 +450,7 @@
         :placeholder="t('typeMessage')"
         :disabled="isLoading"
         :readonly="isListening"
-        class="veda-chat-input-textarea max-h-[250px] min-h-[60px] w-full resize-none border-0 bg-transparent p-3 shadow-none !outline-none !ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+        class="sveda-chat-input-textarea max-h-[250px] min-h-[60px] w-full resize-none border-0 bg-transparent p-3 shadow-none !outline-none !ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
         style="height: 60px; outline: none; box-shadow: none"
       />
 

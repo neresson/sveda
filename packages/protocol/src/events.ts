@@ -1,6 +1,6 @@
-export const VEDA_PROTOCOL_VERSION = '1.0' as const;
+export const SVEDA_PROTOCOL_VERSION = '1.0' as const;
 
-export const VEDA_STREAM_EVENTS = [
+export const SVEDA_STREAM_EVENTS = [
   'message.start',
   'text.delta',
   'reasoning.delta',
@@ -14,86 +14,86 @@ export const VEDA_STREAM_EVENTS = [
   'error',
 ] as const;
 
-export type VedaStreamEventType = (typeof VEDA_STREAM_EVENTS)[number];
+export type SvedaStreamEventType = (typeof SVEDA_STREAM_EVENTS)[number];
 
-export type VedaToolTarget = 'backend' | 'frontend';
+export type SvedaToolTarget = 'backend' | 'frontend';
 
-export type VedaRenderHint =
+export type SvedaRenderHint =
   | 'confirm_dialog'
   | 'resource_links'
   | 'plain'
   | 'custom';
 
-export interface VedaStreamEventBase {
-  type: VedaStreamEventType;
+export interface SvedaStreamEventBase {
+  type: SvedaStreamEventType;
   chatId?: string;
   messageId?: string;
   timestamp?: string;
 }
 
-export interface VedaMessageStartEvent extends VedaStreamEventBase {
+export interface SvedaMessageStartEvent extends SvedaStreamEventBase {
   type: 'message.start';
 }
 
-export interface VedaTextDeltaEvent extends VedaStreamEventBase {
+export interface SvedaTextDeltaEvent extends SvedaStreamEventBase {
   type: 'text.delta';
   delta: string;
 }
 
-export interface VedaReasoningDeltaEvent extends VedaStreamEventBase {
+export interface SvedaReasoningDeltaEvent extends SvedaStreamEventBase {
   type: 'reasoning.delta';
   delta: string;
 }
 
-export interface VedaToolCallEvent extends VedaStreamEventBase {
+export interface SvedaToolCallEvent extends SvedaStreamEventBase {
   type: 'tool.call';
   toolCallId: string;
   toolName: string;
-  target: VedaToolTarget;
+  target: SvedaToolTarget;
   input: Record<string, unknown>;
 }
 
-export interface VedaToolResultEvent extends VedaStreamEventBase {
+export interface SvedaToolResultEvent extends SvedaStreamEventBase {
   type: 'tool.result';
   toolCallId: string;
   toolName: string;
   output: unknown;
-  renderHint?: VedaRenderHint;
+  renderHint?: SvedaRenderHint;
   renderData?: Record<string, unknown>;
 }
 
-export interface VedaToolProgressTask {
+export interface SvedaToolProgressTask {
   id: string;
   label: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
   detail?: string;
 }
 
-export interface VedaToolProgressEvent extends VedaStreamEventBase {
+export interface SvedaToolProgressEvent extends SvedaStreamEventBase {
   type: 'tool.progress';
   phase?: string;
-  tasks: VedaToolProgressTask[];
+  tasks: SvedaToolProgressTask[];
 }
 
-export interface VedaContextUsageEvent extends VedaStreamEventBase {
+export interface SvedaContextUsageEvent extends SvedaStreamEventBase {
   type: 'context.usage';
   usedTokens: number;
   maxTokens: number;
   percent: number;
 }
 
-export interface VedaChatTitleEvent extends VedaStreamEventBase {
+export interface SvedaChatTitleEvent extends SvedaStreamEventBase {
   type: 'chat.title';
   title: string;
 }
 
-export interface VedaMaxStepsEvent extends VedaStreamEventBase {
+export interface SvedaMaxStepsEvent extends SvedaStreamEventBase {
   type: 'max_steps';
   maxSteps: number;
   canContinue: boolean;
 }
 
-export interface VedaMessageEndEvent extends VedaStreamEventBase {
+export interface SvedaMessageEndEvent extends SvedaStreamEventBase {
   type: 'message.end';
   finishReason?: string;
   usage?: {
@@ -103,58 +103,59 @@ export interface VedaMessageEndEvent extends VedaStreamEventBase {
   };
 }
 
-export interface VedaErrorEvent extends VedaStreamEventBase {
+export interface SvedaErrorEvent extends SvedaStreamEventBase {
   type: 'error';
   code: string;
   message: string;
 }
 
-export type VedaStreamEvent =
-  | VedaMessageStartEvent
-  | VedaTextDeltaEvent
-  | VedaReasoningDeltaEvent
-  | VedaToolCallEvent
-  | VedaToolResultEvent
-  | VedaToolProgressEvent
-  | VedaContextUsageEvent
-  | VedaChatTitleEvent
-  | VedaMaxStepsEvent
-  | VedaMessageEndEvent
-  | VedaErrorEvent;
+export type SvedaStreamEvent =
+  | SvedaMessageStartEvent
+  | SvedaTextDeltaEvent
+  | SvedaReasoningDeltaEvent
+  | SvedaToolCallEvent
+  | SvedaToolResultEvent
+  | SvedaToolProgressEvent
+  | SvedaContextUsageEvent
+  | SvedaChatTitleEvent
+  | SvedaMaxStepsEvent
+  | SvedaMessageEndEvent
+  | SvedaErrorEvent;
 
-export interface VedaClientToolDefinition {
+export interface SvedaClientToolDefinition {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
 }
 
-export interface VedaChatMessage {
+export interface SvedaChatMessage {
   id?: string;
   role: 'user' | 'assistant' | 'system' | 'tool';
   content?: string;
   parts?: Array<Record<string, unknown>>;
 }
 
-export interface VedaStreamRequest {
-  messages: VedaChatMessage[];
+export interface SvedaStreamRequest {
+  messages: SvedaChatMessage[];
+  prompt?: string;
   chatId?: string;
   context?: Record<string, unknown>;
-  clientTools?: VedaClientToolDefinition[];
+  clientTools?: SvedaClientToolDefinition[];
   model?: string;
   provider?: string;
   options?: Record<string, unknown>;
 }
 
-export function isVedaStreamEvent(value: unknown): value is VedaStreamEvent {
+export function isSvedaStreamEvent(value: unknown): value is SvedaStreamEvent {
   if (!value || typeof value !== 'object') {
     return false;
   }
 
   const type = (value as { type?: unknown }).type;
-  return typeof type === 'string' && (VEDA_STREAM_EVENTS as readonly string[]).includes(type);
+  return typeof type === 'string' && (SVEDA_STREAM_EVENTS as readonly string[]).includes(type);
 }
 
-export function parseVedaStreamLine(line: string): VedaStreamEvent | null {
+export function parseSvedaStreamLine(line: string): SvedaStreamEvent | null {
   const trimmed = line.trim();
   if (!trimmed.startsWith('data:')) {
     return null;
@@ -167,7 +168,7 @@ export function parseVedaStreamLine(line: string): VedaStreamEvent | null {
 
   try {
     const parsed = JSON.parse(payload) as unknown;
-    if (isVedaStreamEvent(parsed)) {
+    if (isSvedaStreamEvent(parsed)) {
       return parsed;
     }
 

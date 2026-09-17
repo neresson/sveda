@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createVedaEmbedProtocol } from '../src/embed-protocol';
-import { connectVedaEmbed, type VedaEmbedConnection } from '../src/host-sdk';
+import { createSvedaEmbedProtocol } from '../src/embed-protocol';
+import { connectSvedaEmbed, type SvedaEmbedConnection } from '../src/host-sdk';
 
 const EMBED_ORIGIN = 'https://embed.example.com';
 
@@ -21,8 +21,8 @@ function dispatchToHost(data: unknown, origin: string, source: unknown): void {
   window.dispatchEvent(event);
 }
 
-describe('connectVedaEmbed', () => {
-  const connections: VedaEmbedConnection[] = [];
+describe('connectSvedaEmbed', () => {
+  const connections: SvedaEmbedConnection[] = [];
 
   afterEach(() => {
     while (connections.length > 0) {
@@ -31,11 +31,11 @@ describe('connectVedaEmbed', () => {
   });
 
   const connect = (
-    options: Partial<Parameters<typeof connectVedaEmbed>[1]> = {},
+    options: Partial<Parameters<typeof connectSvedaEmbed>[1]> = {},
     iframeSrc?: string
   ) => {
     const fake = createFakeIframe(iframeSrc);
-    const connection = connectVedaEmbed(fake.iframe, {
+    const connection = connectSvedaEmbed(fake.iframe, {
       allowedOrigins: [EMBED_ORIGIN],
       ...options,
     });
@@ -46,7 +46,7 @@ describe('connectVedaEmbed', () => {
   it('completes the ready/ack handshake', () => {
     const onReady = vi.fn();
     const { connection, contentWindow, posted } = connect({ onReady });
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
 
     expect(connection.ready).toBe(false);
 
@@ -55,7 +55,7 @@ describe('connectVedaEmbed', () => {
     expect(connection.ready).toBe(true);
     expect(onReady).toHaveBeenCalledTimes(1);
     expect(posted).toHaveLength(1);
-    expect(posted[0].data).toMatchObject({ type: 'ack', source: 'veda-embed', version: 1 });
+    expect(posted[0].data).toMatchObject({ type: 'ack', source: 'sveda-embed', version: 1 });
     expect(posted[0].origin).toBe(EMBED_ORIGIN);
   });
 
@@ -63,7 +63,7 @@ describe('connectVedaEmbed', () => {
     const onReady = vi.fn();
     const onNavigate = vi.fn();
     const { contentWindow } = connect({ onReady, onNavigate });
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
 
     dispatchToHost(protocol.encode('ready', { version: 1 }), 'https://evil.example.com', contentWindow);
     dispatchToHost(protocol.encode('navigate', { url: 'https://evil.example.com' }), 'https://evil.example.com', contentWindow);
@@ -75,7 +75,7 @@ describe('connectVedaEmbed', () => {
   it('ignores messages from other sources and foreign envelopes', () => {
     const onReady = vi.fn();
     const { contentWindow } = connect({ onReady });
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
 
     dispatchToHost(protocol.encode('ready', { version: 1 }), EMBED_ORIGIN, {});
     dispatchToHost({ type: 'ready' }, EMBED_ORIGIN, contentWindow);
@@ -86,7 +86,7 @@ describe('connectVedaEmbed', () => {
 
   it('queues host commands until the embed is ready, then flushes in order', () => {
     const { connection, contentWindow, posted } = connect();
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
 
     connection.setContext({ page: 'dashboard' });
     connection.open();
@@ -106,7 +106,7 @@ describe('connectVedaEmbed', () => {
 
   it('sends all host commands once ready', () => {
     const { connection, contentWindow, posted } = connect();
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
     dispatchToHost(protocol.encode('ready', { version: 1 }), EMBED_ORIGIN, contentWindow);
     posted.length = 0;
 
@@ -136,7 +136,7 @@ describe('connectVedaEmbed', () => {
     const onError = vi.fn();
     const onToolProgress = vi.fn();
     const { contentWindow } = connect({ onResize, onNavigate, onError, onToolProgress });
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
 
     dispatchToHost(protocol.encode('resize', { height: 480 }), EMBED_ORIGIN, contentWindow);
     dispatchToHost(protocol.encode('navigate', { url: '/courses/1' }), EMBED_ORIGIN, contentWindow);
@@ -156,7 +156,7 @@ describe('connectVedaEmbed', () => {
   it('stops listening after disconnect', () => {
     const onReady = vi.fn();
     const { connection, contentWindow, posted } = connect({ onReady });
-    const protocol = createVedaEmbedProtocol();
+    const protocol = createSvedaEmbedProtocol();
 
     connection.disconnect();
     dispatchToHost(protocol.encode('ready', { version: 1 }), EMBED_ORIGIN, contentWindow);

@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda models',
+    document_title: 'Sveda models',
     eyebrow: 'Catalog',
     title: 'Models.',
     subtitle: 'Add and edit providers this sidecar can call.',

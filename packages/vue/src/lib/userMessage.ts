@@ -1,4 +1,4 @@
-export type VedaUserMessageLike = {
+export type SvedaUserMessageLike = {
   role?: string;
   content?: string;
   attachmentNames?: string[];
@@ -12,7 +12,7 @@ export type VedaUserMessageLike = {
   }>;
 };
 
-export const getUserMessageText = (message: VedaUserMessageLike): string => {
+export const getUserMessageText = (message: SvedaUserMessageLike): string => {
   if (typeof message.content === 'string' && message.content.trim()) {
     return message.content.trim();
   }
@@ -28,7 +28,7 @@ export const getUserMessageText = (message: VedaUserMessageLike): string => {
     .join(' ');
 };
 
-export const getUserMessageAttachmentNames = (message: VedaUserMessageLike): string[] => {
+export const getUserMessageAttachmentNames = (message: SvedaUserMessageLike): string[] => {
   const raw = message.attachmentNames ?? message.metadata?.attachmentNames;
   if (Array.isArray(raw)) {
     return raw.map(name => String(name).trim()).filter(Boolean);
@@ -44,7 +44,7 @@ export const getUserMessageAttachmentNames = (message: VedaUserMessageLike): str
     .filter(Boolean);
 };
 
-export const userMessageHasVisibleContent = (message: VedaUserMessageLike): boolean => {
+export const userMessageHasVisibleContent = (message: SvedaUserMessageLike): boolean => {
   if (message.role !== 'user') {
     return false;
   }

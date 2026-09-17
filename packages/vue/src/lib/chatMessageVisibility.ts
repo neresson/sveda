@@ -1,7 +1,7 @@
-import { isAssistantToolPart, type VedaChatMessageLike } from './assistantMessage.js';
+import { isAssistantToolPart, type SvedaChatMessageLike } from './assistantMessage.js';
 
 export function messageHasVisibleAssistantContent(
-  message: VedaChatMessageLike | null | undefined
+  message: SvedaChatMessageLike | null | undefined
 ): boolean {
   if (!message || message.role !== 'assistant') {
     return false;
@@ -31,7 +31,7 @@ export function messageHasVisibleAssistantContent(
 
 export function shouldShowChatPendingIndicator(
   isThinking: boolean,
-  messages: VedaChatMessageLike[]
+  messages: SvedaChatMessageLike[]
 ): boolean {
   if (!isThinking) {
     return false;

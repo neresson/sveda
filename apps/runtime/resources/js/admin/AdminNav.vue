@@ -33,7 +33,7 @@ const hrefFor = (id) => {
 const itemClass = (id) =>
     id === props.current
         ? 'bg-ink px-4 py-3 font-mono text-[11px] tracking-[0.14em] text-canvas no-underline'
-        : 'veda-hover border border-grid px-4 py-3 font-mono text-[11px] tracking-[0.14em] text-ink no-underline hover:bg-grid';
+        : 'sveda-hover border border-grid px-4 py-3 font-mono text-[11px] tracking-[0.14em] text-ink no-underline hover:bg-grid';
 </script>
 
 <template>

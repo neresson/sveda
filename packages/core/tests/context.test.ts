@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { VedaContextRegistry } from '../src/context.js';
+import { SvedaContextRegistry } from '../src/context.js';
 
-describe('VedaContextRegistry', () => {
+describe('SvedaContextRegistry', () => {
   it('snapshots static values keyed by description', () => {
-    const registry = new VedaContextRegistry();
+    const registry = new SvedaContextRegistry();
     registry.register('current page', { type: 'course', id: 7 });
 
     expect(registry.snapshot()).toEqual({
@@ -12,7 +12,7 @@ describe('VedaContextRegistry', () => {
   });
 
   it('evaluates function values at snapshot time', () => {
-    const registry = new VedaContextRegistry();
+    const registry = new SvedaContextRegistry();
     let counter = 0;
     registry.register('counter', () => ++counter);
 
@@ -21,7 +21,7 @@ describe('VedaContextRegistry', () => {
   });
 
   it('unregisters via returned disposer', () => {
-    const registry = new VedaContextRegistry();
+    const registry = new SvedaContextRegistry();
     const dispose = registry.register('temp', 1);
     dispose();
 
@@ -29,7 +29,7 @@ describe('VedaContextRegistry', () => {
   });
 
   it('overrides duplicate descriptions', () => {
-    const registry = new VedaContextRegistry();
+    const registry = new SvedaContextRegistry();
     registry.register('page', 'a');
     registry.register('page', 'b');
 

@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda usage',
+    document_title: 'Sveda usage',
     eyebrow: 'Расход',
     title: 'Usage.',
     subtitle: 'Модели и запросы без истории чата.',

@@ -1,27 +1,27 @@
 import { inject, reactive, type App, type InjectionKey } from 'vue';
 
-export type VedaMessages = Record<string, string>;
+export type SvedaMessages = Record<string, string>;
 
-export interface VedaI18n {
+export interface SvedaI18n {
   readonly locale: string;
   t(key: string, params?: Record<string, unknown>): string;
   setLocale(locale: string): void;
-  extend(locale: string, messages: VedaMessages): void;
+  extend(locale: string, messages: SvedaMessages): void;
 }
 
-export interface VedaI18nOptions {
+export interface SvedaI18nOptions {
   locale?: string;
   fallbackLocale?: string;
-  messages?: Record<string, VedaMessages>;
+  messages?: Record<string, SvedaMessages>;
 }
 
-export const VedaI18nKey: InjectionKey<VedaI18n> = Symbol('veda-i18n');
+export const SvedaI18nKey: InjectionKey<SvedaI18n> = Symbol('sveda-i18n');
 
-export function createVedaI18n(options: VedaI18nOptions = {}): VedaI18n {
+export function createSvedaI18n(options: SvedaI18nOptions = {}): SvedaI18n {
   const state = reactive({
     locale: options.locale ?? 'en',
     fallbackLocale: options.fallbackLocale ?? 'en',
-    messages: { ...(options.messages ?? {}) } as Record<string, VedaMessages>,
+    messages: { ...(options.messages ?? {}) } as Record<string, SvedaMessages>,
   });
 
   const interpolate = (template: string, params?: Record<string, unknown>): string => {
@@ -51,18 +51,18 @@ export function createVedaI18n(options: VedaI18nOptions = {}): VedaI18n {
     setLocale(locale: string): void {
       state.locale = locale;
     },
-    extend(locale: string, messages: VedaMessages): void {
+    extend(locale: string, messages: SvedaMessages): void {
       state.messages[locale] = { ...(state.messages[locale] ?? {}), ...messages };
     },
   };
 }
 
-export function installVedaI18n(app: App, i18n: VedaI18n): void {
-  app.provide(VedaI18nKey, i18n);
+export function installSvedaI18n(app: App, i18n: SvedaI18n): void {
+  app.provide(SvedaI18nKey, i18n);
 }
 
-export function useVedaT(): (key: string, params?: Record<string, unknown>) => string {
-  const i18n = inject(VedaI18nKey);
+export function useSvedaT(): (key: string, params?: Record<string, unknown>) => string {
+  const i18n = inject(SvedaI18nKey);
 
   if (!i18n) {
     return (key: string) => key;

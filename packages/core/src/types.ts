@@ -1,15 +1,15 @@
-import type { VedaRenderHint, VedaToolTarget } from '@veda-ai/protocol';
+import type { SvedaRenderHint, SvedaToolTarget } from '@sveda-ai/protocol';
 
-export type VedaMessageRole = 'user' | 'assistant' | 'system' | 'tool';
+export type SvedaMessageRole = 'user' | 'assistant' | 'system' | 'tool';
 
-export type VedaMessagePart =
+export type SvedaMessagePart =
   | { type: 'text'; text: string }
   | { type: 'reasoning'; text: string }
   | {
       type: 'tool-call';
       toolCallId: string;
       toolName: string;
-      target: VedaToolTarget;
+      target: SvedaToolTarget;
       input: Record<string, unknown>;
     }
   | {
@@ -17,34 +17,34 @@ export type VedaMessagePart =
       toolCallId: string;
       toolName: string;
       output: unknown;
-      renderHint?: VedaRenderHint;
+      renderHint?: SvedaRenderHint;
       renderData?: Record<string, unknown>;
     }
   | { type: 'file'; name: string; mediaType?: string; url?: string };
 
-export interface VedaDisplayMessage {
+export interface SvedaDisplayMessage {
   id: string;
-  role: VedaMessageRole;
-  parts: VedaMessagePart[];
+  role: SvedaMessageRole;
+  parts: SvedaMessagePart[];
   createdAt?: string;
 }
 
-export type VedaSessionStatus = 'idle' | 'submitted' | 'streaming' | 'error';
+export type SvedaSessionStatus = 'idle' | 'submitted' | 'streaming' | 'error';
 
-export interface VedaChatHistorySummary {
+export interface SvedaChatHistorySummary {
   chatId: string;
   title: string;
   updatedAt?: string;
   [key: string]: unknown;
 }
 
-export interface VedaChatHistoryDetail extends VedaChatHistorySummary {
-  messages: VedaDisplayMessage[];
+export interface SvedaChatHistoryDetail extends SvedaChatHistorySummary {
+  messages: SvedaDisplayMessage[];
 }
 
-export function messageText(message: VedaDisplayMessage): string {
+export function messageText(message: SvedaDisplayMessage): string {
   return message.parts
-    .filter((part): part is Extract<VedaMessagePart, { type: 'text' }> => part.type === 'text')
+    .filter((part): part is Extract<SvedaMessagePart, { type: 'text' }> => part.type === 'text')
     .map(part => part.text)
     .join('');
 }

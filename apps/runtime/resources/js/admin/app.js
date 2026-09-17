@@ -28,10 +28,10 @@ const pages = {
 
 const AUTHENTICATED_PAGES = ['dashboard', 'usage', 'runtime', 'models', 'mcp', 'prompts', 'appearance', 'sources'];
 
-const el = document.getElementById('veda-admin');
+const el = document.getElementById('sveda-admin');
 
 if (el) {
-    const payload = window.VedaAdmin ?? {
+    const payload = window.SvedaAdmin ?? {
         page: el.dataset.page,
         csrf: el.dataset.csrf,
         saveUrl: el.dataset.saveUrl,
@@ -53,10 +53,10 @@ if (el) {
         }
 
         let chatPlugin = null;
-        const { createAdminVeda, requestAdminVedaSession } = await import('./createAdminVeda');
-        const session = await requestAdminVedaSession(payload.chat?.sessionUrl, payload.csrf);
+        const { createAdminSveda, requestAdminSvedaSession } = await import('./createAdminSveda');
+        const session = await requestAdminSvedaSession(payload.chat?.sessionUrl, payload.csrf);
         if (session) {
-            chatPlugin = createAdminVeda({
+            chatPlugin = createAdminSveda({
                 origin: session.origin,
                 token: session.token,
                 prefix: payload.chat?.prefix,

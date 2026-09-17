@@ -1,94 +1,95 @@
-:where(.veda-chat) {
-  --veda-background: 210 20% 98%;
-  --veda-foreground: 0 0% 3.9%;
-  --veda-card: 0 0% 100%;
-  --veda-card-foreground: 0 0% 3.9%;
-  --veda-popover: 0 0% 100%;
-  --veda-popover-foreground: 0 0% 3.9%;
-  --veda-primary: 0 0% 9%;
-  --veda-primary-foreground: 0 0% 98%;
-  --veda-secondary: 0 0% 92.1%;
-  --veda-secondary-foreground: 0 0% 9%;
-  --veda-muted: 0 0% 96.1%;
-  --veda-muted-foreground: 0 0% 45.1%;
-  --veda-accent: 0 0% 96.1%;
-  --veda-accent-foreground: 0 0% 9%;
-  --veda-destructive: 0 84.2% 60.2%;
-  --veda-destructive-foreground: 0 0% 98%;
-  --veda-border: 220 13% 91%;
-  --veda-input: 220 14% 96%;
-  --veda-ring: 0 0% 3.9%;
-  --veda-radius: 0;
-  --veda-brand: 0 0% 9%;
-  --veda-brand-foreground: 0 0% 98%;
-  --veda-surface: color-mix(in hsl, hsl(var(--veda-background)) 95%, hsl(0 0% 0%));
+:where(.sveda-chat, sveda-chat) {
+  --sveda-background: 210 20% 98%;
+  --sveda-foreground: 0 0% 3.9%;
+  --sveda-card: 0 0% 100%;
+  --sveda-card-foreground: 0 0% 3.9%;
+  --sveda-popover: 0 0% 100%;
+  --sveda-popover-foreground: 0 0% 3.9%;
+  --sveda-primary: 0 0% 9%;
+  --sveda-primary-foreground: 0 0% 98%;
+  --sveda-secondary: 0 0% 92.1%;
+  --sveda-secondary-foreground: 0 0% 9%;
+  --sveda-muted: 0 0% 96.1%;
+  --sveda-muted-foreground: 0 0% 45.1%;
+  --sveda-accent: 0 0% 96.1%;
+  --sveda-accent-foreground: 0 0% 9%;
+  --sveda-destructive: 0 84.2% 60.2%;
+  --sveda-destructive-foreground: 0 0% 98%;
+  --sveda-border: 220 13% 91%;
+  --sveda-input: 220 14% 96%;
+  --sveda-ring: 0 0% 3.9%;
+  --sveda-radius: 0;
+  --sveda-brand: 0 0% 9%;
+  --sveda-brand-foreground: 0 0% 98%;
+  --sveda-surface: color-mix(in hsl, hsl(var(--sveda-background)) 95%, hsl(0 0% 0%));
 }
 
-.veda-chat {
-  --color-background: hsl(var(--veda-background));
-  --color-foreground: hsl(var(--veda-foreground));
-  --color-card: hsl(var(--veda-card));
-  --color-card-foreground: hsl(var(--veda-card-foreground));
-  --color-popover: hsl(var(--veda-popover));
-  --color-popover-foreground: hsl(var(--veda-popover-foreground));
-  --color-primary: hsl(var(--veda-primary));
-  --color-primary-foreground: hsl(var(--veda-primary-foreground));
-  --color-secondary: hsl(var(--veda-secondary));
-  --color-secondary-foreground: hsl(var(--veda-secondary-foreground));
-  --color-muted: hsl(var(--veda-muted));
-  --color-muted-foreground: hsl(var(--veda-muted-foreground));
-  --color-accent: hsl(var(--veda-accent));
-  --color-accent-foreground: hsl(var(--veda-accent-foreground));
-  --color-destructive: hsl(var(--veda-destructive));
-  --color-destructive-foreground: hsl(var(--veda-destructive-foreground));
-  --color-border: hsl(var(--veda-border));
-  --color-input: hsl(var(--veda-input));
-  --color-ring: hsl(var(--veda-ring));
-  --color-brand-primary-purple: hsl(var(--veda-brand));
-  --color-brand-primary-purple-foreground: hsl(var(--veda-brand-foreground));
-  --radius: var(--veda-radius);
-  --radius-xs: var(--veda-radius);
-  --radius-sm: var(--veda-radius);
-  --radius-md: var(--veda-radius);
-  --radius-lg: var(--veda-radius);
-  --radius-xl: var(--veda-radius);
-  --radius-2xl: var(--veda-radius);
-  --radius-3xl: var(--veda-radius);
-  --radius-4xl: var(--veda-radius);
+.sveda-chat,
+sveda-chat {
+  --color-background: hsl(var(--sveda-background));
+  --color-foreground: hsl(var(--sveda-foreground));
+  --color-card: hsl(var(--sveda-card));
+  --color-card-foreground: hsl(var(--sveda-card-foreground));
+  --color-popover: hsl(var(--sveda-popover));
+  --color-popover-foreground: hsl(var(--sveda-popover-foreground));
+  --color-primary: hsl(var(--sveda-primary));
+  --color-primary-foreground: hsl(var(--sveda-primary-foreground));
+  --color-secondary: hsl(var(--sveda-secondary));
+  --color-secondary-foreground: hsl(var(--sveda-secondary-foreground));
+  --color-muted: hsl(var(--sveda-muted));
+  --color-muted-foreground: hsl(var(--sveda-muted-foreground));
+  --color-accent: hsl(var(--sveda-accent));
+  --color-accent-foreground: hsl(var(--sveda-accent-foreground));
+  --color-destructive: hsl(var(--sveda-destructive));
+  --color-destructive-foreground: hsl(var(--sveda-destructive-foreground));
+  --color-border: hsl(var(--sveda-border));
+  --color-input: hsl(var(--sveda-input));
+  --color-ring: hsl(var(--sveda-ring));
+  --color-brand-primary-purple: hsl(var(--sveda-brand));
+  --color-brand-primary-purple-foreground: hsl(var(--sveda-brand-foreground));
+  --radius: var(--sveda-radius);
+  --radius-xs: var(--sveda-radius);
+  --radius-sm: var(--sveda-radius);
+  --radius-md: var(--sveda-radius);
+  --radius-lg: var(--sveda-radius);
+  --radius-xl: var(--sveda-radius);
+  --radius-2xl: var(--sveda-radius);
+  --radius-3xl: var(--sveda-radius);
+  --radius-4xl: var(--sveda-radius);
 }
 
-:where(.dark .veda-chat, .veda-chat.dark) {
-  --veda-background: 222.2 47.4% 11.2%;
-  --veda-foreground: 210 40% 98%;
-  --veda-card: 222.2 47.4% 14%;
-  --veda-card-foreground: 210 40% 98%;
-  --veda-popover: 222.2 47.4% 14%;
-  --veda-popover-foreground: 210 40% 98%;
-  --veda-primary: 210 40% 98%;
-  --veda-primary-foreground: 222.2 47.4% 11.2%;
-  --veda-secondary: 217.2 32.6% 17.5%;
-  --veda-secondary-foreground: 210 40% 98%;
-  --veda-muted: 217.2 32.6% 17.5%;
-  --veda-muted-foreground: 215 20.2% 65.1%;
-  --veda-accent: 217.2 32.6% 17.5%;
-  --veda-accent-foreground: 210 40% 98%;
-  --veda-destructive: 0 62.8% 30.6%;
-  --veda-destructive-foreground: 210 40% 98%;
-  --veda-border: 217.2 32.6% 17.5%;
-  --veda-input: 217.2 32.6% 17.5%;
-  --veda-ring: 212.7 26.8% 83.9%;
-  --veda-brand: 210 40% 98%;
-  --veda-brand-foreground: 222.2 47.4% 11.2%;
+:where(.dark .sveda-chat, .dark sveda-chat, .sveda-chat.dark, sveda-chat.dark) {
+  --sveda-background: 222.2 47.4% 11.2%;
+  --sveda-foreground: 210 40% 98%;
+  --sveda-card: 222.2 47.4% 14%;
+  --sveda-card-foreground: 210 40% 98%;
+  --sveda-popover: 222.2 47.4% 14%;
+  --sveda-popover-foreground: 210 40% 98%;
+  --sveda-primary: 210 40% 98%;
+  --sveda-primary-foreground: 222.2 47.4% 11.2%;
+  --sveda-secondary: 217.2 32.6% 17.5%;
+  --sveda-secondary-foreground: 210 40% 98%;
+  --sveda-muted: 217.2 32.6% 17.5%;
+  --sveda-muted-foreground: 215 20.2% 65.1%;
+  --sveda-accent: 217.2 32.6% 17.5%;
+  --sveda-accent-foreground: 210 40% 98%;
+  --sveda-destructive: 0 62.8% 30.6%;
+  --sveda-destructive-foreground: 210 40% 98%;
+  --sveda-border: 217.2 32.6% 17.5%;
+  --sveda-input: 217.2 32.6% 17.5%;
+  --sveda-ring: 212.7 26.8% 83.9%;
+  --sveda-brand: 210 40% 98%;
+  --sveda-brand-foreground: 222.2 47.4% 11.2%;
 }
 
-.veda-chat-surface {
+.sveda-chat-surface {
   background-color: var(
-    --veda-surface,
-    color-mix(in hsl, hsl(var(--veda-background)) 95%, hsl(0 0% 0%))
+    --sveda-surface,
+    color-mix(in hsl, hsl(var(--sveda-background)) 95%, hsl(0 0% 0%))
   );
 }
 
-body.veda-chat-immersive-mode {
+body.sveda-chat-immersive-mode {
   overflow: hidden;
   overscroll-behavior: none;
 }

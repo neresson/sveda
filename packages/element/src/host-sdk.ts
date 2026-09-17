@@ -1,24 +1,24 @@
 import {
-  createVedaEmbedProtocol,
-  VEDA_EMBED_VERSION,
-  type VedaEmbedEnvelope,
-  type VedaEmbedErrorPayload,
-  type VedaEmbedNavigatePayload,
-  type VedaEmbedResizePayload,
-  type VedaEmbedTheme,
-  type VedaEmbedToolProgressPayload,
+  createSvedaEmbedProtocol,
+  SVEDA_EMBED_VERSION,
+  type SvedaEmbedEnvelope,
+  type SvedaEmbedErrorPayload,
+  type SvedaEmbedNavigatePayload,
+  type SvedaEmbedResizePayload,
+  type SvedaEmbedTheme,
+  type SvedaEmbedToolProgressPayload,
 } from './embed-protocol';
 
-export interface ConnectVedaEmbedOptions {
+export interface ConnectSvedaEmbedOptions {
   allowedOrigins: string[];
   onReady?: () => void;
   onResize?: (height: number) => void;
   onNavigate?: (url: string) => void;
-  onError?: (error: VedaEmbedErrorPayload) => void;
+  onError?: (error: SvedaEmbedErrorPayload) => void;
   onToolProgress?: (event: unknown) => void;
 }
 
-export interface VedaEmbedConnection {
+export interface SvedaEmbedConnection {
   readonly ready: boolean;
   setContext(context: Record<string, unknown>): void;
   setAuthToken(token: string | null): void;
@@ -26,7 +26,7 @@ export interface VedaEmbedConnection {
   close(): void;
   sendMessage(text: string, context?: Record<string, unknown>): void;
   setLocale(locale: string): void;
-  setTheme(theme: VedaEmbedTheme): void;
+  setTheme(theme: SvedaEmbedTheme): void;
   disconnect(): void;
 }
 
@@ -42,19 +42,19 @@ const resolveIframeOrigin = (iframe: HTMLIFrameElement): string | null => {
   }
 };
 
-export function connectVedaEmbed(
+export function connectSvedaEmbed(
   iframe: HTMLIFrameElement,
-  options: ConnectVedaEmbedOptions
-): VedaEmbedConnection {
-  const protocol = createVedaEmbedProtocol();
+  options: ConnectSvedaEmbedOptions
+): SvedaEmbedConnection {
+  const protocol = createSvedaEmbedProtocol();
   const allowedOrigins = new Set(options.allowedOrigins);
   const iframeOrigin = resolveIframeOrigin(iframe);
 
   let ready = false;
   let embedOrigin: string | null = null;
-  const queue: Array<VedaEmbedEnvelope> = [];
+  const queue: Array<SvedaEmbedEnvelope> = [];
 
-  const post = (envelope: VedaEmbedEnvelope): void => {
+  const post = (envelope: SvedaEmbedEnvelope): void => {
     const target = iframe.contentWindow;
     if (!target) {
       return;
@@ -93,29 +93,29 @@ export function connectVedaEmbed(
       case 'ready':
         ready = true;
         embedOrigin = event.origin;
-        post(protocol.encode('ack', { version: VEDA_EMBED_VERSION }));
+        post(protocol.encode('ack', { version: SVEDA_EMBED_VERSION }));
         flush();
         options.onReady?.();
         break;
       case 'resize': {
-        const payload = envelope.payload as VedaEmbedResizePayload;
+        const payload = envelope.payload as SvedaEmbedResizePayload;
         if (typeof payload?.height === 'number') {
           options.onResize?.(payload.height);
         }
         break;
       }
       case 'navigate': {
-        const payload = envelope.payload as VedaEmbedNavigatePayload;
+        const payload = envelope.payload as SvedaEmbedNavigatePayload;
         if (typeof payload?.url === 'string' && payload.url) {
           options.onNavigate?.(payload.url);
         }
         break;
       }
       case 'error':
-        options.onError?.(envelope.payload as VedaEmbedErrorPayload);
+        options.onError?.(envelope.payload as SvedaEmbedErrorPayload);
         break;
       case 'toolProgress':
-        options.onToolProgress?.((envelope.payload as VedaEmbedToolProgressPayload)?.event);
+        options.onToolProgress?.((envelope.payload as SvedaEmbedToolProgressPayload)?.event);
         break;
     }
   };

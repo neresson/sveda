@@ -7,7 +7,7 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: /^@veda-ai\/vue\/styles\.css(\?inline)?$/,
+        find: /^@sveda-ai\/vue\/styles\.css(\?inline)?$/,
         replacement: fileURLToPath(new URL('./tests/stubs/styles.css', import.meta.url)),
       },
     ],

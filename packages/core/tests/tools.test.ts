@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { VedaToolRegistry } from '../src/tools.js';
+import { SvedaToolRegistry } from '../src/tools.js';
 
-describe('VedaToolRegistry', () => {
+describe('SvedaToolRegistry', () => {
   it('registers and lists tool definitions without handlers', () => {
-    const registry = new VedaToolRegistry();
+    const registry = new SvedaToolRegistry();
     registry.register({
       name: 'confirm_action',
       description: 'Ask user to confirm',
@@ -21,7 +21,7 @@ describe('VedaToolRegistry', () => {
   });
 
   it('executes handlers with input and context', async () => {
-    const registry = new VedaToolRegistry();
+    const registry = new SvedaToolRegistry();
     registry.register({
       name: 'navigate',
       description: 'Navigate to a page',
@@ -39,7 +39,7 @@ describe('VedaToolRegistry', () => {
   });
 
   it('supports async handlers', async () => {
-    const registry = new VedaToolRegistry();
+    const registry = new SvedaToolRegistry();
     registry.register({
       name: 'slow',
       description: 'Slow tool',
@@ -56,14 +56,14 @@ describe('VedaToolRegistry', () => {
   });
 
   it('throws for unknown tools', async () => {
-    const registry = new VedaToolRegistry();
+    const registry = new SvedaToolRegistry();
     await expect(
       registry.execute('missing', {}, { chatId: 'c', toolCallId: 't' })
     ).rejects.toThrow('Unknown frontend tool: missing');
   });
 
   it('unregisters via returned disposer', () => {
-    const registry = new VedaToolRegistry();
+    const registry = new SvedaToolRegistry();
     const dispose = registry.register({
       name: 'temp',
       description: 'Temporary',

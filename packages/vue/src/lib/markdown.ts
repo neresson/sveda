@@ -1,7 +1,7 @@
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import { Marked, Renderer } from 'marked';
-import type { VedaResourceLink } from './assistantMessage.js';
+import type { SvedaResourceLink } from './assistantMessage.js';
 
 const escapeHtml = (value: string): string =>
   value
@@ -21,7 +21,7 @@ renderer.code = ({ text, lang }): string => {
 const markedInstance = new Marked({ gfm: true, breaks: true });
 markedInstance.use({ renderer });
 
-export function injectResourceLinks(html: string, resources: VedaResourceLink[]): string {
+export function injectResourceLinks(html: string, resources: SvedaResourceLink[]): string {
   if (!Array.isArray(resources) || resources.length === 0) {
     return html;
   }
@@ -46,12 +46,12 @@ export function injectResourceLinks(html: string, resources: VedaResourceLink[])
   return html;
 }
 
-export interface VedaMarkdownOptions {
-  resources?: VedaResourceLink[];
+export interface SvedaMarkdownOptions {
+  resources?: SvedaResourceLink[];
   injectResources?: boolean;
 }
 
-export function renderMarkdown(text: string, options: VedaMarkdownOptions = {}): string {
+export function renderMarkdown(text: string, options: SvedaMarkdownOptions = {}): string {
   const body = text || '';
   if (!body.trim()) {
     return '';

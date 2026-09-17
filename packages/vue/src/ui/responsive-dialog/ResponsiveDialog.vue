@@ -19,7 +19,7 @@ const updateOpen = (value) => {
 
 <template>
   <Sheet v-if="isMobile" :open="open" @update:open="updateOpen">
-    <SheetContent side="bottom" class="rounded-t-[var(--veda-radius)] max-h-[90vh] overflow-y-auto">
+    <SheetContent side="bottom" class="rounded-t-[var(--sveda-radius)] max-h-[90vh] overflow-y-auto">
       <SheetHeader>
         <SheetTitle>
           <slot name="title" />

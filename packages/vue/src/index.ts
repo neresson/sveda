@@ -1,138 +1,141 @@
-export * from '@veda-ai/core';
+export * from '@sveda-ai/core';
 
 export {
   default,
-  createVeda,
-  useVedaClient,
-  useVedaConfig,
-  VedaClientKey,
-  VedaConfigKey,
+  createSveda,
+  useSvedaClient,
+  useSvedaConfig,
+  SvedaClientKey,
+  SvedaConfigKey,
+  SvedaHostEmbedKey,
+  SvedaFillHostKey,
+  SvedaHideLauncherKey,
 } from './plugin';
 export type {
-  VedaPluginOptions,
-  VedaPlugin,
-  VedaConfig,
-  VedaBrand,
-  VedaModelOption,
-  VedaQuickPrompt,
+  SvedaPluginOptions,
+  SvedaPlugin,
+  SvedaConfig,
+  SvedaBrand,
+  SvedaModelOption,
+  SvedaQuickPrompt,
 } from './plugin';
 
 export {
-  applyVedaAppearance,
+  applySvedaAppearance,
   buildAppearanceCss,
   formatRadiusPx,
   hexToHsl,
   hslToHex,
-  isVedaHsl,
+  isSvedaHsl,
   parseRadiusPx,
-  resolveVedaAppearance,
-  sanitizeVedaLauncher,
-  sanitizeVedaLauncherImage,
-  sanitizeVedaRadius,
-  sanitizeVedaTheme,
-  useVedaLauncher,
-  vedaLauncher,
-  VEDA_APPEARANCE_PRESET_IDS,
-  VEDA_APPEARANCE_PRESETS,
-  VEDA_APPEARANCE_STYLE_ID,
-  VEDA_DEFAULT_LAUNCHER_ICON,
-  VEDA_LAUNCHER_ICON_IDS,
-  VEDA_LAUNCHER_IMAGE_MAX_BYTES,
-  VEDA_LAUNCHER_IMAGE_MAX_CHARS,
-  VEDA_TOKEN_KEYS,
+  resolveSvedaAppearance,
+  sanitizeSvedaLauncher,
+  sanitizeSvedaLauncherImage,
+  sanitizeSvedaRadius,
+  sanitizeSvedaTheme,
+  useSvedaLauncher,
+  svedaLauncher,
+  SVEDA_APPEARANCE_PRESET_IDS,
+  SVEDA_APPEARANCE_PRESETS,
+  SVEDA_APPEARANCE_STYLE_ID,
+  SVEDA_DEFAULT_LAUNCHER_ICON,
+  SVEDA_LAUNCHER_ICON_IDS,
+  SVEDA_LAUNCHER_IMAGE_MAX_BYTES,
+  SVEDA_LAUNCHER_IMAGE_MAX_CHARS,
+  SVEDA_TOKEN_KEYS,
 } from './appearance';
 export type {
-  VedaAppearance,
-  VedaAppearanceLauncher,
-  VedaAppearancePresetId,
-  VedaAppearanceTheme,
-  VedaAppearanceTokens,
-  VedaLauncherIconId,
-  VedaTokenKey,
+  SvedaAppearance,
+  SvedaAppearanceLauncher,
+  SvedaAppearancePresetId,
+  SvedaAppearanceTheme,
+  SvedaAppearanceTokens,
+  SvedaLauncherIconId,
+  SvedaTokenKey,
 } from './appearance';
-export { vedaLauncherIconComponent, vedaLauncherIconMap } from './launcherIcons';
+export { svedaLauncherIconComponent, svedaLauncherIconMap } from './launcherIcons';
 
-export { createVedaI18n, installVedaI18n, useVedaT, VedaI18nKey } from './i18n/index';
-export type { VedaI18n, VedaI18nOptions, VedaMessages } from './i18n/index';
+export { createSvedaI18n, installSvedaI18n, useSvedaT, SvedaI18nKey } from './i18n/index';
+export type { SvedaI18n, SvedaI18nOptions, SvedaMessages } from './i18n/index';
 
-export { default as VedaChat } from './components/shell/VedaChat.vue';
+export { default as SvedaChat } from './components/shell/SvedaChat.vue';
 export { default as Toaster } from './ui/toast/Toaster.vue';
-export { default as VedaToolbar } from './components/shell/VedaToolbar.vue';
-export { default as VedaTabs } from './components/shell/VedaTabs.vue';
-export { default as VedaLandingView } from './components/shell/VedaLandingView.vue';
-export { default as VedaInputSection } from './components/shell/VedaInputSection.vue';
-export { default as VedaModelControls } from './components/shell/VedaModelControls.vue';
-export { default as VedaModelSelect } from './components/shell/VedaModelSelect.vue';
-export { default as VedaQuickPrompts } from './components/shell/VedaQuickPrompts.vue';
-export { default as VedaHistorySheet } from './components/shell/VedaHistorySheet.vue';
-export { default as VedaHistorySidebar } from './components/shell/VedaHistorySidebar.vue';
-export { default as VedaAgentTasksPanel } from './components/shell/VedaAgentTasksPanel.vue';
-export { default as VedaAgentCompletedNotice } from './components/shell/VedaAgentCompletedNotice.vue';
-export { default as VedaMaxStepsNotice } from './components/shell/VedaMaxStepsNotice.vue';
-export { default as VedaContextUsageBar } from './components/shell/VedaContextUsageBar.vue';
-export { default as VedaResizeHandles } from './components/shell/VedaResizeHandles.vue';
-export { default as VedaMinimizedTrigger } from './components/shell/VedaMinimizedTrigger.vue';
+export { default as SvedaToolbar } from './components/shell/SvedaToolbar.vue';
+export { default as SvedaTabs } from './components/shell/SvedaTabs.vue';
+export { default as SvedaLandingView } from './components/shell/SvedaLandingView.vue';
+export { default as SvedaInputSection } from './components/shell/SvedaInputSection.vue';
+export { default as SvedaModelControls } from './components/shell/SvedaModelControls.vue';
+export { default as SvedaModelSelect } from './components/shell/SvedaModelSelect.vue';
+export { default as SvedaQuickPrompts } from './components/shell/SvedaQuickPrompts.vue';
+export { default as SvedaHistorySheet } from './components/shell/SvedaHistorySheet.vue';
+export { default as SvedaHistorySidebar } from './components/shell/SvedaHistorySidebar.vue';
+export { default as SvedaAgentTasksPanel } from './components/shell/SvedaAgentTasksPanel.vue';
+export { default as SvedaAgentCompletedNotice } from './components/shell/SvedaAgentCompletedNotice.vue';
+export { default as SvedaMaxStepsNotice } from './components/shell/SvedaMaxStepsNotice.vue';
+export { default as SvedaContextUsageBar } from './components/shell/SvedaContextUsageBar.vue';
+export { default as SvedaResizeHandles } from './components/shell/SvedaResizeHandles.vue';
+export { default as SvedaMinimizedTrigger } from './components/shell/SvedaMinimizedTrigger.vue';
 
-export { useVedaChat } from './composables/useVedaChat';
-export type { VedaChatHistory, VedaChatState } from './composables/useVedaChat';
-export { useVedaStreaming } from './composables/useVedaStreaming';
+export { useSvedaChat } from './composables/useSvedaChat';
+export type { SvedaChatHistory, SvedaChatState } from './composables/useSvedaChat';
+export { useSvedaStreaming } from './composables/useSvedaStreaming';
 export type {
-  VedaStreamingStore,
-  VedaStreamingOptions,
-  VedaSendPayload,
-} from './composables/useVedaStreaming';
+  SvedaStreamingStore,
+  SvedaStreamingOptions,
+  SvedaSendPayload,
+} from './composables/useSvedaStreaming';
 export {
-  useVedaChatLayout,
-  VEDA_CHAT_LAYOUT_MIN_WIDTH,
-  VEDA_CHAT_LAYOUT_MIN_HEIGHT,
-  VEDA_CHAT_LAYOUT_MAX_WIDTH,
-  VEDA_CHAT_LAYOUT_MAX_HEIGHT,
-  VEDA_CHAT_MAIN_CONTENT_MIN_WIDTH,
-} from './composables/useVedaChatLayout';
-export type { VedaChatViewMode } from './composables/useVedaChatLayout';
-export { useVedaAgentTasks } from './composables/useVedaAgentTasks';
+  useSvedaChatLayout,
+  SVEDA_CHAT_LAYOUT_MIN_WIDTH,
+  SVEDA_CHAT_LAYOUT_MIN_HEIGHT,
+  SVEDA_CHAT_LAYOUT_MAX_WIDTH,
+  SVEDA_CHAT_LAYOUT_MAX_HEIGHT,
+  SVEDA_CHAT_MAIN_CONTENT_MIN_WIDTH,
+} from './composables/useSvedaChatLayout';
+export type { SvedaChatViewMode } from './composables/useSvedaChatLayout';
+export { useSvedaAgentTasks } from './composables/useSvedaAgentTasks';
 export type {
-  VedaAgentTaskItem,
-  VedaAgentTasksState,
-  VedaAgentTasksPayload,
-} from './composables/useVedaAgentTasks';
-export { useVedaChatPage } from './composables/useVedaChatPage';
-export type { VedaChatPageOptions, VedaChatPageRefs } from './composables/useVedaChatPage';
-export { useVedaMessaging } from './composables/useVedaMessaging';
-export { useVedaDocuments } from './composables/useVedaDocuments';
-export type { VedaExtractedDocumentItem } from './composables/useVedaDocuments';
-export { useVedaModel } from './composables/useVedaModel';
-export type { VedaChatModelOption } from './composables/useVedaModel';
-export { useVedaMaxStepsContinue } from './composables/useVedaMaxStepsContinue';
-export type { VedaMaxStepsReachedData } from './composables/useVedaMaxStepsContinue';
-export { useVedaPrompts } from './composables/useVedaPrompts';
-export type { VedaQuickPromptItem } from './composables/useVedaPrompts';
-export { useVedaScroll } from './composables/useVedaScroll';
-export type { VedaScrollContainer } from './composables/useVedaScroll';
-export { useVedaShell } from './composables/useVedaShell';
-export type { VedaBrandInfo } from './composables/useVedaShell';
-export { useVedaContextWindow, VEDA_CHAT_MAX_CONTEXT_TOKENS } from './composables/useVedaContextWindow';
-export { useVedaBootstrap } from './composables/useVedaBootstrap';
-export { useVedaReadable } from './composables/useVedaReadable';
-export { useVedaTool } from './composables/useVedaTool';
-export type { UseVedaToolOptions } from './composables/useVedaTool';
+  SvedaAgentTaskItem,
+  SvedaAgentTasksState,
+  SvedaAgentTasksPayload,
+} from './composables/useSvedaAgentTasks';
+export { useSvedaChatPage } from './composables/useSvedaChatPage';
+export type { SvedaChatPageOptions, SvedaChatPageRefs } from './composables/useSvedaChatPage';
+export { useSvedaMessaging } from './composables/useSvedaMessaging';
+export { useSvedaDocuments } from './composables/useSvedaDocuments';
+export type { SvedaExtractedDocumentItem } from './composables/useSvedaDocuments';
+export { useSvedaModel } from './composables/useSvedaModel';
+export type { SvedaChatModelOption } from './composables/useSvedaModel';
+export { useSvedaMaxStepsContinue } from './composables/useSvedaMaxStepsContinue';
+export type { SvedaMaxStepsReachedData } from './composables/useSvedaMaxStepsContinue';
+export { useSvedaPrompts } from './composables/useSvedaPrompts';
+export type { SvedaQuickPromptItem } from './composables/useSvedaPrompts';
+export { useSvedaScroll } from './composables/useSvedaScroll';
+export type { SvedaScrollContainer } from './composables/useSvedaScroll';
+export { useSvedaShell } from './composables/useSvedaShell';
+export type { SvedaBrandInfo } from './composables/useSvedaShell';
+export { useSvedaContextWindow, SVEDA_CHAT_MAX_CONTEXT_TOKENS } from './composables/useSvedaContextWindow';
+export { useSvedaBootstrap } from './composables/useSvedaBootstrap';
+export { useSvedaReadable } from './composables/useSvedaReadable';
+export { useSvedaTool } from './composables/useSvedaTool';
+export type { UseSvedaToolOptions } from './composables/useSvedaTool';
 
 export { isNewChatPlaceholder, buildChatTabTitleMap } from './lib/chatTabs';
-export type { VedaTabChat } from './lib/chatTabs';
+export type { SvedaTabChat } from './lib/chatTabs';
 export { isChatTitlePlaceholder, deriveProvisionalChatTitle } from './lib/chatTitle';
 export {
-  VEDA_CHAT_MINIMIZED_STORAGE_KEY,
+  SVEDA_CHAT_MINIMIZED_STORAGE_KEY,
   readPersistedMinimized,
   writePersistedMinimized,
 } from './lib/chatUiStorage';
-export { humanizeModelId, getVedaModelDisplayName } from './lib/modelLabels';
+export { humanizeModelId, getSvedaModelDisplayName } from './lib/modelLabels';
 export { finalizeMessagesForDisplay } from './lib/finalizeMessages';
-export type { VedaFinalizableMessage } from './lib/finalizeMessages';
+export type { SvedaFinalizableMessage } from './lib/finalizeMessages';
 export {
   getUserMessageText,
   getUserMessageAttachmentNames,
   userMessageHasVisibleContent,
 } from './lib/userMessage';
-export type { VedaUserMessageLike } from './lib/userMessage';
+export type { SvedaUserMessageLike } from './lib/userMessage';
 
-export const VEDA_VUE_VERSION = '0.1.0';
+export const SVEDA_VUE_VERSION = '0.1.0';

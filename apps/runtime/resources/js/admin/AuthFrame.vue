@@ -11,7 +11,7 @@ defineProps({
 
 <template>
     <main class="relative flex h-dvh overflow-hidden border border-ink max-lg:flex-col">
-        <div class="veda-grid pointer-events-none absolute inset-0"></div>
+        <div class="sveda-grid pointer-events-none absolute inset-0"></div>
         <div
             v-if="variant === 'login'"
             class="pointer-events-none absolute -bottom-16 -left-16 size-[280px] rotate-45 border border-ink max-md:hidden"

@@ -1,55 +1,49 @@
 {
-  "name": "@veda-ai/element",
+  "name": "@sveda-ai/element",
   "version": "0.1.0",
   "type": "module",
   "license": "MIT",
+  "description": "Web component <sveda-chat> for embedding Sveda without a frontend framework.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neresson/sveda.git",
+    "directory": "packages/element"
+  },
+  "homepage": "https://github.com/neresson/sveda/tree/main/packages/element",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
-    },
-    "./define": {
-      "types": "./src/define.ts",
-      "import": "./src/define.ts"
     }
   },
   "publishConfig": {
-    "main": "./dist/index.js",
+    "access": "public",
+    "main": "./dist/sveda-chat.js",
     "types": "./dist/index.d.ts",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
+        "import": "./dist/sveda-chat.js"
       },
-      "./define": {
-        "types": "./dist/define.d.ts",
-        "import": "./dist/define.js"
-      }
+      "./sveda-chat.css": "./dist/sveda-chat.css"
     }
   },
-  "files": ["dist", "src"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "vite build && vue-tsc -p tsconfig.json --emitDeclarationOnly",
-    "test": "vitest run",
-    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
+    "build": "vite build && node scripts/write-sveda-chat-css.mjs && node scripts/copy-npm-dist.mjs",
+    "test": "node --test src/element.test.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo 'no lint configured'"
   },
-  "dependencies": {
-    "@veda-ai/core": "workspace:*",
-    "@veda-ai/vue": "workspace:*"
-  },
-  "peerDependencies": {
-    "vue": "^3.5.0"
-  },
   "devDependencies": {
+    "@sveda-ai/vue": "workspace:*",
     "@vitejs/plugin-vue": "^5.2.1",
-    "happy-dom": "^20.14.5",
     "typescript": "^5.8.2",
     "vite": "^6.2.0",
-    "vitest": "^4.1.4",
-    "vue": "^3.5.13",
-    "vue-tsc": "^2.2.4"
+    "vue": "^3.5.13"
   }
 }

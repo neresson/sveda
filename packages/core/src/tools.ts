@@ -1,24 +1,24 @@
-import type { VedaClientToolDefinition } from '@veda-ai/protocol';
+import type { SvedaClientToolDefinition } from '@sveda-ai/protocol';
 
-export interface VedaFrontendToolContext {
+export interface SvedaFrontendToolContext {
   chatId: string;
   toolCallId: string;
 }
 
-export interface VedaFrontendTool {
+export interface SvedaFrontendTool {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
   handler: (
     input: Record<string, unknown>,
-    context: VedaFrontendToolContext
+    context: SvedaFrontendToolContext
   ) => unknown | Promise<unknown>;
 }
 
-export class VedaToolRegistry {
-  private tools = new Map<string, VedaFrontendTool>();
+export class SvedaToolRegistry {
+  private tools = new Map<string, SvedaFrontendTool>();
 
-  register(tool: VedaFrontendTool): () => void {
+  register(tool: SvedaFrontendTool): () => void {
     this.tools.set(tool.name, tool);
 
     return () => this.unregister(tool.name);
@@ -32,11 +32,11 @@ export class VedaToolRegistry {
     return this.tools.has(name);
   }
 
-  get(name: string): VedaFrontendTool | undefined {
+  get(name: string): SvedaFrontendTool | undefined {
     return this.tools.get(name);
   }
 
-  list(): VedaClientToolDefinition[] {
+  list(): SvedaClientToolDefinition[] {
     return [...this.tools.values()].map(tool => ({
       name: tool.name,
       description: tool.description,
@@ -47,11 +47,11 @@ export class VedaToolRegistry {
   async execute(
     name: string,
     input: Record<string, unknown>,
-    context: VedaFrontendToolContext
+    context: SvedaFrontendToolContext
   ): Promise<unknown> {
     const tool = this.tools.get(name);
     if (!tool) {
-      throw new Error(`[veda] Unknown frontend tool: ${name}`);
+      throw new Error(`[sveda] Unknown frontend tool: ${name}`);
     }
 
     return tool.handler(input, context);

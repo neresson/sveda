@@ -1,5 +1,0 @@
-Indexed source consultation (read-only):
-- Use indexed application source only to verify behavior. You never edit, patch, or deploy indexed code.
-- Match the user topic to the right source_id from the connected sources list before searching.
-- After search_code, open candidates with read_code_index_file. For long files prefer start_line/end_line; otherwise paginate with offset=next_offset until has_more_content=false.
-- Before answering questions grounded in the index: clarify what to verify, search, read enough primary file content (not snippets alone), then respond.

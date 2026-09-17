@@ -1,4 +1,4 @@
-export type VedaFinalizableMessage = {
+export type SvedaFinalizableMessage = {
   parts?: Array<{
     type?: string;
     state?: string;
@@ -29,7 +29,7 @@ const isToolPart = (part: { type?: string } | undefined): boolean =>
   part?.type === 'dynamic-tool' ||
   (typeof part?.type === 'string' && part.type.startsWith('tool-'));
 
-function finalizeActivity<T extends VedaFinalizableMessage>(message: T): T {
+function finalizeActivity<T extends SvedaFinalizableMessage>(message: T): T {
   if (!message.activity) {
     return message;
   }
@@ -49,7 +49,7 @@ function finalizeActivity<T extends VedaFinalizableMessage>(message: T): T {
   return { ...message, activity };
 }
 
-function finalizeParts<T extends VedaFinalizableMessage>(message: T): T {
+function finalizeParts<T extends SvedaFinalizableMessage>(message: T): T {
   if (!Array.isArray(message.parts)) {
     if (message.streaming === true) {
       return { ...message, streaming: false };
@@ -76,6 +76,6 @@ function finalizeParts<T extends VedaFinalizableMessage>(message: T): T {
   };
 }
 
-export function finalizeMessagesForDisplay<T extends VedaFinalizableMessage>(messages: T[]): T[] {
+export function finalizeMessagesForDisplay<T extends SvedaFinalizableMessage>(messages: T[]): T[] {
   return messages.map(message => finalizeActivity(finalizeParts(message)));
 }

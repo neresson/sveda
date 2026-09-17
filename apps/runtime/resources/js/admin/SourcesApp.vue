@@ -576,7 +576,7 @@ onUnmounted(() => {
             <div class="flex justify-end">
                 <button
                     type="submit"
-                    class="veda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
+                    class="sveda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
                     :disabled="saving || localAddBlocked"
                 >
                     {{ saving ? t('sources.creating') : t('sources.create') }}
@@ -607,7 +607,7 @@ onUnmounted(() => {
                     <div class="flex flex-wrap items-center gap-4">
                         <button
                             type="button"
-                            class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted"
+                            class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted"
                             @click="openEdit(source)"
                         >
                             {{ source.status === 'configuring' ? t('sources.configure_indexing') : t('sources.edit_details') }}
@@ -615,7 +615,7 @@ onUnmounted(() => {
                         <button
                             v-if="['indexing', 'pending', 'configuring'].includes(source.status)"
                             type="button"
-                            class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted"
+                            class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted"
                             @click="cancelIndexing(source.id)"
                         >
                             {{ t('sources.stop_indexing') }}
@@ -623,14 +623,14 @@ onUnmounted(() => {
                         <button
                             v-else
                             type="button"
-                            class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted"
+                            class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted"
                             @click="reindex(source.id)"
                         >
                             {{ ['failed', 'cancelled'].includes(source.status) ? t('sources.retry_indexing') : t('sources.reindex') }}
                         </button>
                         <button
                             type="button"
-                            class="veda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted"
+                            class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted"
                             @click="pendingDelete = source; deleteOpen = true"
                         >
                             {{ t('sources.delete') }}
@@ -710,7 +710,7 @@ onUnmounted(() => {
                     <button
                         v-if="editingIsConfiguring"
                         type="button"
-                        class="veda-hover bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40"
+                        class="sveda-hover bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40"
                         :disabled="saving"
                         @click="saveEdit(true)"
                     >
@@ -735,7 +735,7 @@ onUnmounted(() => {
                     </button>
                     <button
                         type="button"
-                        class="veda-hover bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80"
+                        class="sveda-hover bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80"
                         :disabled="saving"
                         @click="confirmDelete"
                     >

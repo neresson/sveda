@@ -1,0 +1,96 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/neresson/sveda-server
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 8787
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: sveda.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Production: point these at managed Postgres/Redis and keep the demo stores off.
+databaseUrl: ""
+redisUrl: ""
+existingSecret: ""
+
+postgresql:
+  enabled: false
+  username: sveda
+  password: sveda
+  database: sveda
+  persistence:
+    enabled: true
+    size: 8Gi
+
+redis:
+  enabled: false
+  persistence:
+    enabled: false
+    size: 1Gi
+
+env:
+  SVEDA_BIND: 0.0.0.0:8787
+  SVEDA_EMBED_ENABLED: "true"
+  SVEDA_CORS_ORIGINS: "*"
+
+secrets:
+  appKey: ""
+  adminApiKey: ""
+  hostApiKey: ""
+  deepseekApiKey: ""
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -2,15 +2,15 @@
 import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
-    applyVedaAppearance,
+    applySvedaAppearance,
     formatRadiusPx,
     parseRadiusPx,
-    sanitizeVedaLauncherImage,
-    VEDA_DEFAULT_LAUNCHER_ICON,
-    VEDA_LAUNCHER_ICON_IDS,
-    VEDA_LAUNCHER_IMAGE_MAX_BYTES,
-    vedaLauncherIconComponent,
-} from '@veda-ai/vue';
+    sanitizeSvedaLauncherImage,
+    SVEDA_DEFAULT_LAUNCHER_ICON,
+    SVEDA_LAUNCHER_ICON_IDS,
+    SVEDA_LAUNCHER_IMAGE_MAX_BYTES,
+    svedaLauncherIconComponent,
+} from '@sveda-ai/vue';
 import { useDocumentTitle } from './useDocumentTitle';
 
 const props = defineProps({
@@ -34,7 +34,7 @@ const lookPresets = [
     { id: 'rounded', color: 'forest', radius: '20px' },
 ];
 const colorIds = ['default', 'lms', 'ocean', 'forest', 'sunset', 'sand'];
-const launcherIcons = VEDA_LAUNCHER_ICON_IDS;
+const launcherIcons = SVEDA_LAUNCHER_ICON_IDS;
 const launcherImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const previewModes = ['light', 'dark'];
 
@@ -75,8 +75,8 @@ const fromDocument = (document) => {
         label: String(appearance.launcher?.label ?? ''),
         icon: launcherIcons.includes(appearance.launcher?.icon)
             ? appearance.launcher.icon
-            : VEDA_DEFAULT_LAUNCHER_ICON,
-        image: sanitizeVedaLauncherImage(appearance.launcher?.image),
+            : SVEDA_DEFAULT_LAUNCHER_ICON,
+        image: sanitizeSvedaLauncherImage(appearance.launcher?.image),
     };
 };
 
@@ -125,13 +125,13 @@ watch(
 watch(
     liveAppearance,
     (value) => {
-        applyVedaAppearance(value);
+        applySvedaAppearance(value);
     },
     { immediate: true, deep: true },
 );
 
 onUnmounted(() => {
-    applyVedaAppearance(savedAppearance.value);
+    applySvedaAppearance(savedAppearance.value);
 });
 
 const applyLook = (look) => {
@@ -169,14 +169,14 @@ const onLauncherImage = (event) => {
         return;
     }
 
-    if (file.size > VEDA_LAUNCHER_IMAGE_MAX_BYTES) {
+    if (file.size > SVEDA_LAUNCHER_IMAGE_MAX_BYTES) {
         error.value = t('appearance.launcher_image_size');
         return;
     }
 
     const reader = new FileReader();
     reader.onload = () => {
-        const result = typeof reader.result === 'string' ? sanitizeVedaLauncherImage(reader.result) : '';
+        const result = typeof reader.result === 'string' ? sanitizeSvedaLauncherImage(reader.result) : '';
         if (result === '') {
             error.value = t('appearance.launcher_image_type');
             return;
@@ -377,7 +377,7 @@ const save = async () => {
                             :title="id"
                             @click="selectLauncherIcon(id)"
                         >
-                            <component :is="vedaLauncherIconComponent(id)" class="h-5 w-5" />
+                            <component :is="svedaLauncherIconComponent(id)" class="h-5 w-5" />
                         </button>
                     </div>
                     <span class="font-mono text-[11px] text-muted">{{ t('appearance.launcher_icon_hint') }}</span>
@@ -418,7 +418,7 @@ const save = async () => {
             <div class="flex items-center gap-4">
                 <button
                     type="submit"
-                    class="veda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
+                    class="sveda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
                     :disabled="saving || !canSave"
                 >
                     {{ t('common.save') }}

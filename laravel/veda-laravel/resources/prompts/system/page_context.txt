@@ -1,2 +1,0 @@
-Page context:
-{{page_context_line}}

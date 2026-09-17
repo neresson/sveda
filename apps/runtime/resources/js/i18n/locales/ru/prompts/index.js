@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda prompts',
+    document_title: 'Sveda prompts',
     eyebrow: 'Голос',
     title: 'Промпты.',
     subtitle: 'Как агент здоровается и какие правила держит.',

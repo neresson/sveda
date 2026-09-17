@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda MCP',
+    document_title: 'Sveda MCP',
     eyebrow: 'Connectors',
     title: 'MCP.',
     subtitle: 'One mcp.json catalog. HTTP uses url and headers. Stdio uses command, args, env, and envFile. LMS is the lms server and takes the signed-in user token.',

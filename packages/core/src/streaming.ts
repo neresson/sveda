@@ -1,10 +1,10 @@
 import {
-  parseVedaStreamLine,
-  vercelDataPartToVedaEvent,
-  type VedaStreamEvent,
-} from '@veda-ai/protocol';
+  parseSvedaStreamLine,
+  vercelDataPartToSvedaEvent,
+  type SvedaStreamEvent,
+} from '@sveda-ai/protocol';
 
-export type VedaStreamProtocolMode = 'veda' | 'vercel';
+export type SvedaStreamProtocolMode = 'sveda' | 'vercel';
 
 async function* iterateStreamLines(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
   const reader = body.getReader();
@@ -37,7 +37,7 @@ async function* iterateStreamLines(body: ReadableStream<Uint8Array>): AsyncGener
   }
 }
 
-function parseVercelLine(line: string): VedaStreamEvent | null {
+function parseVercelLine(line: string): SvedaStreamEvent | null {
   const trimmed = line.trim();
   if (!trimmed.startsWith('data:')) {
     return null;
@@ -54,22 +54,22 @@ function parseVercelLine(line: string): VedaStreamEvent | null {
       return null;
     }
 
-    return vercelDataPartToVedaEvent(part as { type: string } & Record<string, unknown>);
+    return vercelDataPartToSvedaEvent(part as { type: string } & Record<string, unknown>);
   } catch {
     return null;
   }
 }
 
-export async function* iterateVedaStream(
+export async function* iterateSvedaStream(
   response: Response,
-  mode: VedaStreamProtocolMode = 'veda'
-): AsyncGenerator<VedaStreamEvent> {
+  mode: SvedaStreamProtocolMode = 'sveda'
+): AsyncGenerator<SvedaStreamEvent> {
   if (!response.body) {
-    throw new Error('[veda] Stream response has no body');
+    throw new Error('[sveda] Stream response has no body');
   }
 
   for await (const line of iterateStreamLines(response.body)) {
-    const event = mode === 'vercel' ? parseVercelLine(line) : parseVedaStreamLine(line);
+    const event = mode === 'vercel' ? parseVercelLine(line) : parseSvedaStreamLine(line);
     if (event) {
       yield event;
     }

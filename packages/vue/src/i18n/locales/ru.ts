@@ -1,6 +1,6 @@
-import type { VedaMessages } from '../index';
+import type { SvedaMessages } from '../index';
 
-const ru: VedaMessages = {
+const ru: SvedaMessages = {
   chatTitle: 'AI Ассистент',
   welcomeMessage: 'Привет! Я ваш AI-ассистент. Чем могу помочь?',
   newChat: 'Новый чат',

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { VedaClient } from '../src/client.js';
-import { messageText, type VedaDisplayMessage } from '../src/types.js';
+import { SvedaClient } from '../src/client.js';
+import { messageText, type SvedaDisplayMessage } from '../src/types.js';
 
 function sseResponse(lines: string[]): Response {
   const encoder = new TextEncoder();
@@ -19,7 +19,7 @@ function sseResponse(lines: string[]): Response {
   });
 }
 
-function lastAssistant(sessionMessages: VedaDisplayMessage[]): VedaDisplayMessage {
+function lastAssistant(sessionMessages: SvedaDisplayMessage[]): SvedaDisplayMessage {
   const message = sessionMessages[sessionMessages.length - 1];
   if (message.role !== 'assistant') {
     throw new Error('last message is not assistant');
@@ -27,7 +27,7 @@ function lastAssistant(sessionMessages: VedaDisplayMessage[]): VedaDisplayMessag
   return message;
 }
 
-describe('VedaChatSession', () => {
+describe('SvedaChatSession', () => {
   it('streams text deltas into the assistant message', async () => {
     const fetchFn = vi.fn(async () =>
       sseResponse([
@@ -38,7 +38,7 @@ describe('VedaChatSession', () => {
       ])
     ) as unknown as typeof fetch;
 
-    const client = new VedaClient({ endpoints: { stream: '/veda/stream' }, fetchFn });
+    const client = new SvedaClient({ endpoints: { stream: '/sveda/stream' }, fetchFn });
     const session = client.createSession('chat-1');
 
     await session.send('hi');
@@ -57,7 +57,7 @@ describe('VedaChatSession', () => {
       return sseResponse(['data: {"type":"message.end"}']);
     }) as unknown as typeof fetch;
 
-    const client = new VedaClient({ endpoints: { stream: '/veda/stream' }, fetchFn });
+    const client = new SvedaClient({ endpoints: { stream: '/sveda/stream' }, fetchFn });
     client.contextRegistry.register('page', { type: 'dashboard' });
     client.toolRegistry.register({
       name: 'confirm',
@@ -94,7 +94,7 @@ describe('VedaChatSession', () => {
       ]);
     }) as unknown as typeof fetch;
 
-    const client = new VedaClient({ endpoints: { stream: '/veda/stream' }, fetchFn });
+    const client = new SvedaClient({ endpoints: { stream: '/sveda/stream' }, fetchFn });
     client.toolRegistry.register({
       name: 'confirm',
       description: 'Confirm action',
@@ -133,7 +133,7 @@ describe('VedaChatSession', () => {
       ])
     ) as unknown as typeof fetch;
 
-    const client = new VedaClient({ endpoints: { stream: '/veda/stream' }, fetchFn });
+    const client = new SvedaClient({ endpoints: { stream: '/sveda/stream' }, fetchFn });
     const session = client.createSession('chat-events');
 
     const titleSpy = vi.fn();
@@ -156,20 +156,20 @@ describe('VedaChatSession', () => {
       return sseResponse(['data: {"type":"message.end"}']);
     }) as unknown as typeof fetch;
 
-    const vedaClient = new VedaClient({ endpoints: { stream: '/veda/stream' }, fetchFn });
-    await vedaClient.createSession().send('hi');
+    const svedaClient = new SvedaClient({ endpoints: { stream: '/sveda/stream' }, fetchFn });
+    await svedaClient.createSession().send('hi');
 
-    const vercelClient = new VedaClient({
-      endpoints: { stream: '/veda/stream' },
+    const vercelClient = new SvedaClient({
+      endpoints: { stream: '/sveda/stream' },
       protocolMode: 'vercel',
       fetchFn,
     });
     await vercelClient.createSession().send('hi');
 
-    expect(seenHeaders[0]).toMatchObject({ Accept: 'application/vnd.veda.stream+json' });
+    expect(seenHeaders[0]).toMatchObject({ Accept: 'application/vnd.sveda.stream+json' });
     expect(seenHeaders[1]).toMatchObject({
       Accept: 'text/event-stream',
-      'X-Veda-Protocol': 'vercel',
+      'X-Sveda-Protocol': 'vercel',
     });
   });
 
@@ -183,7 +183,7 @@ describe('VedaChatSession', () => {
       return new Response(stream, { status: 200 });
     }) as unknown as typeof fetch;
 
-    const client = new VedaClient({ endpoints: { stream: '/veda/stream' }, fetchFn });
+    const client = new SvedaClient({ endpoints: { stream: '/sveda/stream' }, fetchFn });
     const session = client.createSession('chat-abort');
 
     const promise = session.send('hi');
@@ -196,7 +196,7 @@ describe('VedaChatSession', () => {
   it('throws on non-ok responses and sets error status', async () => {
     const fetchFn = vi.fn(async () => new Response('nope', { status: 500 })) as unknown as typeof fetch;
 
-    const client = new VedaClient({ endpoints: { stream: '/veda/stream' }, fetchFn });
+    const client = new SvedaClient({ endpoints: { stream: '/sveda/stream' }, fetchFn });
     const session = client.createSession('chat-500');
     session.on('error', () => {});
 
@@ -205,7 +205,7 @@ describe('VedaChatSession', () => {
   });
 });
 
-describe('VedaClient history API', () => {
+describe('SvedaClient history API', () => {
   it('lists, loads, renames and deletes histories', async () => {
     const calls: Array<{ url: string; method: string }> = [];
     const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
@@ -223,8 +223,8 @@ describe('VedaClient history API', () => {
       return Response.json({});
     }) as unknown as typeof fetch;
 
-    const client = new VedaClient({
-      endpoints: { stream: '/veda/stream', histories: '/veda/histories' },
+    const client = new SvedaClient({
+      endpoints: { stream: '/sveda/stream', histories: '/sveda/histories' },
       fetchFn,
     });
 
@@ -234,10 +234,10 @@ describe('VedaClient history API', () => {
     await client.deleteHistory('c1');
 
     expect(calls).toEqual([
-      { url: '/veda/histories', method: 'GET' },
-      { url: '/veda/histories/c1', method: 'GET' },
-      { url: '/veda/histories/c1', method: 'PATCH' },
-      { url: '/veda/histories/c1', method: 'DELETE' },
+      { url: '/sveda/histories', method: 'GET' },
+      { url: '/sveda/histories/c1', method: 'GET' },
+      { url: '/sveda/histories/c1', method: 'PATCH' },
+      { url: '/sveda/histories/c1', method: 'DELETE' },
     ]);
   });
 
@@ -253,8 +253,8 @@ describe('VedaClient history API', () => {
       });
     }) as unknown as typeof fetch;
 
-    const client = new VedaClient({
-      endpoints: { stream: '/veda/stream', histories: '/veda/histories' },
+    const client = new SvedaClient({
+      endpoints: { stream: '/sveda/stream', histories: '/sveda/histories' },
       fetchFn,
     });
 
@@ -276,8 +276,8 @@ describe('VedaClient history API', () => {
     vi.stubGlobal('fetch', browserFetch);
 
     try {
-      const client = new VedaClient({
-        endpoints: { stream: '/veda/stream', histories: '/veda/histories' },
+      const client = new SvedaClient({
+        endpoints: { stream: '/sveda/stream', histories: '/sveda/histories' },
       });
 
       await expect(client.listHistories()).resolves.toEqual([]);

@@ -1,6 +1,6 @@
 import type { Config } from 'tailwindcss';
 
-const vedaColor = (token: string) => `hsl(var(--veda-${token}))`;
+const svedaColor = (token: string) => `hsl(var(--sveda-${token}))`;
 
 export default {
   darkMode: ['class'],
@@ -8,47 +8,47 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: 'var(--veda-radius)',
-        md: 'calc(var(--veda-radius) - 2px)',
-        sm: 'calc(var(--veda-radius) - 4px)',
+        lg: 'var(--sveda-radius)',
+        md: 'calc(var(--sveda-radius) - 2px)',
+        sm: 'calc(var(--sveda-radius) - 4px)',
       },
       colors: {
-        background: vedaColor('background'),
-        foreground: vedaColor('foreground'),
+        background: svedaColor('background'),
+        foreground: svedaColor('foreground'),
         card: {
-          DEFAULT: vedaColor('card'),
-          foreground: vedaColor('card-foreground'),
+          DEFAULT: svedaColor('card'),
+          foreground: svedaColor('card-foreground'),
         },
         popover: {
-          DEFAULT: vedaColor('popover'),
-          foreground: vedaColor('popover-foreground'),
+          DEFAULT: svedaColor('popover'),
+          foreground: svedaColor('popover-foreground'),
         },
         primary: {
-          DEFAULT: vedaColor('primary'),
-          foreground: vedaColor('primary-foreground'),
+          DEFAULT: svedaColor('primary'),
+          foreground: svedaColor('primary-foreground'),
         },
         secondary: {
-          DEFAULT: vedaColor('secondary'),
-          foreground: vedaColor('secondary-foreground'),
+          DEFAULT: svedaColor('secondary'),
+          foreground: svedaColor('secondary-foreground'),
         },
         muted: {
-          DEFAULT: vedaColor('muted'),
-          foreground: vedaColor('muted-foreground'),
+          DEFAULT: svedaColor('muted'),
+          foreground: svedaColor('muted-foreground'),
         },
         accent: {
-          DEFAULT: vedaColor('accent'),
-          foreground: vedaColor('accent-foreground'),
+          DEFAULT: svedaColor('accent'),
+          foreground: svedaColor('accent-foreground'),
         },
         destructive: {
-          DEFAULT: vedaColor('destructive'),
-          foreground: vedaColor('destructive-foreground'),
+          DEFAULT: svedaColor('destructive'),
+          foreground: svedaColor('destructive-foreground'),
         },
-        border: vedaColor('border'),
-        input: vedaColor('input'),
-        ring: vedaColor('ring'),
+        border: svedaColor('border'),
+        input: svedaColor('input'),
+        ring: svedaColor('ring'),
         brand: {
-          'primary-purple': vedaColor('brand'),
-          'primary-purple-foreground': vedaColor('brand-foreground'),
+          'primary-purple': svedaColor('brand'),
+          'primary-purple-foreground': svedaColor('brand-foreground'),
         },
       },
     },

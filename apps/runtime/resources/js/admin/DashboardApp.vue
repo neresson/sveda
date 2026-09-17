@@ -130,7 +130,7 @@ const extras = computed(() => [
                         :title="`${day.date}: ${formatNumber(day.requests)}`"
                     >
                         <div
-                            class="w-full veda-bar-y"
+                            class="w-full sveda-bar-y"
                             :class="Number(day.requests) > 0 ? 'bg-ink' : 'bg-grid'"
                             :style="{ height: barHeight(day.requests, requestMax) }"
                         ></div>
@@ -163,7 +163,7 @@ const extras = computed(() => [
                         class="flex h-full min-w-0 flex-1 items-end justify-center gap-px"
                         :title="`${day.date}: ${formatNumber(day.tokens_used)}`"
                     >
-                        <div class="veda-bar-y flex h-full w-full flex-col justify-end">
+                        <div class="sveda-bar-y flex h-full w-full flex-col justify-end">
                             <div
                                 v-if="hasUnsplit"
                                 class="w-full"

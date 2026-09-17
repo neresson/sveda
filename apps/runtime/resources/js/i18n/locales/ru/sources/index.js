@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda источники',
+    document_title: 'Sveda источники',
     eyebrow: 'Индекс кода',
     title: 'Источники.',
     subtitle: 'Проиндексируй локальную папку или Git-репозиторий по HTTPS — ассистент сможет искать по коду.',
@@ -7,7 +7,7 @@ export default {
     sources_list_title: 'Подключённые источники',
     sources_empty: 'Источников пока нет. Добавь локальную папку или Git-репозиторий.',
     name: 'Название',
-    name_placeholder: 'Напр. Veda runtime',
+    name_placeholder: 'Напр. Sveda runtime',
     ai_context_label: 'Контекст для ИИ',
     ai_context_hint:
         'Кратко опиши, что здесь лежит: продукт, модули, синонимы. Ассистент прочитает это до поиска.',
@@ -16,9 +16,9 @@ export default {
     provider_github_https: 'Git (HTTPS)',
     local_path: 'Абсолютный путь',
     local_path_placeholder: '/home/you/projects/app',
-    local_path_hint: 'Папка находится на машине, где запущена Veda, не в браузере.',
+    local_path_hint: 'Папка находится на машине, где запущена Sveda, не в браузере.',
     local_path_must_verify: 'Проверь путь или выбери папку, прежде чем добавлять источник.',
-    local_indexing_disabled: 'Локальные папки выключены. Поставь VEDA_CODE_INDEX_ALLOW_LOCAL_PATHS=true.',
+    local_indexing_disabled: 'Локальные папки выключены. Поставь SVEDA_CODE_INDEX_ALLOW_LOCAL_PATHS=true.',
     local_choose_folder: 'Обзор…',
     local_verify_path: 'Проверить путь',
     git_url: 'HTTPS URL клонирования',
@@ -59,7 +59,7 @@ export default {
     footprint_chunks: 'Фрагментов: {count}',
     footprint_estimated_cost: 'Оценка: ~{cost} ₽ (тариф {rate} ₽ / 1M токенов)',
     local_browse_title: 'Выбери папку',
-    local_browse_description: 'Папки находятся на машине, где запущена Veda. Выбери папку и подтверди.',
+    local_browse_description: 'Папки находятся на машине, где запущена Sveda. Выбери папку и подтверди.',
     local_browse_anchor_label: 'Начать с абсолютного пути',
     local_browse_anchor_placeholder: '/home/you/projects',
     local_browse_anchor_required: 'Введи абсолютный путь.',
@@ -83,7 +83,7 @@ export default {
     indexing_cancelled_message: 'Индексация остановлена.',
     index_errors: {
         local_paths_disabled_set_allow_local_paths_true:
-            'Индексация локальной папки выключена. Поставь VEDA_CODE_INDEX_ALLOW_LOCAL_PATHS=true.',
+            'Индексация локальной папки выключена. Поставь SVEDA_CODE_INDEX_ALLOW_LOCAL_PATHS=true.',
         local_path_not_found: 'Такого пути нет или это не каталог.',
         workspace_not_resolved: 'Не удалось подготовить рабочую директорию.',
         workspace_not_ready: 'Рабочая копия ещё не готова. Подожди несколько секунд и попробуй снова.',

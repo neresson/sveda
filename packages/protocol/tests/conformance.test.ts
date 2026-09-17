@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
-  VEDA_PROTOCOL_VERSION,
-  VEDA_STREAM_EVENTS,
-  encodeVedaStreamEvent,
-  isVedaStreamEvent,
-  parseVedaStreamLine,
-  vedaEventToVercelDataPart,
-  vercelDataPartToVedaEvent,
-  type VedaStreamEvent,
+  SVEDA_PROTOCOL_VERSION,
+  SVEDA_STREAM_EVENTS,
+  encodeSvedaStreamEvent,
+  isSvedaStreamEvent,
+  parseSvedaStreamLine,
+  svedaEventToVercelDataPart,
+  vercelDataPartToSvedaEvent,
+  type SvedaStreamEvent,
 } from '../src/index.js';
 import streamEventSchema from '../schemas/stream-event.schema.json' with { type: 'json' };
 
-const sampleEvents: VedaStreamEvent[] = [
+const sampleEvents: SvedaStreamEvent[] = [
   { type: 'message.start', chatId: 'c1', messageId: 'm1' },
   { type: 'text.delta', delta: 'Hello' },
   { type: 'reasoning.delta', delta: 'thinking…' },
@@ -51,12 +51,12 @@ const sampleEvents: VedaStreamEvent[] = [
 
 describe('protocol constants', () => {
   it('declares version 1.0', () => {
-    expect(VEDA_PROTOCOL_VERSION).toBe('1.0');
+    expect(SVEDA_PROTOCOL_VERSION).toBe('1.0');
   });
 
   it('covers every event type in the JSON schema', () => {
     const schemaConsts = JSON.stringify(streamEventSchema);
-    for (const eventType of VEDA_STREAM_EVENTS) {
+    for (const eventType of SVEDA_STREAM_EVENTS) {
       expect(schemaConsts).toContain(`"const":"${eventType}"`);
     }
   });
@@ -64,32 +64,32 @@ describe('protocol constants', () => {
 
 describe('SSE encode/parse round-trip', () => {
   it.each(sampleEvents)('round-trips %s', event => {
-    const encoded = encodeVedaStreamEvent(event);
+    const encoded = encodeSvedaStreamEvent(event);
     expect(encoded.startsWith('data: ')).toBe(true);
     expect(encoded.endsWith('\n\n')).toBe(true);
 
-    const parsed = parseVedaStreamLine(encoded);
+    const parsed = parseSvedaStreamLine(encoded);
     expect(parsed).toEqual(event);
   });
 
   it('ignores non-data lines and [DONE]', () => {
-    expect(parseVedaStreamLine('event: message')).toBeNull();
-    expect(parseVedaStreamLine('data: [DONE]')).toBeNull();
-    expect(parseVedaStreamLine('')).toBeNull();
-    expect(parseVedaStreamLine('data: {invalid json')).toBeNull();
+    expect(parseSvedaStreamLine('event: message')).toBeNull();
+    expect(parseSvedaStreamLine('data: [DONE]')).toBeNull();
+    expect(parseSvedaStreamLine('')).toBeNull();
+    expect(parseSvedaStreamLine('data: {invalid json')).toBeNull();
   });
 
-  it('isVedaStreamEvent rejects unknown types', () => {
-    expect(isVedaStreamEvent({ type: 'text.delta', delta: 'x' })).toBe(true);
-    expect(isVedaStreamEvent({ type: 'nope' })).toBe(false);
-    expect(isVedaStreamEvent(null)).toBe(false);
-    expect(isVedaStreamEvent('text.delta')).toBe(false);
+  it('isSvedaStreamEvent rejects unknown types', () => {
+    expect(isSvedaStreamEvent({ type: 'text.delta', delta: 'x' })).toBe(true);
+    expect(isSvedaStreamEvent({ type: 'nope' })).toBe(false);
+    expect(isSvedaStreamEvent(null)).toBe(false);
+    expect(isSvedaStreamEvent('text.delta')).toBe(false);
   });
 });
 
 describe('Vercel AI SDK adapter', () => {
   it('maps text.delta to text-delta data part', () => {
-    expect(vedaEventToVercelDataPart({ type: 'text.delta', delta: 'hi' })).toEqual({
+    expect(svedaEventToVercelDataPart({ type: 'text.delta', delta: 'hi' })).toEqual({
       type: 'text-delta',
       textDelta: 'hi',
     });
@@ -97,7 +97,7 @@ describe('Vercel AI SDK adapter', () => {
 
   it('maps max_steps to data-maxStepsReached (current ScorpioLMS contract)', () => {
     expect(
-      vedaEventToVercelDataPart({ type: 'max_steps', maxSteps: 30, canContinue: true })
+      svedaEventToVercelDataPart({ type: 'max_steps', maxSteps: 30, canContinue: true })
     ).toEqual({
       type: 'data-maxStepsReached',
       data: { maxSteps: 30, canContinue: true },
@@ -105,7 +105,7 @@ describe('Vercel AI SDK adapter', () => {
   });
 
   it('maps context.usage to data-contextUsage', () => {
-    const part = vedaEventToVercelDataPart({
+    const part = svedaEventToVercelDataPart({
       type: 'context.usage',
       usedTokens: 10,
       maxTokens: 100,
@@ -115,14 +115,14 @@ describe('Vercel AI SDK adapter', () => {
   });
 
   it('maps chat.title to data-chatTitle', () => {
-    expect(vedaEventToVercelDataPart({ type: 'chat.title', title: 'T' })?.type).toBe(
+    expect(svedaEventToVercelDataPart({ type: 'chat.title', title: 'T' })?.type).toBe(
       'data-chatTitle'
     );
   });
 
   it('maps tool.progress to data-toolProgress', () => {
     expect(
-      vedaEventToVercelDataPart({
+      svedaEventToVercelDataPart({
         type: 'tool.progress',
         tasks: [{ id: 'a', label: 'A', status: 'pending' }],
       })?.type
@@ -130,21 +130,21 @@ describe('Vercel AI SDK adapter', () => {
   });
 
   it('message.start maps to null (no Vercel equivalent)', () => {
-    expect(vedaEventToVercelDataPart({ type: 'message.start' })).toBeNull();
+    expect(svedaEventToVercelDataPart({ type: 'message.start' })).toBeNull();
   });
 
-  it('round-trips vercel data parts back to veda events', () => {
-    const back = vercelDataPartToVedaEvent({ type: 'text-delta', textDelta: 'yo' });
+  it('round-trips vercel data parts back to sveda events', () => {
+    const back = vercelDataPartToSvedaEvent({ type: 'text-delta', textDelta: 'yo' });
     expect(back).toEqual({ type: 'text.delta', delta: 'yo' });
 
-    const maxSteps = vercelDataPartToVedaEvent({
+    const maxSteps = vercelDataPartToSvedaEvent({
       type: 'data-maxStepsReached',
       data: { maxSteps: 50, canContinue: false },
     });
     expect(maxSteps).toEqual({ type: 'max_steps', maxSteps: 50, canContinue: false });
   });
 
-  it('vercelDataPartToVedaEvent returns null for unknown parts', () => {
-    expect(vercelDataPartToVedaEvent({ type: 'source' })).toBeNull();
+  it('vercelDataPartToSvedaEvent returns null for unknown parts', () => {
+    expect(vercelDataPartToSvedaEvent({ type: 'source' })).toBeNull();
   });
 });

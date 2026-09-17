@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "prefix": "/veda",
+  "prefix": "/sveda",
   "accept": {
-    "vedaStream": "application/vnd.veda.stream+json",
+    "svedaStream": "application/vnd.sveda.stream+json",
     "sse": "text/event-stream"
   },
   "headers": {
@@ -10,20 +10,20 @@
       "Accept",
       "Authorization",
       "Content-Type",
-      "X-Veda-Admin-Key",
-      "X-Veda-Embed-Token",
-      "X-Veda-Host-Key",
-      "X-Veda-Protocol"
+      "X-Sveda-Admin-Key",
+      "X-Sveda-Embed-Token",
+      "X-Sveda-Host-Key",
+      "X-Sveda-Protocol"
     ],
     "streamResponse": {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       "X-Accel-Buffering": "no",
-      "X-Veda-Protocol-Version": "1.0"
+      "X-Sveda-Protocol-Version": "1.0"
     },
     "mcpOutbound": [
-      "X-Veda-Page-Context",
-      "X-Veda-Chat-Id"
+      "X-Sveda-Page-Context",
+      "X-Sveda-Chat-Id"
     ]
   },
   "cors": {
@@ -32,23 +32,23 @@
       "Authorization",
       "Content-Type",
       "X-Requested-With",
-      "X-Veda-Embed-Token",
-      "X-Veda-Host-Key",
-      "X-Veda-Admin-Key",
-      "X-Veda-Protocol"
+      "X-Sveda-Embed-Token",
+      "X-Sveda-Host-Key",
+      "X-Sveda-Admin-Key",
+      "X-Sveda-Protocol"
     ],
     "allowedMethods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
   },
   "routes": [
-    { "method": "POST", "path": "/veda/stream", "mode": "sse" },
-    { "method": "POST", "path": "/veda/message", "mode": "json" },
-    { "method": "GET", "path": "/veda/chat-histories", "mode": "json" },
-    { "method": "GET", "path": "/veda/chat-histories/{chatId}", "mode": "json" },
-    { "method": "PATCH", "path": "/veda/chat-histories/{chatId}", "mode": "json" },
-    { "method": "DELETE", "path": "/veda/chat-histories/{chatId}", "mode": "json" },
-    { "method": "POST", "path": "/veda/documents/extract", "mode": "json" },
-    { "method": "GET", "path": "/veda/embed/config", "mode": "json" },
-    { "method": "POST", "path": "/veda/embed/token", "mode": "json" }
+    { "method": "POST", "path": "/sveda/stream", "mode": "sse" },
+    { "method": "POST", "path": "/sveda/message", "mode": "json" },
+    { "method": "GET", "path": "/sveda/chat-histories", "mode": "json" },
+    { "method": "GET", "path": "/sveda/chat-histories/{chatId}", "mode": "json" },
+    { "method": "PATCH", "path": "/sveda/chat-histories/{chatId}", "mode": "json" },
+    { "method": "DELETE", "path": "/sveda/chat-histories/{chatId}", "mode": "json" },
+    { "method": "POST", "path": "/sveda/documents/extract", "mode": "json" },
+    { "method": "GET", "path": "/sveda/embed/config", "mode": "json" },
+    { "method": "POST", "path": "/sveda/embed/token", "mode": "json" }
   ],
   "streamEvents": [
     "message.start",

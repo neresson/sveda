@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda dashboard',
+    document_title: 'Sveda dashboard',
     eyebrow: 'Usage',
     title: 'Dashboard.',
     subtitle: 'Requests and tokens for the last {days} days.',

@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda дашборд',
+    document_title: 'Sveda дашборд',
     eyebrow: 'Нагрузка',
     title: 'Дашборд.',
     subtitle: 'Запросы и токены за последние {days} дней.',

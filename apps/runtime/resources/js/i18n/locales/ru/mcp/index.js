@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda MCP',
+    document_title: 'Sveda MCP',
     eyebrow: 'Коннекторы',
     title: 'MCP.',
     subtitle: 'Один каталог в формате mcp.json. HTTP — url и headers. Stdio — command, args, env и envFile. LMS — сервер lms, токен берётся у текущего пользователя.',

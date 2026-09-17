@@ -1,8 +1,8 @@
 <script setup>
 import { computed, onMounted, onUnmounted, provide, reactive, ref, watch } from 'vue';
-import { applyVedaAppearance } from '@veda-ai/vue';
+import { applySvedaAppearance } from '@sveda-ai/vue';
 import AdminShell from './AdminShell.vue';
-import AdminVedaChat from './AdminVedaChat.vue';
+import AdminSvedaChat from './AdminSvedaChat.vue';
 import { shouldInterceptAdminClick } from './adminSpa';
 
 const props = defineProps({
@@ -80,9 +80,9 @@ const visit = async (nextHref, { historyMode = 'push' } = {}) => {
         href.value = url.toString();
 
         if (historyMode === 'push') {
-            history.pushState({ vedaAdmin: true }, '', url);
+            history.pushState({ svedaAdmin: true }, '', url);
         } else if (historyMode === 'replace') {
-            history.replaceState({ vedaAdmin: true }, '', url);
+            history.replaceState({ svedaAdmin: true }, '', url);
         }
     } catch {
         window.location.assign(url.toString());
@@ -116,7 +116,7 @@ const onPopState = () => {
 };
 
 onMounted(() => {
-    history.replaceState({ vedaAdmin: true }, '', window.location.href);
+    history.replaceState({ svedaAdmin: true }, '', window.location.href);
     document.addEventListener('click', onDocumentClick);
     window.addEventListener('popstate', onPopState);
 });
@@ -124,7 +124,7 @@ onMounted(() => {
 watch(
     () => payload.settings?.appearance,
     (value) => {
-        applyVedaAppearance(value);
+        applySvedaAppearance(value);
     },
     { immediate: true, deep: true },
 );
@@ -145,6 +145,6 @@ onUnmounted(() => {
         >
             <component :is="pages[page]" v-bind="pageProps" />
         </AdminShell>
-        <AdminVedaChat v-if="enableChat" />
+        <AdminSvedaChat v-if="enableChat" />
     </div>
 </template>

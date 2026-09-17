@@ -17,7 +17,7 @@ const languages = [
             v-for="language in languages"
             :key="language.value"
             type="button"
-            class="veda-hover font-mono text-[11px] tracking-[0.16em]"
+            class="sveda-hover font-mono text-[11px] tracking-[0.16em]"
             :class="locale === language.value ? 'text-ink' : 'text-muted hover:text-ink'"
             @click="setLocale(language.value)"
         >

@@ -1,8 +1,8 @@
 import { reactive } from 'vue';
 
-export const VEDA_APPEARANCE_STYLE_ID = 'veda-appearance';
+export const SVEDA_APPEARANCE_STYLE_ID = 'sveda-appearance';
 
-export const VEDA_TOKEN_KEYS = [
+export const SVEDA_TOKEN_KEYS = [
   'background',
   'foreground',
   'card',
@@ -26,13 +26,13 @@ export const VEDA_TOKEN_KEYS = [
   'brand_foreground',
 ] as const;
 
-export type VedaTokenKey = (typeof VEDA_TOKEN_KEYS)[number];
+export type SvedaTokenKey = (typeof SVEDA_TOKEN_KEYS)[number];
 
-export type VedaAppearanceTokens = Record<VedaTokenKey, string>;
+export type SvedaAppearanceTokens = Record<SvedaTokenKey, string>;
 
-export type VedaAppearanceTheme = 'light' | 'dark';
+export type SvedaAppearanceTheme = 'light' | 'dark';
 
-export const VEDA_LAUNCHER_ICON_IDS = [
+export const SVEDA_LAUNCHER_ICON_IDS = [
   'sparkles',
   'message-circle',
   'message-square',
@@ -47,34 +47,34 @@ export const VEDA_LAUNCHER_ICON_IDS = [
   'gem',
 ] as const;
 
-export const VEDA_DEFAULT_LAUNCHER_ICON = 'sparkles';
+export const SVEDA_DEFAULT_LAUNCHER_ICON = 'sparkles';
 
-export const VEDA_LAUNCHER_IMAGE_MAX_BYTES = 262144;
+export const SVEDA_LAUNCHER_IMAGE_MAX_BYTES = 262144;
 
-export const VEDA_LAUNCHER_IMAGE_MAX_CHARS = 360000;
+export const SVEDA_LAUNCHER_IMAGE_MAX_CHARS = 360000;
 
-export type VedaLauncherIconId = (typeof VEDA_LAUNCHER_ICON_IDS)[number];
+export type SvedaLauncherIconId = (typeof SVEDA_LAUNCHER_ICON_IDS)[number];
 
-export type VedaAppearanceLauncher = {
+export type SvedaAppearanceLauncher = {
   label: string;
-  icon: VedaLauncherIconId;
+  icon: SvedaLauncherIconId;
   image: string;
 };
 
-export type VedaAppearance = {
+export type SvedaAppearance = {
   preset?: string;
   radius?: string;
-  theme?: VedaAppearanceTheme;
-  tokens?: Partial<VedaAppearanceTokens> | Record<string, string>;
-  dark_tokens?: Partial<VedaAppearanceTokens> | Record<string, string>;
-  launcher?: Partial<VedaAppearanceLauncher> | { label?: string; icon?: string; image?: string };
+  theme?: SvedaAppearanceTheme;
+  tokens?: Partial<SvedaAppearanceTokens> | Record<string, string>;
+  dark_tokens?: Partial<SvedaAppearanceTokens> | Record<string, string>;
+  launcher?: Partial<SvedaAppearanceLauncher> | { label?: string; icon?: string; image?: string };
 };
 
-export const VEDA_APPEARANCE_PRESET_IDS = ['default', 'lms', 'ocean', 'forest', 'sunset', 'sand'] as const;
+export const SVEDA_APPEARANCE_PRESET_IDS = ['default', 'lms', 'ocean', 'forest', 'sunset', 'sand'] as const;
 
-export type VedaAppearancePresetId = (typeof VEDA_APPEARANCE_PRESET_IDS)[number];
+export type SvedaAppearancePresetId = (typeof SVEDA_APPEARANCE_PRESET_IDS)[number];
 
-const NEUTRAL_LIGHT: VedaAppearanceTokens = {
+const NEUTRAL_LIGHT: SvedaAppearanceTokens = {
   background: '210 20% 98%',
   foreground: '0 0% 3.9%',
   card: '0 0% 100%',
@@ -98,7 +98,7 @@ const NEUTRAL_LIGHT: VedaAppearanceTokens = {
   brand_foreground: '0 0% 98%',
 };
 
-const NEUTRAL_DARK: VedaAppearanceTokens = {
+const NEUTRAL_DARK: SvedaAppearanceTokens = {
   background: '222.2 47.4% 11.2%',
   foreground: '210 40% 98%',
   card: '222.2 47.4% 14%',
@@ -122,9 +122,9 @@ const NEUTRAL_DARK: VedaAppearanceTokens = {
   brand_foreground: '222.2 47.4% 11.2%',
 };
 
-export const VEDA_APPEARANCE_PRESETS: Record<VedaAppearancePresetId, Required<Pick<VedaAppearance, 'preset' | 'radius'>> & {
-  tokens: VedaAppearanceTokens;
-  dark_tokens: VedaAppearanceTokens;
+export const SVEDA_APPEARANCE_PRESETS: Record<SvedaAppearancePresetId, Required<Pick<SvedaAppearance, 'preset' | 'radius'>> & {
+  tokens: SvedaAppearanceTokens;
+  dark_tokens: SvedaAppearanceTokens;
 }> = {
   default: {
     preset: 'default',
@@ -242,24 +242,24 @@ export const VEDA_APPEARANCE_PRESETS: Record<VedaAppearancePresetId, Required<Pi
   },
 };
 
-const isPresetId = (value: unknown): value is VedaAppearancePresetId =>
-  typeof value === 'string' && (VEDA_APPEARANCE_PRESET_IDS as readonly string[]).includes(value);
+const isPresetId = (value: unknown): value is SvedaAppearancePresetId =>
+  typeof value === 'string' && (SVEDA_APPEARANCE_PRESET_IDS as readonly string[]).includes(value);
 
 const HSL_PATTERN = /^\d{1,3}(?:\.\d+)?\s+\d{1,3}(?:\.\d+)?%\s+\d{1,3}(?:\.\d+)?%$/;
 const RADIUS_PATTERN = /^\d+(?:\.\d+)?(?:px|rem|em)$/;
 
-const tokenCssName = (key: string): string => `--veda-${key.replace(/_/g, '-')}`;
+const tokenCssName = (key: string): string => `--sveda-${key.replace(/_/g, '-')}`;
 
-export const isVedaHsl = (value: unknown): value is string =>
+export const isSvedaHsl = (value: unknown): value is string =>
   typeof value === 'string' && HSL_PATTERN.test(value.trim());
 
-export const sanitizeVedaTheme = (value: unknown): VedaAppearanceTheme | undefined =>
+export const sanitizeSvedaTheme = (value: unknown): SvedaAppearanceTheme | undefined =>
   value === 'light' || value === 'dark' ? value : undefined;
 
-const isLauncherIconId = (value: unknown): value is VedaLauncherIconId =>
-  typeof value === 'string' && (VEDA_LAUNCHER_ICON_IDS as readonly string[]).includes(value);
+const isLauncherIconId = (value: unknown): value is SvedaLauncherIconId =>
+  typeof value === 'string' && (SVEDA_LAUNCHER_ICON_IDS as readonly string[]).includes(value);
 
-export const sanitizeVedaLauncherImage = (value: unknown): string => {
+export const sanitizeSvedaLauncherImage = (value: unknown): string => {
   if (typeof value !== 'string') {
     return '';
   }
@@ -274,7 +274,7 @@ export const sanitizeVedaLauncherImage = (value: unknown): string => {
     const payload = dataMatch[2].replace(/\s+/g, '');
     const detected = dataMatch[1].toLowerCase() === 'jpg' ? 'jpeg' : dataMatch[1].toLowerCase();
     const normalized = `data:image/${detected};base64,${payload}`;
-    if (normalized.length > VEDA_LAUNCHER_IMAGE_MAX_CHARS) {
+    if (normalized.length > SVEDA_LAUNCHER_IMAGE_MAX_CHARS) {
       return '';
     }
 
@@ -306,18 +306,18 @@ export const sanitizeVedaLauncherImage = (value: unknown): string => {
   return '';
 };
 
-export const sanitizeVedaLauncher = (launcher: VedaAppearance['launcher'] | null | undefined): VedaAppearanceLauncher => {
+export const sanitizeSvedaLauncher = (launcher: SvedaAppearance['launcher'] | null | undefined): SvedaAppearanceLauncher => {
   const label = typeof launcher?.label === 'string' ? launcher.label.trim().replace(/\s+/g, ' ').slice(0, 64) : '';
-  const icon = isLauncherIconId(launcher?.icon) ? launcher.icon : VEDA_DEFAULT_LAUNCHER_ICON;
+  const icon = isLauncherIconId(launcher?.icon) ? launcher.icon : SVEDA_DEFAULT_LAUNCHER_ICON;
 
-  return { label, icon, image: sanitizeVedaLauncherImage(launcher?.image) };
+  return { label, icon, image: sanitizeSvedaLauncherImage(launcher?.image) };
 };
 
-export const vedaLauncher = reactive<VedaAppearanceLauncher>(sanitizeVedaLauncher(null));
+export const svedaLauncher = reactive<SvedaAppearanceLauncher>(sanitizeSvedaLauncher(null));
 
-export const useVedaLauncher = (): VedaAppearanceLauncher => vedaLauncher;
+export const useSvedaLauncher = (): SvedaAppearanceLauncher => svedaLauncher;
 
-export const sanitizeVedaRadius = (value: unknown): string | null => {
+export const sanitizeSvedaRadius = (value: unknown): string | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return `${Math.max(0, Math.min(64, Math.round(value)))}px`;
   }
@@ -431,13 +431,13 @@ const unwrapHsl = (value: unknown): string | null => {
   return HSL_PATTERN.test(next) ? next : null;
 };
 
-const overlayTokens = (tokens: VedaAppearance['tokens']): Partial<VedaAppearanceTokens> => {
-  const clean: Partial<VedaAppearanceTokens> = {};
+const overlayTokens = (tokens: SvedaAppearance['tokens']): Partial<SvedaAppearanceTokens> => {
+  const clean: Partial<SvedaAppearanceTokens> = {};
   if (!tokens || typeof tokens !== 'object') {
     return clean;
   }
 
-  for (const key of VEDA_TOKEN_KEYS) {
+  for (const key of SVEDA_TOKEN_KEYS) {
     const value = unwrapHsl(tokens[key]);
     if (value) {
       clean[key] = value;
@@ -447,9 +447,9 @@ const overlayTokens = (tokens: VedaAppearance['tokens']): Partial<VedaAppearance
   return clean;
 };
 
-const mergeTokens = (base: VedaAppearanceTokens, overlay: Partial<VedaAppearanceTokens>): VedaAppearanceTokens => {
+const mergeTokens = (base: SvedaAppearanceTokens, overlay: Partial<SvedaAppearanceTokens>): SvedaAppearanceTokens => {
   const merged = { ...base };
-  for (const key of VEDA_TOKEN_KEYS) {
+  for (const key of SVEDA_TOKEN_KEYS) {
     const value = overlay[key];
     if (value) {
       merged[key] = value;
@@ -459,10 +459,10 @@ const mergeTokens = (base: VedaAppearanceTokens, overlay: Partial<VedaAppearance
   return merged;
 };
 
-const sameTokens = (left: VedaAppearanceTokens, right: VedaAppearanceTokens): boolean =>
-  VEDA_TOKEN_KEYS.every((key) => left[key] === right[key]);
+const sameTokens = (left: SvedaAppearanceTokens, right: SvedaAppearanceTokens): boolean =>
+  SVEDA_TOKEN_KEYS.every((key) => left[key] === right[key]);
 
-export const resolveVedaAppearance = (appearance: VedaAppearance | null | undefined): VedaAppearance | null => {
+export const resolveSvedaAppearance = (appearance: SvedaAppearance | null | undefined): SvedaAppearance | null => {
   if (!appearance || typeof appearance !== 'object') {
     return null;
   }
@@ -473,7 +473,7 @@ export const resolveVedaAppearance = (appearance: VedaAppearance | null | undefi
     : legacyRounded
       ? 'forest'
       : 'default';
-  const named = VEDA_APPEARANCE_PRESETS[namedId];
+  const named = SVEDA_APPEARANCE_PRESETS[namedId];
   const tokenOverlay = overlayTokens(appearance.tokens);
   const darkOverlay = overlayTokens(appearance.dark_tokens);
   const tokens =
@@ -481,14 +481,14 @@ export const resolveVedaAppearance = (appearance: VedaAppearance | null | undefi
   const darkTokens =
     Object.keys(darkOverlay).length === 0 ? named.dark_tokens : mergeTokens(named.dark_tokens, darkOverlay);
   const radius = Object.prototype.hasOwnProperty.call(appearance, 'radius')
-    ? (sanitizeVedaRadius(appearance.radius) ?? '0px')
+    ? (sanitizeSvedaRadius(appearance.radius) ?? '0px')
     : legacyRounded
       ? '20px'
       : named.radius;
   const customTokens = !sameTokens(tokens, named.tokens) || !sameTokens(darkTokens, named.dark_tokens);
 
-  const theme = sanitizeVedaTheme(appearance.theme);
-  const launcher = sanitizeVedaLauncher(appearance.launcher);
+  const theme = sanitizeSvedaTheme(appearance.theme);
+  const launcher = sanitizeSvedaLauncher(appearance.launcher);
 
   if (appearance.preset === 'custom' || customTokens) {
     return {
@@ -512,8 +512,8 @@ export const resolveVedaAppearance = (appearance: VedaAppearance | null | undefi
 };
 
 const declarations = (tokens: Record<string, string> | undefined, radius: string): string => {
-  const parts = [`--veda-radius:${radius}`];
-  for (const key of VEDA_TOKEN_KEYS) {
+  const parts = [`--sveda-radius:${radius}`];
+  for (const key of SVEDA_TOKEN_KEYS) {
     const value = unwrapHsl(tokens?.[key]);
     if (!value) {
       continue;
@@ -525,42 +525,42 @@ const declarations = (tokens: Record<string, string> | undefined, radius: string
   return parts.join(';');
 };
 
-export const buildAppearanceCss = (appearance: VedaAppearance | null | undefined): string => {
-  const resolved = resolveVedaAppearance(appearance);
+export const buildAppearanceCss = (appearance: SvedaAppearance | null | undefined): string => {
+  const resolved = resolveSvedaAppearance(appearance);
   if (!resolved) {
     return '';
   }
 
-  const radius = sanitizeVedaRadius(resolved.radius) ?? '0px';
+  const radius = sanitizeSvedaRadius(resolved.radius) ?? '0px';
   const light = declarations(resolved.tokens as Record<string, string> | undefined, radius);
   const dark = declarations(resolved.dark_tokens as Record<string, string> | undefined, radius);
-  const theme = sanitizeVedaTheme(resolved.theme);
+  const theme = sanitizeSvedaTheme(resolved.theme);
 
   if (theme === 'dark') {
-    return `.veda-chat{${dark}}`;
+    return `.sveda-chat{${dark}}`;
   }
 
   if (theme === 'light') {
-    return `.veda-chat{${light}}`;
+    return `.sveda-chat{${light}}`;
   }
 
-  return `.veda-chat{${light}}.dark .veda-chat,.veda-chat.dark{${dark}}`;
+  return `.sveda-chat{${light}}.dark .sveda-chat,.sveda-chat.dark{${dark}}`;
 };
 
-export const applyVedaAppearance = (appearance: VedaAppearance | null | undefined): void => {
-  const launcher = resolveVedaAppearance(appearance)?.launcher ?? sanitizeVedaLauncher(null);
-  vedaLauncher.label = launcher.label;
-  vedaLauncher.icon = launcher.icon;
-  vedaLauncher.image = launcher.image;
+export const applySvedaAppearance = (appearance: SvedaAppearance | null | undefined): void => {
+  const launcher = sanitizeSvedaLauncher(resolveSvedaAppearance(appearance)?.launcher);
+  svedaLauncher.label = launcher.label;
+  svedaLauncher.icon = launcher.icon;
+  svedaLauncher.image = launcher.image;
 
   if (typeof document === 'undefined') {
     return;
   }
 
-  let style = document.getElementById(VEDA_APPEARANCE_STYLE_ID) as HTMLStyleElement | null;
+  let style = document.getElementById(SVEDA_APPEARANCE_STYLE_ID) as HTMLStyleElement | null;
   if (!style) {
     style = document.createElement('style');
-    style.id = VEDA_APPEARANCE_STYLE_ID;
+    style.id = SVEDA_APPEARANCE_STYLE_ID;
     document.head.appendChild(style);
   }
 

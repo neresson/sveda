@@ -1,11 +1,11 @@
-import type { VedaRenderHint, VedaStreamEvent } from './events.js';
+import type { SvedaRenderHint, SvedaStreamEvent } from './events.js';
 
 export type VercelDataPart = {
   type: string;
   [key: string]: unknown;
 };
 
-export function vedaEventToVercelDataPart(event: VedaStreamEvent): VercelDataPart | null {
+export function svedaEventToVercelDataPart(event: SvedaStreamEvent): VercelDataPart | null {
   switch (event.type) {
     case 'text.delta':
       return { type: 'text-delta', textDelta: event.delta };
@@ -62,7 +62,7 @@ export function vedaEventToVercelDataPart(event: VedaStreamEvent): VercelDataPar
   }
 }
 
-export function vercelDataPartToVedaEvent(part: VercelDataPart): VedaStreamEvent | null {
+export function vercelDataPartToSvedaEvent(part: VercelDataPart): SvedaStreamEvent | null {
   const data = (part.data ?? {}) as Record<string, unknown>;
 
   switch (part.type) {
@@ -84,7 +84,7 @@ export function vercelDataPartToVedaEvent(part: VercelDataPart): VedaStreamEvent
         toolCallId: String(part.toolCallId ?? ''),
         toolName: String(part.toolName ?? ''),
         output: part.result,
-        renderHint: part.renderHint as VedaRenderHint | undefined,
+        renderHint: part.renderHint as SvedaRenderHint | undefined,
         renderData: part.renderData as Record<string, unknown> | undefined,
       };
     case 'data-toolProgress': {
@@ -134,6 +134,6 @@ export function vercelDataPartToVedaEvent(part: VercelDataPart): VedaStreamEvent
   }
 }
 
-export function encodeVedaStreamEvent(event: VedaStreamEvent): string {
+export function encodeSvedaStreamEvent(event: SvedaStreamEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
 }

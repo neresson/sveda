@@ -13,9 +13,9 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-vue-next';
-import { VEDA_DEFAULT_LAUNCHER_ICON, VEDA_LAUNCHER_ICON_IDS, type VedaLauncherIconId } from './appearance';
+import { SVEDA_DEFAULT_LAUNCHER_ICON, SVEDA_LAUNCHER_ICON_IDS, type SvedaLauncherIconId } from './appearance';
 
-export const vedaLauncherIconMap: Record<VedaLauncherIconId, LucideIcon> = {
+export const svedaLauncherIconMap: Record<SvedaLauncherIconId, LucideIcon> = {
   sparkles: Sparkles,
   'message-circle': MessageCircle,
   'message-square': MessageSquare,
@@ -30,10 +30,10 @@ export const vedaLauncherIconMap: Record<VedaLauncherIconId, LucideIcon> = {
   gem: Gem,
 };
 
-export const vedaLauncherIconComponent = (icon: string): LucideIcon => {
-  if ((VEDA_LAUNCHER_ICON_IDS as readonly string[]).includes(icon)) {
-    return vedaLauncherIconMap[icon as VedaLauncherIconId];
+export const svedaLauncherIconComponent = (icon: string): LucideIcon => {
+  if ((SVEDA_LAUNCHER_ICON_IDS as readonly string[]).includes(icon)) {
+    return svedaLauncherIconMap[icon as SvedaLauncherIconId];
   }
 
-  return vedaLauncherIconMap[VEDA_DEFAULT_LAUNCHER_ICON];
+  return svedaLauncherIconMap[SVEDA_DEFAULT_LAUNCHER_ICON];
 };

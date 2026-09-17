@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://veda-ai.dev/schemas/v1/stream-event.schema.json",
-  "title": "Veda Wire Protocol v1 — Stream Event",
+  "$id": "https://sveda-ai.dev/schemas/v1/stream-event.schema.json",
+  "title": "Sveda Wire Protocol v1 — Stream Event",
   "description": "Server-to-client SSE event envelope. Every event is a JSON object sent as one SSE `data:` frame.",
   "oneOf": [
     { "$ref": "#/$defs/messageStart" },

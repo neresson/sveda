@@ -116,7 +116,7 @@ const save = async () => {
             <div class="flex justify-end">
                 <button
                     type="submit"
-                    class="veda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
+                    class="sveda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
                     :disabled="saving"
                 >
                     {{ t('common.save') }}

@@ -1,5 +1,5 @@
 export default {
-    document_title: 'Veda runtime',
+    document_title: 'Sveda runtime',
     eyebrow: 'Sidecar',
     title: 'Runtime.',
     subtitle: 'Как sidecar выбирает модель и ведёт агента.',

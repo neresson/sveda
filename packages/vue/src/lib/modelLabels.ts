@@ -15,7 +15,7 @@ export function humanizeModelId(raw: string): string {
     .join(' ');
 }
 
-export function getVedaModelDisplayName(model: string | null | undefined): string {
+export function getSvedaModelDisplayName(model: string | null | undefined): string {
   if (!model) {
     return '—';
   }

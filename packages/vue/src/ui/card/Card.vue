@@ -8,7 +8,7 @@ const props = defineProps<{
 </script>
 
 <template>
-    <div :class="cn('rounded-[var(--veda-radius)] border-[2px] bg-card text-card-foreground', props.class)">
+    <div :class="cn('rounded-[var(--sveda-radius)] border-[2px] bg-card text-card-foreground', props.class)">
         <slot />
     </div>
 </template>

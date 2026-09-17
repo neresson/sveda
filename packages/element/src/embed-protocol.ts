@@ -1,15 +1,15 @@
-export const VEDA_EMBED_SOURCE = 'veda-embed' as const;
+export const SVEDA_EMBED_SOURCE = 'sveda-embed' as const;
 
-export const VEDA_EMBED_VERSION = 1 as const;
+export const SVEDA_EMBED_VERSION = 1 as const;
 
-export interface VedaEmbedEnvelope<T = unknown> {
-  source: typeof VEDA_EMBED_SOURCE;
-  version: typeof VEDA_EMBED_VERSION;
+export interface SvedaEmbedEnvelope<T = unknown> {
+  source: typeof SVEDA_EMBED_SOURCE;
+  version: typeof SVEDA_EMBED_VERSION;
   type: string;
   payload: T;
 }
 
-export type VedaEmbedHostCommandType =
+export type SvedaEmbedHostCommandType =
   | 'ack'
   | 'setContext'
   | 'setAuthToken'
@@ -19,56 +19,56 @@ export type VedaEmbedHostCommandType =
   | 'setLocale'
   | 'setTheme';
 
-export type VedaEmbedEventType = 'ready' | 'resize' | 'navigate' | 'error' | 'toolProgress';
+export type SvedaEmbedEventType = 'ready' | 'resize' | 'navigate' | 'error' | 'toolProgress';
 
-export type VedaEmbedTheme = 'light' | 'dark';
+export type SvedaEmbedTheme = 'light' | 'dark';
 
-export interface VedaEmbedAckPayload {
+export interface SvedaEmbedAckPayload {
   version: number;
 }
 
-export interface VedaEmbedSetContextPayload {
+export interface SvedaEmbedSetContextPayload {
   context: Record<string, unknown>;
 }
 
-export interface VedaEmbedSetAuthTokenPayload {
+export interface SvedaEmbedSetAuthTokenPayload {
   token: string | null;
 }
 
-export interface VedaEmbedSendMessagePayload {
+export interface SvedaEmbedSendMessagePayload {
   text: string;
   context?: Record<string, unknown>;
 }
 
-export interface VedaEmbedSetLocalePayload {
+export interface SvedaEmbedSetLocalePayload {
   locale: string;
 }
 
-export interface VedaEmbedSetThemePayload {
-  theme: VedaEmbedTheme;
+export interface SvedaEmbedSetThemePayload {
+  theme: SvedaEmbedTheme;
 }
 
-export interface VedaEmbedReadyPayload {
+export interface SvedaEmbedReadyPayload {
   version: number;
 }
 
-export interface VedaEmbedResizePayload {
+export interface SvedaEmbedResizePayload {
   height: number;
 }
 
-export interface VedaEmbedNavigatePayload {
+export interface SvedaEmbedNavigatePayload {
   url: string;
 }
 
-export interface VedaEmbedErrorPayload {
+export interface SvedaEmbedErrorPayload {
   message: string;
 }
 
-export interface VedaEmbedToolProgressPayload {
+export interface SvedaEmbedToolProgressPayload {
   event: unknown;
 }
 
-const HOST_COMMAND_TYPES: readonly VedaEmbedHostCommandType[] = [
+const HOST_COMMAND_TYPES: readonly SvedaEmbedHostCommandType[] = [
   'ack',
   'setContext',
   'setAuthToken',
@@ -79,7 +79,7 @@ const HOST_COMMAND_TYPES: readonly VedaEmbedHostCommandType[] = [
   'setTheme',
 ];
 
-const EMBED_EVENT_TYPES: readonly VedaEmbedEventType[] = [
+const EMBED_EVENT_TYPES: readonly SvedaEmbedEventType[] = [
   'ready',
   'resize',
   'navigate',
@@ -87,48 +87,48 @@ const EMBED_EVENT_TYPES: readonly VedaEmbedEventType[] = [
   'toolProgress',
 ];
 
-export interface VedaEmbedProtocol {
-  encode<T>(type: string, payload: T): VedaEmbedEnvelope<T>;
-  decode(data: unknown): VedaEmbedEnvelope | null;
-  isVedaEmbedMessage(data: unknown): data is VedaEmbedEnvelope;
-  isHostCommand(envelope: VedaEmbedEnvelope): envelope is VedaEmbedEnvelope & {
-    type: VedaEmbedHostCommandType;
+export interface SvedaEmbedProtocol {
+  encode<T>(type: string, payload: T): SvedaEmbedEnvelope<T>;
+  decode(data: unknown): SvedaEmbedEnvelope | null;
+  isSvedaEmbedMessage(data: unknown): data is SvedaEmbedEnvelope;
+  isHostCommand(envelope: SvedaEmbedEnvelope): envelope is SvedaEmbedEnvelope & {
+    type: SvedaEmbedHostCommandType;
   };
-  isEmbedEvent(envelope: VedaEmbedEnvelope): envelope is VedaEmbedEnvelope & {
-    type: VedaEmbedEventType;
+  isEmbedEvent(envelope: SvedaEmbedEnvelope): envelope is SvedaEmbedEnvelope & {
+    type: SvedaEmbedEventType;
   };
 }
 
-export function createVedaEmbedProtocol(): VedaEmbedProtocol {
-  const isVedaEmbedMessage = (data: unknown): data is VedaEmbedEnvelope => {
+export function createSvedaEmbedProtocol(): SvedaEmbedProtocol {
+  const isSvedaEmbedMessage = (data: unknown): data is SvedaEmbedEnvelope => {
     if (typeof data !== 'object' || data === null) {
       return false;
     }
-    const candidate = data as Partial<VedaEmbedEnvelope>;
+    const candidate = data as Partial<SvedaEmbedEnvelope>;
     return (
-      candidate.source === VEDA_EMBED_SOURCE &&
-      candidate.version === VEDA_EMBED_VERSION &&
+      candidate.source === SVEDA_EMBED_SOURCE &&
+      candidate.version === SVEDA_EMBED_VERSION &&
       typeof candidate.type === 'string'
     );
   };
 
   return {
-    encode<T>(type: string, payload: T): VedaEmbedEnvelope<T> {
-      return { source: VEDA_EMBED_SOURCE, version: VEDA_EMBED_VERSION, type, payload };
+    encode<T>(type: string, payload: T): SvedaEmbedEnvelope<T> {
+      return { source: SVEDA_EMBED_SOURCE, version: SVEDA_EMBED_VERSION, type, payload };
     },
-    decode(data: unknown): VedaEmbedEnvelope | null {
-      return isVedaEmbedMessage(data) ? data : null;
+    decode(data: unknown): SvedaEmbedEnvelope | null {
+      return isSvedaEmbedMessage(data) ? data : null;
     },
-    isVedaEmbedMessage,
+    isSvedaEmbedMessage,
     isHostCommand(
-      envelope: VedaEmbedEnvelope
-    ): envelope is VedaEmbedEnvelope & { type: VedaEmbedHostCommandType } {
-      return HOST_COMMAND_TYPES.includes(envelope.type as VedaEmbedHostCommandType);
+      envelope: SvedaEmbedEnvelope
+    ): envelope is SvedaEmbedEnvelope & { type: SvedaEmbedHostCommandType } {
+      return HOST_COMMAND_TYPES.includes(envelope.type as SvedaEmbedHostCommandType);
     },
     isEmbedEvent(
-      envelope: VedaEmbedEnvelope
-    ): envelope is VedaEmbedEnvelope & { type: VedaEmbedEventType } {
-      return EMBED_EVENT_TYPES.includes(envelope.type as VedaEmbedEventType);
+      envelope: SvedaEmbedEnvelope
+    ): envelope is SvedaEmbedEnvelope & { type: SvedaEmbedEventType } {
+      return EMBED_EVENT_TYPES.includes(envelope.type as SvedaEmbedEventType);
     },
   };
 }
