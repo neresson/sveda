@@ -36,8 +36,8 @@ Cluster integration tests run when `SVEDA_TEST_DATABASE_URL` and `SVEDA_TEST_RED
 No clone required — pull the published image:
 
 ```bash
-curl -fsSL https://sveda.dev/compose.yaml -o compose.yaml
-curl -fsSL https://sveda.dev/compose.env -o .env
+curl -fsSL https://raw.githubusercontent.com/neresson/sveda/main/deploy/compose.yaml -o compose.yaml
+curl -fsSL https://raw.githubusercontent.com/neresson/sveda/main/deploy/compose.env -o .env
 # Edit .env: DEEPSEEK_API_KEY, SVEDA_EMBED_HOST_API_KEY, SVEDA_CORS_ORIGINS
 docker compose up -d
 curl -s http://127.0.0.1:8787/sveda/ready

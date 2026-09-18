@@ -10,8 +10,8 @@ After merging Docker publish changes to `main`:
    ```
 4. **Verify install**:
    ```bash
-   curl -fsSL https://sveda.dev/compose.yaml -o compose.yaml
-   curl -fsSL https://sveda.dev/compose.env -o .env
+   curl -fsSL https://raw.githubusercontent.com/neresson/sveda/main/deploy/compose.yaml -o compose.yaml
+   curl -fsSL https://raw.githubusercontent.com/neresson/sveda/main/deploy/compose.env -o .env
    docker compose up -d
    curl -s http://127.0.0.1:8787/sveda/ready
    ```
