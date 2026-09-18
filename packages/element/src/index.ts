@@ -1,4 +1,4 @@
-import { applySvedaAppearance, createSveda } from '@sveda-ai/vue';
+import { applySvedaAppearance, createSveda, type SvedaModelOption } from '@sveda-ai/vue';
 import { createApp } from 'vue';
 import './host.css';
 import SvedaChatElement from './SvedaChatElement.vue';
@@ -25,26 +25,28 @@ const chatEndpoints = (origin: string, prefix = 'sveda') => {
   };
 };
 
-const buildModels = (models: unknown) => {
+const buildModels = (models: unknown): SvedaModelOption[] => {
   if (!Array.isArray(models)) {
     return [];
   }
 
-  return models
-    .map((model) => {
-      const record = model as Record<string, unknown>;
-      const id = String(record.id ?? '').trim();
-      if (!id) {
-        return null;
-      }
+  const parsed: SvedaModelOption[] = [];
 
-      return {
-        id,
-        label: String(record.label ?? id),
-        supportsThinking: Boolean(record.supportsThinking ?? record.supports_thinking ?? record.thinking),
-      };
-    })
-    .filter(Boolean);
+  for (const model of models) {
+    const record = model as Record<string, unknown>;
+    const id = String(record.id ?? '').trim();
+    if (!id) {
+      continue;
+    }
+
+    parsed.push({
+      id,
+      label: String(record.label ?? id),
+      supportsThinking: Boolean(record.supportsThinking ?? record.supports_thinking ?? record.thinking),
+    });
+  }
+
+  return parsed;
 };
 
 const loadEmbedConfig = async (origin: string, token: string, prefix = 'sveda') => {

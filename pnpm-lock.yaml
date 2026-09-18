@@ -33,6 +33,9 @@ importers:
 
   packages/element:
     devDependencies:
+      '@sveda-ai/core':
+        specifier: workspace:*
+        version: link:../core
       '@sveda-ai/vue':
         specifier: workspace:*
         version: link:../vue

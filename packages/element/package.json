@@ -40,6 +40,7 @@
     "lint": "echo 'no lint configured'"
   },
   "devDependencies": {
+    "@sveda-ai/core": "workspace:*",
     "@sveda-ai/vue": "workspace:*",
     "@vitejs/plugin-vue": "^5.2.1",
     "typescript": "^5.8.2",
