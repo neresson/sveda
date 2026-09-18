@@ -1,15 +1,16 @@
 {
   "name": "@sveda-ai/element",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "license": "MIT",
   "description": "Web component <sveda-chat> for embedding Sveda without a frontend framework.",
+  "keywords": ["sveda", "ai", "agent", "copilot", "web-component", "chat"],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/neresson/sveda.git",
     "directory": "packages/element"
   },
-  "homepage": "https://github.com/neresson/sveda/tree/main/packages/element",
+  "homepage": "https://sveda.dev/docs/hosts/vanilla",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {

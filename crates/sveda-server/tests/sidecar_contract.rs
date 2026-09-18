@@ -697,6 +697,14 @@ async fn embed_widget_assets_allow_cross_origin_module_load() {
         response_headers.get("access-control-allow-origin").unwrap(),
         "*"
     );
+    assert_eq!(
+        response_headers.get("cache-control").unwrap(),
+        "public, max-age=0, must-revalidate"
+    );
+    assert_eq!(
+        response_headers.get("cloudflare-cdn-cache-control").unwrap(),
+        "no-cache"
+    );
 }
 
 #[tokio::test]

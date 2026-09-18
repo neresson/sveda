@@ -1,6 +1,9 @@
-# Sveda AI
+# Sveda
 
-Open-source embeddable AI copilot framework with a universal wire protocol, framework-agnostic JavaScript core, Vue SDK, web component, and Rust sidecar.
+Open-source embeddable AI agent: a JS client, host SDKs, and a self-hosted Rust sidecar.
+
+- Site: [sveda.dev](https://sveda.dev)
+- Docs: [sveda.dev/docs](https://sveda.dev/docs)
 
 ## Packages
 

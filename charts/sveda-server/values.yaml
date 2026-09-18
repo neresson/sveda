@@ -3,7 +3,9 @@ replicaCount: 2
 image:
   repository: ghcr.io/neresson/sveda-server
   tag: ""
-  pullPolicy: IfNotPresent
+  # Always — required while image.tag is a floating tag such as latest.
+  # Pin a digest or v* tag and set IfNotPresent if you do not want pulls on every pod start.
+  pullPolicy: Always
 
 imagePullSecrets: []
 nameOverride: ""

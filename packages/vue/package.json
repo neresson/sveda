@@ -1,15 +1,16 @@
 {
   "name": "@sveda-ai/vue",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "license": "MIT",
   "description": "Vue 3 SDK for Sveda — SvedaChat, composables, and default UI theme.",
+  "keywords": ["sveda", "ai", "agent", "copilot", "vue", "chat"],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/neresson/sveda.git",
     "directory": "packages/vue"
   },
-  "homepage": "https://github.com/neresson/sveda/tree/main/packages/vue",
+  "homepage": "https://sveda.dev/docs/client",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {

@@ -23,6 +23,7 @@ services:
 
   sveda-server:
     image: ghcr.io/neresson/sveda-server:latest
+    pull_policy: always
     depends_on:
       postgres:
         condition: service_healthy

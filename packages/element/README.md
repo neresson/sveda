@@ -2,6 +2,8 @@
 
 Web component `<sveda-chat>` for embedding Sveda without a frontend framework.
 
+Docs: [sveda.dev/docs/hosts/vanilla](https://sveda.dev/docs/hosts/vanilla)
+
 ```bash
 npm install @sveda-ai/element
 ```

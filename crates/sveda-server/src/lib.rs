@@ -536,10 +536,24 @@ pub fn app(state: AppState) -> Router {
 async fn expose_embed_assets(request: Request, next: Next) -> Response {
     let is_embed_asset = request.uri().path().starts_with("/build/sveda/");
     let mut response = next.run(request).await;
-    if is_embed_asset
-        && !response
-            .headers()
-            .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+    if !is_embed_asset {
+        return response;
+    }
+    if response.status().is_success() {
+        // Unhashed sveda-chat.js/css. Revalidate on every HIT so a rolled
+        // runtime is visible on host pages without a Cloudflare purge.
+        response.headers_mut().insert(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("public, max-age=0, must-revalidate"),
+        );
+        response.headers_mut().insert(
+            HeaderName::from_static("cloudflare-cdn-cache-control"),
+            HeaderValue::from_static("no-cache"),
+        );
+    }
+    if !response
+        .headers()
+        .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN)
     {
         response.headers_mut().insert(
             header::ACCESS_CONTROL_ALLOW_ORIGIN,

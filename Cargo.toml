@@ -13,7 +13,10 @@ members = [
 [workspace.package]
 edition = "2021"
 license = "MIT"
-version = "0.1.0"
+version = "0.1.1"
+homepage = "https://sveda.dev"
+repository = "https://github.com/neresson/sveda"
+documentation = "https://sveda.dev/docs"
 
 [workspace.dependencies]
 async-stream = "0.3"
