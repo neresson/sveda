@@ -29,8 +29,7 @@ impl ProviderParser {
     }
 
     pub fn push(&mut self, event: &str, data: &str) -> Vec<LlmChunk> {
-        let mut chunks = Vec::new();
-        let chunk = match self.protocol {
+        let mut chunks = match self.protocol {
             Protocol::Responses => parse_responses(
                 data,
                 &mut self.prompt_tokens,
@@ -45,11 +44,10 @@ impl ProviderParser {
                 &mut self.completion_tokens,
                 &mut self.finish_reason,
                 &mut self.saw_end,
-            ),
+            )
+            .into_iter()
+            .collect(),
         };
-        if let Some(chunk) = chunk {
-            chunks.push(chunk);
-        }
         chunks.extend(self.flush_end());
         chunks
     }
@@ -117,35 +115,56 @@ fn parse_responses(
     completion_tokens: &mut u64,
     finish_reason: &mut String,
     saw_end: &mut bool,
-) -> Option<LlmChunk> {
-    let value: Value = serde_json::from_str(data).ok()?;
+) -> Vec<LlmChunk> {
+    let Ok(value) = serde_json::from_str::<Value>(data) else {
+        return Vec::new();
+    };
     let kind = value.get("type").and_then(Value::as_str).unwrap_or("");
     match kind {
-        "response.output_text.delta" => delta_text(&value).map(LlmChunk::TextDelta),
-        "response.reasoning_text.delta" | "response.reasoning.delta" => {
-            delta_text(&value).map(LlmChunk::ReasoningDelta)
+        "response.output_text.delta" => delta_text(&value)
+            .map(LlmChunk::TextDelta)
+            .into_iter()
+            .collect(),
+        "response.reasoning_text.delta" | "response.reasoning.delta" => delta_text(&value)
+            .map(LlmChunk::ReasoningDelta)
+            .into_iter()
+            .collect(),
+        "response.output_item.done" => {
+            let Some(chunk) = value.get("item").and_then(parse_function_call) else {
+                return Vec::new();
+            };
+            *finish_reason = "tool_calls".into();
+            vec![chunk]
         }
-        "response.output_item.done" => parse_function_call(value.get("item")?),
         "response.completed" => {
+            let mut extra = Vec::new();
             if let Some(response) = value.get("response") {
                 if let Some(usage) = response.get("usage") {
                     *prompt_tokens = token(usage, &["input_tokens", "prompt_tokens"]);
                     *completion_tokens = token(usage, &["output_tokens", "completion_tokens"]);
                 }
-                *finish_reason = match response.get("status").and_then(Value::as_str) {
-                    Some("incomplete") => "length".into(),
-                    _ => "stop".into(),
-                };
+                if finish_reason.as_str() != "tool_calls" {
+                    if let Some(output) = response.get("output").and_then(Value::as_array) {
+                        extra.extend(output.iter().filter_map(parse_function_call));
+                    }
+                    *finish_reason = if !extra.is_empty() {
+                        "tool_calls".into()
+                    } else if response.get("status").and_then(Value::as_str) == Some("incomplete") {
+                        "length".into()
+                    } else {
+                        "stop".into()
+                    };
+                }
             }
             *saw_end = true;
-            None
+            extra
         }
         "response.failed" | "error" => {
             *finish_reason = "error".into();
             *saw_end = true;
-            None
+            Vec::new()
         }
-        _ => None,
+        _ => Vec::new(),
     }
 }
 

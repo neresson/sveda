@@ -372,10 +372,7 @@ impl SettingsStore {
         kv: KvStore,
     ) -> Self {
         Self {
-            inner: std::sync::Arc::new(std::sync::Mutex::new(CachedSettings {
-                document,
-                rev: 0,
-            })),
+            inner: std::sync::Arc::new(std::sync::Mutex::new(CachedSettings { document, rev: 0 })),
             documents,
             kv,
         }

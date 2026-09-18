@@ -308,7 +308,7 @@ fn embed_shell(payload: &Value) -> String {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sveda</title>
     <link rel="stylesheet" href="/build/sveda/embed.css">
-    <style>html,body{{margin:0;background:transparent;overflow:hidden}}</style>
+    <style>html,body,#sveda-embed{{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}}</style>
 </head>
 <body>
     <div id="sveda-embed"></div>

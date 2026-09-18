@@ -45,6 +45,7 @@ export interface SvedaPluginOptions {
   appearance?: SvedaAppearance | null;
   theme?: 'light' | 'dark';
   hostEmbed?: boolean;
+  fillHost?: boolean;
   hideLauncher?: boolean;
 }
 
@@ -136,6 +137,7 @@ export function createSveda(options: SvedaPluginOptions): SvedaPlugin {
       app.provide(SvedaClientKey, client);
       app.provide(SvedaConfigKey, config);
       app.provide(SvedaHostEmbedKey, Boolean(options.hostEmbed));
+      app.provide(SvedaFillHostKey, Boolean(options.fillHost ?? options.hostEmbed));
       app.provide(SvedaHideLauncherKey, Boolean(options.hideLauncher));
       installSvedaI18n(app, i18n);
     },

@@ -732,6 +732,42 @@ data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"
     }
 
     #[test]
+    fn parses_responses_function_call_and_keeps_tool_calls_finish_reason() {
+        let body = "\
+event: response.output_item.done\n\
+data: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"function_call\",\"call_id\":\"call-1\",\"name\":\"create_post\",\"arguments\":\"{\\\"title\\\":\\\"Тестовый пост\\\"}\"}}\n\
+\n\
+event: response.completed\n\
+data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"usage\":{\"input_tokens\":12,\"output_tokens\":8}}}\n\
+\n";
+        let chunks = parse_provider_sse(Protocol::Responses, body);
+        assert!(matches!(
+            &chunks[0],
+            LlmChunk::ToolCall { id, name, input }
+                if id == "call-1" && name == "create_post" && input["title"] == "Тестовый пост"
+        ));
+        assert!(
+            matches!(&chunks[2], LlmChunk::End { finish_reason } if finish_reason == "tool_calls")
+        );
+    }
+
+    #[test]
+    fn parses_responses_function_call_from_completed_output_when_stream_omits_item() {
+        let body = "\
+event: response.completed\n\
+data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"usage\":{\"input_tokens\":4,\"output_tokens\":6},\"output\":[{\"type\":\"function_call\",\"call_id\":\"call-9\",\"name\":\"create_post\",\"arguments\":\"{\\\"body\\\":\\\"hi\\\"}\"}]}}\n\
+\n";
+        let chunks = parse_provider_sse(Protocol::Responses, body);
+        assert!(matches!(
+            &chunks[0],
+            LlmChunk::ToolCall { id, name, .. } if id == "call-9" && name == "create_post"
+        ));
+        assert!(
+            matches!(&chunks[2], LlmChunk::End { finish_reason } if finish_reason == "tool_calls")
+        );
+    }
+
+    #[test]
     fn parses_anthropic_thinking_and_text() {
         let body = "\
 event: message_start\n\

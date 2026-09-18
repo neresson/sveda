@@ -10,9 +10,6 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use futures_util::StreamExt;
-use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
-use tower_http::services::ServeDir;
-use uuid::Uuid;
 use sveda_llm::{Catalog, HttpClient, LlmClient, ScriptedClient};
 use sveda_protocol::{
     EmbedTokenRequest, MessageResponse, StreamEvent, StreamRequest, HEADER_ACCEL_BUFFERING,
@@ -23,6 +20,9 @@ use sveda_store::{
     mcp_key, parse_laravel_throttle, DocumentStore, HistoryStore, KvStore, Occupancy,
     OccupancyError, Postgres, RateLimiter, RedisClient,
 };
+use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
+use tower_http::services::ServeDir;
+use uuid::Uuid;
 
 use settings::SettingsStore;
 
@@ -284,7 +284,8 @@ impl AppState {
         }
         let redis = match config.redis_url.as_deref() {
             Some(url) => Some(
-                RedisClient::connect(url).unwrap_or_else(|error| panic!("SVEDA_REDIS_URL: {error}")),
+                RedisClient::connect(url)
+                    .unwrap_or_else(|error| panic!("SVEDA_REDIS_URL: {error}")),
             ),
             None => None,
         };
@@ -399,10 +400,7 @@ impl AppState {
     }
 
     pub async fn readiness(&self) -> Result<(), String> {
-        self.store
-            .ping()
-            .await
-            .map_err(|error| error.to_string())?;
+        self.store.ping().await.map_err(|error| error.to_string())?;
         self.mcp.ping().map_err(|error| error.to_string())?;
         Ok(())
     }

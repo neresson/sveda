@@ -2,9 +2,9 @@ use axum::body::Body;
 use axum::http::{HeaderMap, Request, StatusCode};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
-use tower::ServiceExt;
 use sveda_protocol::{HEADER_EMBED_TOKEN, TOKEN_PREFIX};
 use sveda_server::{app, AppState, Config};
+use tower::ServiceExt;
 
 fn json_headers() -> HeaderMap {
     let mut headers = HeaderMap::new();

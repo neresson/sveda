@@ -5,7 +5,6 @@ use async_stream::stream;
 use axum::response::IntoResponse;
 use chrono::Utc;
 use futures_util::{Stream, StreamExt};
-use uuid::Uuid;
 use sveda_agent::{
     conversation_json, derive_provisional_title, display_messages, generate_summary,
     generate_title, inject_summary, is_placeholder_title, json_to_chat, preview_from,
@@ -16,6 +15,7 @@ use sveda_llm::ChatMessage;
 use sveda_mcp::{HostMcpClient, McpCallContext, McpCredentials};
 use sveda_protocol::{StreamEvent, StreamRequest};
 use sveda_store::Checkpoint;
+use uuid::Uuid;
 
 use crate::AppState;
 
@@ -58,25 +58,10 @@ pub async fn run_turn(
     {
         history = tail_messages(&history, runtime_config.compaction_keep_tail);
     }
-    let instructions = inject_summary(
+    let mut instructions = inject_summary(
         Some(runtime_config.system_prompt.clone()).filter(|value| !value.trim().is_empty()),
         stored.as_ref().and_then(|record| record.summary.as_deref()),
     );
-
-    let client_tool_specs = sveda_agent::client_tool_specs(request.client_tools.as_ref());
-    let agent_request = AgentRequest {
-        prompt: prompt.clone(),
-        history,
-        chat_id: Some(chat_id.clone()),
-        model: request.model.clone(),
-        thinking: sveda_agent::thinking_enabled(request.options.as_ref()),
-        client_tools: client_tool_specs
-            .iter()
-            .map(|tool| tool.name.clone())
-            .collect(),
-        client_tool_specs,
-        instructions,
-    };
 
     let mut runtime = ToolRuntime::default()
         .with_defer(runtime_config.defer_enabled, runtime_config.defer_min_pool);
@@ -93,6 +78,10 @@ pub async fn run_turn(
             },
         );
         if let Ok(tools) = client.list_tools().await {
+            let tool_names: Vec<String> = tools.iter().map(|tool| tool.name.clone()).collect();
+            let host_instructions =
+                sveda_agent::host_tools_instruction(client.instructions().as_deref(), &tool_names);
+            instructions = sveda_agent::append_instruction(instructions, &host_instructions);
             runtime = ToolRuntime::mcp(std::sync::Arc::new(client), tools)
                 .with_defer(runtime_config.defer_enabled, runtime_config.defer_min_pool);
         }
@@ -100,6 +89,21 @@ pub async fn run_turn(
     if let Some(index) = state.index.clone() {
         runtime = runtime.with_index(index);
     }
+
+    let client_tool_specs = sveda_agent::client_tool_specs(request.client_tools.as_ref());
+    let agent_request = AgentRequest {
+        prompt: prompt.clone(),
+        history,
+        chat_id: Some(chat_id.clone()),
+        model: request.model.clone(),
+        thinking: sveda_agent::thinking_enabled(request.options.as_ref()),
+        client_tools: client_tool_specs
+            .iter()
+            .map(|tool| tool.name.clone())
+            .collect(),
+        client_tool_specs,
+        instructions,
+    };
 
     let events = match sveda_agent::run_with_tools(
         state.llm.clone(),

@@ -51,15 +51,49 @@ pub fn summary_source(messages: &[ChatMessage]) -> String {
 }
 
 pub fn inject_summary(instructions: Option<String>, summary: Option<&str>) -> Option<String> {
-    let summary = summary.map(str::trim).filter(|value| !value.is_empty())?;
-    let block = format!("Conversation summary:\n{summary}");
+    let instructions = instructions
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let summary = summary.map(str::trim).filter(|value| !value.is_empty());
+    match (instructions, summary) {
+        (Some(existing), Some(summary)) => {
+            Some(format!("{existing}\n\nConversation summary:\n{summary}"))
+        }
+        (Some(existing), None) => Some(existing),
+        (None, Some(summary)) => Some(format!("Conversation summary:\n{summary}")),
+        (None, None) => None,
+    }
+}
+
+pub fn append_instruction(instructions: Option<String>, extra: &str) -> Option<String> {
+    let extra = extra.trim();
+    if extra.is_empty() {
+        return instructions;
+    }
     match instructions
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
     {
-        Some(existing) => Some(format!("{existing}\n\n{block}")),
-        None => Some(block),
+        Some(existing) => Some(format!("{existing}\n\n{extra}")),
+        None => Some(extra.to_string()),
     }
+}
+
+pub fn host_tools_instruction(server_instructions: Option<&str>, tool_names: &[String]) -> String {
+    let mut parts = Vec::new();
+    if let Some(text) = server_instructions
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        parts.push(text.to_string());
+    }
+    if !tool_names.is_empty() {
+        parts.push(format!(
+            "You have host application tools: {}. When the user asks to create, update, search, or otherwise change host data, you MUST call the matching tool. Do not refuse by claiming you cannot publish, cannot act, or have no access. Do not only draft the result in chat.",
+            tool_names.join(", ")
+        ));
+    }
+    parts.join("\n\n")
 }
 
 pub async fn generate_summary(
@@ -80,4 +114,44 @@ pub async fn generate_summary(
         .map(|text| text.trim().to_string())
         .filter(|text| !text.is_empty())
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn append_instruction_combines_existing_and_extra() {
+        assert_eq!(
+            append_instruction(Some("Base.".into()), "Extra."),
+            Some("Base.\n\nExtra.".to_string())
+        );
+        assert_eq!(
+            append_instruction(None, "Extra."),
+            Some("Extra.".to_string())
+        );
+        assert_eq!(
+            append_instruction(Some("Base.".into()), "  "),
+            Some("Base.".to_string())
+        );
+        assert_eq!(append_instruction(None, ""), None);
+    }
+
+    #[test]
+    fn host_tools_instruction_lists_tools_and_demands_usage() {
+        let names = vec!["search_posts".to_string(), "create_post".to_string()];
+        let text = host_tools_instruction(Some("Server rules."), &names);
+        assert!(text.starts_with("Server rules."));
+        assert!(text.contains("search_posts, create_post"));
+        assert!(text.contains("MUST call the matching tool"));
+    }
+
+    #[test]
+    fn host_tools_instruction_without_server_text_or_tools_is_empty() {
+        assert_eq!(host_tools_instruction(None, &[]), "");
+        let names = vec!["create_post".to_string()];
+        let text = host_tools_instruction(None, &names);
+        assert!(text.contains("create_post"));
+        assert!(!text.starts_with("\n"));
+    }
 }

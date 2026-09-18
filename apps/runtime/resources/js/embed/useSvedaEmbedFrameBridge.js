@@ -1,11 +1,8 @@
 import { useSvedaChat } from '@sveda-ai/vue';
 import { onBeforeUnmount, watch } from 'vue';
 
-const EMBED_FRAME_CHROME_PX = 24;
-const EMBED_FRAME_MIN_WIDTH = 344;
-const EMBED_FRAME_MAX_WIDTH = 824;
-const EMBED_FRAME_MIN_HEIGHT = 424;
-const EMBED_FRAME_MAX_HEIGHT = 924;
+const DEFAULT_FRAME_WIDTH = 384;
+const DEFAULT_FRAME_HEIGHT = 600;
 
 const postToParent = (data) => {
     if (typeof window === 'undefined' || !window.parent || window.parent === window) {
@@ -17,22 +14,25 @@ const postToParent = (data) => {
     } catch {}
 };
 
+const readHostSize = () => {
+    const width = Number.parseInt(
+        document.documentElement.style.getPropertyValue('--sveda-embed-width'),
+        10,
+    );
+    const height = Number.parseInt(
+        document.documentElement.style.getPropertyValue('--sveda-embed-height'),
+        10,
+    );
+
+    return {
+        frameWidth: Number.isFinite(width) && width > 0 ? width : DEFAULT_FRAME_WIDTH,
+        frameHeight: Number.isFinite(height) && height > 0 ? height : DEFAULT_FRAME_HEIGHT,
+    };
+};
+
 export const useSvedaEmbedFrameBridge = () => {
     const chatStore = useSvedaChat();
     let frameRaf = 0;
-
-    const frameSize = () => {
-        if (chatStore.isMinimized.value) {
-            return null;
-        }
-
-        const cap = (value, min, max) => Math.round(Math.max(min, Math.min(max, value)));
-
-        return {
-            frameWidth: cap(window.innerWidth + EMBED_FRAME_CHROME_PX, EMBED_FRAME_MIN_WIDTH, EMBED_FRAME_MAX_WIDTH),
-            frameHeight: cap(window.innerHeight + EMBED_FRAME_CHROME_PX, EMBED_FRAME_MIN_HEIGHT, EMBED_FRAME_MAX_HEIGHT),
-        };
-    };
 
     const flushFrame = () => {
         if (chatStore.isMinimized.value) {
@@ -40,11 +40,7 @@ export const useSvedaEmbedFrameBridge = () => {
             return;
         }
 
-        const size = frameSize();
-        if (!size) {
-            return;
-        }
-
+        const size = readHostSize();
         postToParent({
             type: 'sveda:resize',
             isMinimized: false,
@@ -62,10 +58,6 @@ export const useSvedaEmbedFrameBridge = () => {
             frameRaf = 0;
             flushFrame();
         });
-    };
-
-    const onResize = () => {
-        scheduleFrame();
     };
 
     watch(
@@ -93,15 +85,15 @@ export const useSvedaEmbedFrameBridge = () => {
     };
 
     const init = () => {
-        chatStore.minimizeChat();
         window.addEventListener('message', onParentMessage);
-        window.addEventListener('resize', onResize);
+        window.addEventListener('sveda:embed-host-size', scheduleFrame);
         postToParent({ type: 'sveda:ready' });
+        scheduleFrame();
     };
 
     const teardown = () => {
         window.removeEventListener('message', onParentMessage);
-        window.removeEventListener('resize', onResize);
+        window.removeEventListener('sveda:embed-host-size', scheduleFrame);
         if (frameRaf) {
             cancelAnimationFrame(frameRaf);
             frameRaf = 0;

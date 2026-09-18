@@ -2,7 +2,6 @@ use axum::body::Body;
 use axum::http::{HeaderMap, HeaderName, Request, StatusCode};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
-use tower::ServiceExt;
 use sveda_llm::{LlmClient, ScriptedClient};
 use sveda_protocol::{
     load_sidecar_contract, parse_sse_line, SidecarContract, ACCEPT_SVEDA_STREAM, PROTOCOL_VERSION,
@@ -10,6 +9,7 @@ use sveda_protocol::{
 };
 use sveda_server::{app, AppState, Config};
 use sveda_store::Checkpoint;
+use tower::ServiceExt;
 
 fn contract() -> SidecarContract {
     load_sidecar_contract(concat!(
@@ -575,6 +575,104 @@ async fn compaction_summary_trims_llm_history() {
     assert_eq!(counts.first().copied(), Some(2));
     let instructions = llm.last_instructions.lock().expect("instructions").clone();
     assert!(instructions.unwrap_or_default().contains("Frozen summary"));
+}
+
+#[tokio::test]
+async fn host_mcp_instructions_and_tool_names_reach_the_model() {
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/mcp/sveda"))
+        .respond_with(|request: &wiremock::Request| {
+            let payload: Value = serde_json::from_slice(&request.body).unwrap_or(json!({}));
+            let id = payload.get("id").cloned().unwrap_or(json!(1));
+            match payload.get("method").and_then(Value::as_str).unwrap_or("") {
+                "initialize" => ResponseTemplate::new(200).set_body_json(json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "result": {
+                        "protocolVersion": "2025-11-25",
+                        "capabilities": { "tools": { "listChanged": false } },
+                        "serverInfo": { "name": "playground", "version": "0.1.0" },
+                        "instructions": "Playground feed tools."
+                    }
+                })),
+                "tools/list" => ResponseTemplate::new(200).set_body_json(json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "result": {
+                        "tools": [{
+                            "name": "create_post",
+                            "description": "Create a post",
+                            "inputSchema": { "type": "object", "properties": {} },
+                            "_meta": { "domain": "posts", "mode": "write" }
+                        }]
+                    }
+                })),
+                _ => ResponseTemplate::new(202),
+            }
+        })
+        .mount(&server)
+        .await;
+
+    let mut config = Config::test();
+    config.host_api_key = Some("sidecar-host-secret".into());
+    let llm = std::sync::Arc::new(ScriptedClient::hello_world());
+    let state = AppState::with_llm(config, llm.clone() as std::sync::Arc<dyn LlmClient>);
+
+    let mut token_headers = json_headers();
+    token_headers.insert("x-sveda-host-key", "sidecar-host-secret".parse().unwrap());
+    let (status, _, body) = send(
+        state.clone(),
+        "POST",
+        "/sveda/embed/token",
+        token_headers,
+        json_body(&json!({
+            "visitor_id": "visitor-mcp-instructions",
+            "host_mcp_url": format!("{}/mcp/sveda", server.uri()),
+            "host_mcp_token": "mcp-secret"
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let token = serde_json::from_slice::<Value>(&body).unwrap()["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let (status, _, _) = send(
+        state,
+        "POST",
+        "/sveda/stream",
+        auth_accept_headers(&token),
+        json_body(&json!({
+            "messages": [{ "id": "m1", "role": "user", "content": "создай тестовый пост" }],
+            "chatId": "chat-mcp-instructions"
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let instructions = llm
+        .last_instructions
+        .lock()
+        .expect("instructions")
+        .clone()
+        .unwrap_or_default();
+    assert!(
+        instructions.contains("Playground feed tools."),
+        "instructions missing server text: {instructions}"
+    );
+    assert!(
+        instructions.contains("create_post"),
+        "instructions missing tool name: {instructions}"
+    );
+    assert!(
+        instructions.contains("MUST call the matching tool"),
+        "instructions missing usage directive: {instructions}"
+    );
 }
 
 #[tokio::test]

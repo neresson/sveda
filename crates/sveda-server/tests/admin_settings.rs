@@ -2,9 +2,9 @@ use axum::body::Body;
 use axum::http::{HeaderMap, Request, StatusCode};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
-use tower::ServiceExt;
 use sveda_protocol::{HEADER_ADMIN_KEY, HEADER_EMBED_TOKEN, TOKEN_PREFIX};
 use sveda_server::{app, AppState, Config};
+use tower::ServiceExt;
 
 fn admin_state() -> AppState {
     let mut config = Config::test();
@@ -126,7 +126,10 @@ async fn reads_settings_with_admin_key_header() {
 #[tokio::test]
 async fn reads_settings_with_bearer_admin_key() {
     let mut headers = HeaderMap::new();
-    headers.insert("authorization", "Bearer sveda-admin-secret".parse().unwrap());
+    headers.insert(
+        "authorization",
+        "Bearer sveda-admin-secret".parse().unwrap(),
+    );
     let (status, _) = send(
         admin_state(),
         "GET",

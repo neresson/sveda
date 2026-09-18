@@ -2,8 +2,8 @@ use axum::body::Body;
 use axum::http::{header, HeaderMap, Request, StatusCode};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
-use tower::ServiceExt;
 use sveda_server::{app, AppState, Config};
+use tower::ServiceExt;
 
 fn admin_state() -> AppState {
     let mut config = Config::test();
@@ -176,7 +176,8 @@ async fn runtime_page_renders_after_login() {
     let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
     headers.insert(header::COOKIE, cookie.parse().unwrap());
-    let (status, _, body) = send(state, "GET", "/sveda/admin/runtime", headers, Body::empty()).await;
+    let (status, _, body) =
+        send(state, "GET", "/sveda/admin/runtime", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let html = String::from_utf8(body).unwrap();
     assert!(html.contains("\"page\":\"runtime\""));
@@ -355,4 +356,7 @@ async fn embed_page_renders_host_driven_iframe_shell() {
     assert!(html.contains("id=\"sveda-embed\""));
     assert!(html.contains("\"hideLauncher\":true"));
     assert!(html.contains("/build/sveda/embed.js"));
+    assert!(html.contains(
+        "#sveda-embed{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}"
+    ));
 }

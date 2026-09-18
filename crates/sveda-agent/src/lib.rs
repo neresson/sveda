@@ -4,12 +4,12 @@ use std::sync::Arc;
 use async_stream::stream;
 use chrono::Utc;
 use futures_util::{Stream, StreamExt};
-use uuid::Uuid;
 use sveda_llm::{
     stream_with_failover, Catalog, ChatMessage, LlmChunk, LlmClient, LlmError, StepRequest,
     StoredToolCall, ToolSpec, UnknownModelError,
 };
 use sveda_protocol::{StreamEvent, StreamUsage, ToolTarget};
+use uuid::Uuid;
 
 mod compact;
 mod history;
@@ -17,7 +17,8 @@ mod title;
 mod tools;
 
 pub use compact::{
-    generate_summary, inject_summary, should_compact, summary_source, tail_messages,
+    append_instruction, generate_summary, host_tools_instruction, inject_summary, should_compact,
+    summary_source, tail_messages,
 };
 pub use history::{
     chat_to_json, conversation_json, display_messages, json_to_chat, preview_from,
@@ -218,6 +219,13 @@ fn run_loop(
                         });
                     }
                 }
+            }
+
+            if !tool_calls.is_empty()
+                && finish_reason != "continue"
+                && finish_reason != "error"
+            {
+                finish_reason = "tool_calls".into();
             }
 
             if had_result {
@@ -782,6 +790,56 @@ mod tests {
             input_schema: json!({ "type": "object", "properties": {} }),
             domain: "calendar".into(),
             mode: "read".into(),
+        }
+    }
+
+    #[tokio::test]
+    async fn backend_mcp_tool_executes_when_provider_finish_is_stop() {
+        let llm = ScriptedClient::queue(vec![
+            vec![
+                Ok(LlmChunk::ToolCall {
+                    id: "call-1".into(),
+                    name: "get_calendar_events".into(),
+                    input: json!({ "limit": 1 }),
+                }),
+                Ok(LlmChunk::Usage {
+                    prompt_tokens: 10,
+                    completion_tokens: 5,
+                }),
+                Ok(LlmChunk::End {
+                    finish_reason: "stop".into(),
+                }),
+            ],
+            vec![
+                Ok(LlmChunk::TextDelta("Done".into())),
+                Ok(LlmChunk::Usage {
+                    prompt_tokens: 8,
+                    completion_tokens: 4,
+                }),
+                Ok(LlmChunk::End {
+                    finish_reason: "stop".into(),
+                }),
+            ],
+        ]);
+        let runtime = ToolRuntime::memory(
+            MemoryBackend::new(
+                [(
+                    "get_calendar_events".into(),
+                    json!({ "success": true, "data": { "events": [] } }),
+                )]
+                .into_iter()
+                .collect(),
+            ),
+            vec![calendar_tool()],
+        )
+        .with_defer(false, 14);
+        let events = collect_with(llm, request(), AgentConfig::default(), runtime).await;
+        assert!(types_of(&events).contains(&"tool.result"));
+        match events.last() {
+            Some(StreamEvent::MessageEnd { finish_reason, .. }) => {
+                assert_eq!(finish_reason.as_deref(), Some("stop"));
+            }
+            other => panic!("expected message.end, got {other:?}"),
         }
     }
 

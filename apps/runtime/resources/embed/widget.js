@@ -15,6 +15,10 @@
   container.style.position = 'fixed';
   container.style.bottom = '0';
   container.style.right = '0';
+  container.style.left = 'auto';
+  container.style.top = 'auto';
+  container.style.width = '240px';
+  container.style.overflow = 'hidden';
   container.style.zIndex = '999999';
   container.style.pointerEvents = 'auto';
 
@@ -29,12 +33,13 @@
   iframe.allow = 'clipboard-write';
 
   const applyMinimizedLayout = function () {
-    container.style.width = 'auto';
-    container.style.minWidth = 'min(220px, calc(100vw - 40px))';
+    container.style.width = '240px';
+    container.style.minWidth = '0';
     container.style.height = '48px';
     container.style.minHeight = '48px';
     container.style.maxWidth = 'calc(100vw - 40px)';
     container.style.maxHeight = 'none';
+    iframe.style.width = '100%';
     iframe.style.height = '48px';
     iframe.style.minHeight = '48px';
   };
@@ -56,6 +61,7 @@
     container.style.height = size.height + 'px';
     container.style.maxWidth = 'calc(100vw - 40px)';
     container.style.maxHeight = 'calc(100vh - 40px)';
+    iframe.style.width = '100%';
     iframe.style.height = '100%';
     iframe.style.minHeight = '0';
   };

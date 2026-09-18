@@ -28,3 +28,4 @@ sveda-index = { path = "../sveda-index" }
 [dev-dependencies]
 http-body-util = { workspace = true }
 tower = { workspace = true }
+wiremock = { workspace = true }

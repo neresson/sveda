@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Value};
-use uuid::Uuid;
 use sveda_index::WorkspaceIndex;
 use sveda_llm::ToolSpec;
 use sveda_mcp::{HostMcpClient, McpTool};
 use sveda_protocol::{StreamEvent, ToolProgressTask};
+use uuid::Uuid;
 
 pub const SEARCH_TOOL_NAME: &str = "search_agent_tools";
 pub const SPAWN_TOOL_NAME: &str = "spawn_tasks";

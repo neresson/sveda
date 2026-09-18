@@ -43,6 +43,7 @@ pub struct HostMcpClient {
     session_id: Mutex<Option<String>>,
     next_id: AtomicU64,
     context: McpCallContext,
+    instructions: Mutex<Option<String>>,
 }
 
 impl HostMcpClient {
@@ -54,6 +55,7 @@ impl HostMcpClient {
             session_id: Mutex::new(None),
             next_id: AtomicU64::new(1),
             context,
+            instructions: Mutex::new(None),
         }
     }
 
@@ -79,22 +81,57 @@ impl HostMcpClient {
         if let Some(session) = response.session_id {
             *self.session_id.lock().expect("session") = Some(session);
         }
+        if let Some(text) = response
+            .body
+            .pointer("/result/instructions")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            *self.instructions.lock().expect("instructions") = Some(text.to_string());
+        }
         let _ = self
             .rpc_notification("notifications/initialized", json!({}))
             .await;
         Ok(())
     }
 
+    pub fn instructions(&self) -> Option<String> {
+        self.instructions
+            .lock()
+            .ok()
+            .and_then(|guard| guard.clone())
+    }
+
     pub async fn list_tools(&self) -> Result<Vec<McpTool>, McpError> {
         self.initialize().await?;
-        let payload = self.rpc("tools/list", json!({})).await?;
-        let tools = payload
-            .body
-            .pointer("/result/tools")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
-        Ok(tools.iter().filter_map(parse_tool).collect())
+        let mut tools = Vec::new();
+        let mut cursor: Option<String> = None;
+        for _ in 0..20 {
+            let mut params = json!({ "per_page": 250 });
+            if let Some(value) = &cursor {
+                params["cursor"] = json!(value);
+            }
+            let payload = self.rpc("tools/list", params).await?;
+            let page = payload
+                .body
+                .pointer("/result/tools")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            tools.extend(page.iter().filter_map(parse_tool));
+            cursor = payload
+                .body
+                .pointer("/result/nextCursor")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToOwned::to_owned);
+            if cursor.is_none() {
+                break;
+            }
+        }
+        Ok(tools)
     }
 
     pub async fn call_tool(&self, name: &str, arguments: Value) -> Result<Value, McpError> {

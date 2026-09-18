@@ -25,7 +25,8 @@ fn mcp_reply(request: &Request) -> ResponseTemplate {
                 "result": {
                     "protocolVersion": "2025-11-25",
                     "capabilities": { "tools": { "listChanged": false } },
-                    "serverInfo": { "name": "lms", "version": "0.1.0" }
+                    "serverInfo": { "name": "lms", "version": "0.1.0" },
+                    "instructions": "Host tools for the current user."
                 }
             })),
         "notifications/initialized" => ResponseTemplate::new(202),
@@ -82,6 +83,10 @@ async fn lists_and_calls_host_mcp_tools_with_contract_headers() {
     assert_eq!(tools.len(), 1);
     assert_eq!(tools[0].name, "get_calendar_events");
     assert_eq!(tools[0].domain, "calendar");
+    assert_eq!(
+        client.instructions().as_deref(),
+        Some("Host tools for the current user.")
+    );
 
     let result = client
         .call_tool("get_calendar_events", json!({ "limit": 1 }))

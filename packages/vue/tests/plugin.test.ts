@@ -92,4 +92,22 @@ describe('createSveda', () => {
 
     expect(fillHost).toBe(false);
   });
+
+  it('fills the iframe host when hostEmbed is set', () => {
+    const sveda = createSveda({ endpoints: { stream: '/sveda/stream' }, hostEmbed: true });
+    let fillHost = false;
+
+    const Probe = defineComponent({
+      setup() {
+        fillHost = inject(SvedaFillHostKey, false);
+        return () => null;
+      },
+    });
+
+    const app = createApp(Probe);
+    sveda.install(app);
+    app.mount(document.createElement('div'));
+
+    expect(fillHost).toBe(true);
+  });
 });

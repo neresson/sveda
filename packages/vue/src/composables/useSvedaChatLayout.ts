@@ -1,15 +1,27 @@
 import { useMediaQuery, useWindowSize } from '@vueuse/core';
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch, type ComputedRef, type Ref } from 'vue';
+import {
+  applyFixedLeftResize,
+  applyFloatingResize,
+  pointerScreenDelta,
+  SVEDA_CHAT_LAYOUT_MAX_HEIGHT,
+  SVEDA_CHAT_LAYOUT_MAX_WIDTH,
+  SVEDA_CHAT_LAYOUT_MIN_HEIGHT,
+  SVEDA_CHAT_LAYOUT_MIN_WIDTH,
+} from '../lib/chatResize';
 import { SvedaFillHostKey, SvedaHostEmbedKey } from '../plugin';
 
 const CHAT_STORAGE_KEY = 'sveda.chat-dimensions';
 const VIEW_MODE_STORAGE_KEY = 'sveda.chat-view-mode';
 const FIXED_WIDTH_STORAGE_KEY = 'sveda.chat-fixed-width';
 
-export const SVEDA_CHAT_LAYOUT_MIN_WIDTH = 320;
-export const SVEDA_CHAT_LAYOUT_MIN_HEIGHT = 400;
-export const SVEDA_CHAT_LAYOUT_MAX_WIDTH = 800;
-export const SVEDA_CHAT_LAYOUT_MAX_HEIGHT = 900;
+export {
+  SVEDA_CHAT_LAYOUT_MIN_WIDTH,
+  SVEDA_CHAT_LAYOUT_MIN_HEIGHT,
+  SVEDA_CHAT_LAYOUT_MAX_WIDTH,
+  SVEDA_CHAT_LAYOUT_MAX_HEIGHT,
+};
+
 export const SVEDA_CHAT_MAIN_CONTENT_MIN_WIDTH = 768;
 
 const MIN_WIDTH = SVEDA_CHAT_LAYOUT_MIN_WIDTH;
@@ -35,7 +47,7 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
   const isViewportMobile = useMediaQuery('(max-width: 768px)');
   const { width: windowWidth, height: windowHeight } = useWindowSize();
 
-  const isMobile = computed(() => isViewportMobile.value);
+  const isMobile = computed(() => (hostEmbed ? false : isViewportMobile.value));
 
   const chatWidth = ref(DEFAULT_WIDTH);
   const chatHeight = ref(DEFAULT_HEIGHT);
@@ -141,6 +153,11 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
 
     document.documentElement.style.setProperty(EMBED_WIDTH_CSS_VAR, `${chatWidth.value}px`);
     document.documentElement.style.setProperty(EMBED_HEIGHT_CSS_VAR, `${chatHeight.value}px`);
+    window.dispatchEvent(
+      new CustomEvent('sveda:embed-host-size', {
+        detail: { width: chatWidth.value, height: chatHeight.value },
+      })
+    );
   };
 
   const clearEmbedHostSize = () => {
@@ -153,6 +170,9 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
   };
 
   const loadChatDimensions = () => {
+    if (hostEmbed) {
+      return;
+    }
     try {
       const saved = localStorage.getItem(CHAT_STORAGE_KEY);
       if (saved) {
@@ -325,42 +345,43 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
 
     const pointerCaptureEl =
       event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-    let pointerCaptureId: number | null = null;
-    if (pointerCaptureEl?.setPointerCapture) {
-      const fromEvent =
-        'pointerId' in event ? Number((event as PointerEvent).pointerId) : Number.NaN;
-      const candidates = Number.isFinite(fromEvent) ? [fromEvent] : [1];
-      for (const id of candidates) {
-        try {
-          pointerCaptureEl.setPointerCapture(id);
-          pointerCaptureId = id;
-          break;
-        } catch {
-          continue;
-        }
+    const pointerId =
+      'pointerId' in event && Number.isFinite((event as PointerEvent).pointerId)
+        ? (event as PointerEvent).pointerId
+        : null;
+
+    if (pointerCaptureEl && pointerId !== null) {
+      try {
+        pointerCaptureEl.setPointerCapture(pointerId);
+      } catch {
+        // Capture is best-effort so drag still works without it.
       }
     }
 
     const releasePointerCaptureIfAny = () => {
-      if (
-        pointerCaptureEl &&
-        pointerCaptureId !== null &&
-        typeof pointerCaptureEl.releasePointerCapture === 'function'
-      ) {
+      if (pointerCaptureEl && pointerId !== null) {
         try {
-          pointerCaptureEl.releasePointerCapture(pointerCaptureId);
+          pointerCaptureEl.releasePointerCapture(pointerId);
         } catch {
-          pointerCaptureId = null;
           return;
         }
       }
-      pointerCaptureId = null;
     };
 
-    const startX = event.clientX;
-    const startY = event.clientY;
+    const startX = event.screenX;
+    const startY = event.screenY;
     const startWidth = viewMode.value === 'fixed' ? fixedWidth.value : chatWidth.value;
     const startHeight = chatHeight.value;
+    const moveEvent = pointerId !== null ? 'pointermove' : 'mousemove';
+    const upEvent = pointerId !== null ? 'pointerup' : 'mouseup';
+    let finished = false;
+
+    const stopListening = (move: (e: MouseEvent) => void, up: () => void) => {
+      window.removeEventListener(moveEvent, move);
+      window.removeEventListener(upEvent, up);
+      window.removeEventListener('pointercancel', up);
+      pointerCaptureEl?.removeEventListener('lostpointercapture', up);
+    };
 
     if (viewMode.value === 'fixed' && direction === 'fixed-left') {
       document.body.classList.add(FIXED_RESIZE_BODY_CLASS);
@@ -368,27 +389,30 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
       const reservePx = SVEDA_CHAT_MAIN_CONTENT_MIN_WIDTH;
       const handleMouseMoveFixed = (e: MouseEvent) => {
         if (!isResizing.value) return;
-        const deltaX = e.clientX - startX;
-        const newWidth = startWidth - deltaX;
+        const { deltaX } = pointerScreenDelta(e, startX, startY);
         const maxChat = window.innerWidth - reservePx;
+        const result = applyFixedLeftResize(startWidth, deltaX, maxChat);
         const endFixedResize = () => {
+          if (finished) {
+            return;
+          }
+          finished = true;
           releasePointerCaptureIfAny();
           isResizing.value = false;
           resizeDirection.value = null;
           clearFixedResizeBodyClass();
           saveFixedWidth();
-          document.removeEventListener('mousemove', handleMouseMoveFixed);
-          document.removeEventListener('mouseup', handleMouseUpFixed);
+          stopListening(handleMouseMoveFixed, handleMouseUpFixed);
         };
-        if (newWidth > maxChat && maxChat >= MIN_WIDTH) {
-          dragFixedWidth = maxChat;
-          fixedWidth.value = maxChat;
+        if (result.enterImmersive) {
+          dragFixedWidth = result.width;
+          fixedWidth.value = result.width;
           lastNonImmersiveViewMode.value = 'fixed';
-          applyChatWidthVar(maxChat);
+          applyChatWidthVar(result.width);
           clearFixedResizeBodyClass();
           isEnteringImmersiveFromDrag.value = true;
           endFixedResize();
-          const targetW = typeof window !== 'undefined' ? window.innerWidth : maxChat;
+          const targetW = typeof window !== 'undefined' ? window.innerWidth : result.width;
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
               applyChatWidthVar(targetW);
@@ -404,12 +428,15 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
           }, 320);
           return;
         }
-        const upper = Math.max(MIN_WIDTH, maxChat);
-        dragFixedWidth = Math.max(MIN_WIDTH, Math.min(upper, newWidth));
+        dragFixedWidth = result.width;
         applyChatWidthVar(dragFixedWidth);
       };
 
       const handleMouseUpFixed = () => {
+        if (finished) {
+          return;
+        }
+        finished = true;
         releasePointerCaptureIfAny();
         fixedWidth.value = dragFixedWidth;
         isResizing.value = false;
@@ -417,50 +444,52 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
         clearFixedResizeBodyClass();
         saveFixedWidth();
         updateBodyClass();
-        document.removeEventListener('mousemove', handleMouseMoveFixed);
-        document.removeEventListener('mouseup', handleMouseUpFixed);
+        stopListening(handleMouseMoveFixed, handleMouseUpFixed);
       };
 
-      document.addEventListener('mousemove', handleMouseMoveFixed);
-      document.addEventListener('mouseup', handleMouseUpFixed);
+      window.addEventListener(moveEvent, handleMouseMoveFixed);
+      window.addEventListener(upEvent, handleMouseUpFixed);
+      window.addEventListener('pointercancel', handleMouseUpFixed);
+      pointerCaptureEl?.addEventListener('lostpointercapture', handleMouseUpFixed);
       return;
     }
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing.value) return;
+      if (!isResizing.value || !resizeDirection.value) return;
 
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
+      const { deltaX, deltaY } = pointerScreenDelta(e, startX, startY);
 
-      if (viewMode.value === 'floating' && resizeDirection.value) {
-        if (resizeDirection.value.includes('right')) {
-          chatWidth.value = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth + deltaX));
-        }
-        if (resizeDirection.value.includes('left')) {
-          chatWidth.value = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth - deltaX));
-        }
-        if (resizeDirection.value.includes('bottom')) {
-          chatHeight.value = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startHeight + deltaY));
-        }
-        if (resizeDirection.value.includes('top')) {
-          chatHeight.value = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startHeight - deltaY));
-        }
+      if (viewMode.value === 'floating') {
+        const next = applyFloatingResize(
+          resizeDirection.value,
+          startWidth,
+          startHeight,
+          deltaX,
+          deltaY
+        );
+        chatWidth.value = next.width;
+        chatHeight.value = next.height;
       }
     };
 
     const handleMouseUp = () => {
+      if (finished) {
+        return;
+      }
+      finished = true;
       releasePointerCaptureIfAny();
       isResizing.value = false;
       resizeDirection.value = null;
       if (viewMode.value === 'floating') {
         saveChatDimensions();
       }
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      stopListening(handleMouseMove, handleMouseUp);
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener(moveEvent, handleMouseMove);
+    window.addEventListener(upEvent, handleMouseUp);
+    window.addEventListener('pointercancel', handleMouseUp);
+    pointerCaptureEl?.addEventListener('lostpointercapture', handleMouseUp);
   };
 
   if (typeof window !== 'undefined') {
