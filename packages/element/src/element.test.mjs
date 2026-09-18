@@ -19,6 +19,9 @@ describe('host stylesheet', () => {
     assert.equal(/sveda-chat\s*\{[^}]*\binset\b/.test(css), false);
     assert.equal(/sveda-chat\s*\{[^}]*top:\s*0/.test(css), false);
     assert.match(css, /sveda-chat\[data-sveda-open='true'\] > \.sveda-chat/);
+    assert.match(css, /0 0% 100%/);
+    assert.match(css, /border:\s*1px dashed/);
+    assert.match(css, /background-size:\s*10px 1px/);
     assert.match(css, /ol\.pointer-events-none/);
     assert.match(css, /max-height:\s*12rem/);
     assert.equal(css.includes("sveda-chat[data-sveda-open='true'] .sveda-chat"), false);
@@ -54,6 +57,8 @@ describe('host stylesheet', () => {
     assert.equal(pkg.includes('@tailwindcss/vite'), false);
     assert.equal(pkg.includes('"tailwindcss"'), false);
     assert.match(index, /import '\.\/host\.css'/);
+    assert.match(index, /static get observedAttributes/);
+    assert.match(index, /attributeChangedCallback/);
   });
 
   it('scopes iframe embed CSS so preflight cannot reset the host page', () => {

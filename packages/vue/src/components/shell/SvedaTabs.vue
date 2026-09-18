@@ -51,9 +51,9 @@
 
   const tabTriggerClass = chatId =>
     [
-      'inline-flex h-10 max-w-56 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-4 py-2 text-sm font-medium text-foreground/70 transition-all hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+      'inline-flex h-10 max-w-56 shrink-0 items-center gap-1.5 whitespace-nowrap border-b border-transparent px-3 py-2 font-mono text-[11px] tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none',
       props.currentChatId === chatId
-        ? 'border-primary bg-muted/60 text-foreground shadow-sm'
+        ? 'border-foreground bg-transparent text-foreground'
         : '',
     ].join(' ');
 
@@ -66,7 +66,7 @@
 <template>
   <div
     v-if="visibleTabs.length > 0"
-    class="flex shrink-0 items-stretch border-b border-border/50 bg-background/70"
+    class="flex shrink-0 items-stretch border-b border-border bg-card"
     :class="compact ? 'px-3' : 'px-4 md:px-6'"
   >
     <ScrollArea class="min-w-0 flex-1">

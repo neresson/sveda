@@ -1,5 +1,6 @@
 import type { SvedaSendOptions } from '@sveda-ai/core';
 import { computed, ref, watch, type ComputedRef } from 'vue';
+import { useSvedaChrome } from '../appearance';
 import { useSvedaT } from '../i18n/index';
 
 const SVEDA_CHAT_MODEL_STORAGE_KEY = 'sveda.chat-model';
@@ -13,6 +14,7 @@ export interface SvedaChatModelOption {
 
 export function useSvedaModel(models: ComputedRef<SvedaChatModelOption[]>) {
   const t = useSvedaT();
+  const chrome = useSvedaChrome();
 
   const readStoredModel = (): string => {
     if (typeof window === 'undefined') {
@@ -70,7 +72,7 @@ export function useSvedaModel(models: ComputedRef<SvedaChatModelOption[]>) {
   const resolveStreamingSendOptions = (): Pick<SvedaSendOptions, 'model' | 'options'> => ({
     model: selectedChatModel.value || undefined,
     options: {
-      thinking: Boolean(selectedModelSupportsThinking.value && thinkingEnabled.value),
+      thinking: Boolean(chrome.thinking && selectedModelSupportsThinking.value && thinkingEnabled.value),
     },
   });
 

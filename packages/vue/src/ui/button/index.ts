@@ -36,15 +36,15 @@ export const buttonHoverStyles: Record<
   NonNullable<VariantProps<typeof buttonVariants>['variant']>,
   string
 > = {
-  default: 'brightness-110 shadow-md',
-  destructive: 'bg-destructive/90 shadow-md',
-  outline: 'bg-foreground/5 dark:bg-foreground/5 border-brand-primary-purple text-brand-primary-purple shadow-md',
-  secondary: 'bg-foreground/5 dark:bg-foreground/5 border-brand-primary-purple text-brand-primary-purple shadow-md',
-  ghost: 'bg-brand-primary-purple-foreground/30 text-brand-primary-purple',
+  default: 'opacity-90',
+  destructive: 'bg-destructive/90',
+  outline: 'bg-foreground/5 dark:bg-foreground/5 border-brand-primary-purple text-brand-primary-purple',
+  secondary: 'bg-foreground/5 dark:bg-foreground/5 border-brand-primary-purple text-brand-primary-purple',
+  ghost: 'bg-muted text-foreground',
   ghostTransparent: 'bg-transparent text-foreground',
   link: 'underline',
-  violet: 'brightness-110 shadow-md',
-  main: 'brightness-110 shadow-md',
+  violet: 'opacity-90',
+  main: 'opacity-90',
 };
 
 export type ButtonVariants = VariantProps<typeof buttonVariants>

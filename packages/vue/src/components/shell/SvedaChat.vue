@@ -1,6 +1,7 @@
 <script setup>
   import SvedaAgentCompletedNotice from './SvedaAgentCompletedNotice.vue';
   import SvedaAgentTasksPanel from './SvedaAgentTasksPanel.vue';
+  import SvedaFrameTicks from './SvedaFrameTicks.vue';
   import SvedaHistorySheet from './SvedaHistorySheet.vue';
   import SvedaHistorySidebar from './SvedaHistorySidebar.vue';
   import SvedaInputSection from './SvedaInputSection.vue';
@@ -287,12 +288,13 @@
           />
           <Card
             ref="chatCardRef"
-            class="sveda-chat-surface relative flex min-h-0 flex-col overflow-hidden shadow-sm"
+            class="sveda-chat-surface relative flex min-h-0 flex-col overflow-visible"
             :class="{
               resizing: chat.isResizing || chat.isEnteringImmersiveFromDrag,
-              'border-[2px] border-border': chat.viewMode === 'floating',
-              'h-full min-w-0 flex-1 rounded-none border-0': chat.isMobile,
-              'h-full min-w-0 flex-1 rounded-none border-b-0 border-l-[2px] border-r-0 border-t-0 border-border': chat.viewMode === 'fixed' && !chat.isMobile,
+              'sveda-chat-frame': chat.viewMode === 'floating' && !chat.isMobile && !chat.fillHost,
+              'border-0': chat.fillHost || chat.isMobile,
+              'h-full min-w-0 flex-1 rounded-none': chat.isMobile,
+              'h-full min-w-0 flex-1 rounded-none border-b-0 border-l border-r-0 border-t-0 border-border': chat.viewMode === 'fixed' && !chat.isMobile,
               'rounded-[var(--sveda-radius)]': chat.viewMode === 'floating',
               'rounded-none': chat.isMobile || chat.viewMode === 'fixed',
               'transition-[width] duration-300 ease-out': chat.isEnteringImmersiveFromDrag && chat.viewMode === 'fixed' && !chat.isMobile,
@@ -301,6 +303,7 @@
             }"
             :style="chat.chatCardStyle"
           >
+            <SvedaFrameTicks v-if="!chat.isMobile && (chat.viewMode === 'floating' || chat.fillHost)" />
             <SvedaResizeHandles
               :is-mobile="chat.isMobile"
               :view-mode="chat.viewMode"

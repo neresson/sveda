@@ -108,7 +108,7 @@
     class="flex justify-start"
     data-testid="chat-pending-indicator"
   >
-    <div class="max-w-[85%] rounded-lg bg-muted px-4 py-3">
+    <div class="max-w-[85%] rounded-[var(--sveda-radius)] border border-border bg-muted px-4 py-3">
       <div class="flex items-center gap-3">
         <div
           class="flex shrink-0 items-center space-x-1"

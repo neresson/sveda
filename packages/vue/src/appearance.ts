@@ -61,6 +61,11 @@ export type SvedaAppearanceLauncher = {
   image: string;
 };
 
+export type SvedaAppearanceChrome = {
+  modelSelect: boolean;
+  thinking: boolean;
+};
+
 export type SvedaAppearance = {
   preset?: string;
   radius?: string;
@@ -68,59 +73,64 @@ export type SvedaAppearance = {
   tokens?: Partial<SvedaAppearanceTokens> | Record<string, string>;
   dark_tokens?: Partial<SvedaAppearanceTokens> | Record<string, string>;
   launcher?: Partial<SvedaAppearanceLauncher> | { label?: string; icon?: string; image?: string };
+  chrome?: Partial<SvedaAppearanceChrome>;
 };
 
 export const SVEDA_APPEARANCE_PRESET_IDS = ['default', 'lms', 'ocean', 'forest', 'sunset', 'sand'] as const;
 
 export type SvedaAppearancePresetId = (typeof SVEDA_APPEARANCE_PRESET_IDS)[number];
 
-const NEUTRAL_LIGHT: SvedaAppearanceTokens = {
-  background: '210 20% 98%',
-  foreground: '0 0% 3.9%',
+const LANDING_LIGHT: SvedaAppearanceTokens = {
+  background: '0 0% 100%',
+  foreground: '0 0% 4%',
   card: '0 0% 100%',
-  card_foreground: '0 0% 3.9%',
+  card_foreground: '0 0% 4%',
   popover: '0 0% 100%',
-  popover_foreground: '0 0% 3.9%',
-  primary: '0 0% 9%',
-  primary_foreground: '0 0% 98%',
-  secondary: '0 0% 92.1%',
-  secondary_foreground: '0 0% 9%',
-  muted: '0 0% 96.1%',
-  muted_foreground: '0 0% 45.1%',
-  accent: '0 0% 96.1%',
-  accent_foreground: '0 0% 9%',
+  popover_foreground: '0 0% 4%',
+  primary: '0 0% 4%',
+  primary_foreground: '0 0% 100%',
+  secondary: '40 20% 90%',
+  secondary_foreground: '0 0% 4%',
+  muted: '40 22% 90%',
+  muted_foreground: '40 6% 41%',
+  accent: '40 22% 90%',
+  accent_foreground: '0 0% 4%',
   destructive: '0 84.2% 60.2%',
   destructive_foreground: '0 0% 98%',
-  border: '220 13% 91%',
-  input: '220 14% 96%',
-  ring: '0 0% 3.9%',
-  brand: '0 0% 9%',
-  brand_foreground: '0 0% 98%',
+  border: '42 18% 82%',
+  input: '40 22% 92%',
+  ring: '0 0% 4%',
+  brand: '0 0% 4%',
+  brand_foreground: '0 0% 100%',
 };
 
-const NEUTRAL_DARK: SvedaAppearanceTokens = {
-  background: '222.2 47.4% 11.2%',
-  foreground: '210 40% 98%',
-  card: '222.2 47.4% 14%',
-  card_foreground: '210 40% 98%',
-  popover: '222.2 47.4% 14%',
-  popover_foreground: '210 40% 98%',
-  primary: '210 40% 98%',
-  primary_foreground: '222.2 47.4% 11.2%',
-  secondary: '217.2 32.6% 17.5%',
-  secondary_foreground: '210 40% 98%',
-  muted: '217.2 32.6% 17.5%',
-  muted_foreground: '215 20.2% 65.1%',
-  accent: '217.2 32.6% 17.5%',
-  accent_foreground: '210 40% 98%',
+const LANDING_DARK: SvedaAppearanceTokens = {
+  background: '30 12% 9%',
+  foreground: '40 24% 94%',
+  card: '30 10% 12%',
+  card_foreground: '40 24% 94%',
+  popover: '30 10% 12%',
+  popover_foreground: '40 24% 94%',
+  primary: '40 24% 94%',
+  primary_foreground: '30 12% 9%',
+  secondary: '30 8% 16%',
+  secondary_foreground: '40 24% 94%',
+  muted: '30 8% 16%',
+  muted_foreground: '36 10% 62%',
+  accent: '30 8% 16%',
+  accent_foreground: '40 24% 94%',
   destructive: '0 62.8% 30.6%',
-  destructive_foreground: '210 40% 98%',
-  border: '217.2 32.6% 17.5%',
-  input: '217.2 32.6% 17.5%',
-  ring: '212.7 26.8% 83.9%',
-  brand: '210 40% 98%',
-  brand_foreground: '222.2 47.4% 11.2%',
+  destructive_foreground: '40 24% 94%',
+  border: '30 8% 22%',
+  input: '30 8% 16%',
+  ring: '40 24% 94%',
+  brand: '40 24% 94%',
+  brand_foreground: '30 12% 9%',
 };
+
+const NEUTRAL_LIGHT: SvedaAppearanceTokens = { ...LANDING_LIGHT };
+
+const NEUTRAL_DARK: SvedaAppearanceTokens = { ...LANDING_DARK };
 
 export const SVEDA_APPEARANCE_PRESETS: Record<SvedaAppearancePresetId, Required<Pick<SvedaAppearance, 'preset' | 'radius'>> & {
   tokens: SvedaAppearanceTokens;
@@ -317,6 +327,24 @@ export const svedaLauncher = reactive<SvedaAppearanceLauncher>(sanitizeSvedaLaun
 
 export const useSvedaLauncher = (): SvedaAppearanceLauncher => svedaLauncher;
 
+const readChromeFlag = (value: unknown, fallback: boolean): boolean =>
+  typeof value === 'boolean' ? value : fallback;
+
+export const sanitizeSvedaChrome = (
+  chrome: SvedaAppearance['chrome'] | Record<string, unknown> | null | undefined,
+): SvedaAppearanceChrome => {
+  const record = chrome && typeof chrome === 'object' ? (chrome as Record<string, unknown>) : null;
+
+  return {
+    modelSelect: readChromeFlag(record?.modelSelect ?? record?.model_select, true),
+    thinking: readChromeFlag(record?.thinking, true),
+  };
+};
+
+export const svedaChrome = reactive<SvedaAppearanceChrome>(sanitizeSvedaChrome(null));
+
+export const useSvedaChrome = (): SvedaAppearanceChrome => svedaChrome;
+
 export const sanitizeSvedaRadius = (value: unknown): string | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return `${Math.max(0, Math.min(64, Math.round(value)))}px`;
@@ -489,6 +517,7 @@ export const resolveSvedaAppearance = (appearance: SvedaAppearance | null | unde
 
   const theme = sanitizeSvedaTheme(appearance.theme);
   const launcher = sanitizeSvedaLauncher(appearance.launcher);
+  const chrome = sanitizeSvedaChrome(appearance.chrome);
 
   if (appearance.preset === 'custom' || customTokens) {
     return {
@@ -498,6 +527,7 @@ export const resolveSvedaAppearance = (appearance: SvedaAppearance | null | unde
       tokens,
       dark_tokens: darkTokens,
       launcher,
+      chrome,
     };
   }
 
@@ -508,6 +538,7 @@ export const resolveSvedaAppearance = (appearance: SvedaAppearance | null | unde
     tokens: named.tokens,
     dark_tokens: named.dark_tokens,
     launcher,
+    chrome,
   };
 };
 
@@ -548,10 +579,15 @@ export const buildAppearanceCss = (appearance: SvedaAppearance | null | undefine
 };
 
 export const applySvedaAppearance = (appearance: SvedaAppearance | null | undefined): void => {
-  const launcher = sanitizeSvedaLauncher(resolveSvedaAppearance(appearance)?.launcher);
+  const resolved = resolveSvedaAppearance(appearance);
+  const launcher = sanitizeSvedaLauncher(resolved?.launcher);
   svedaLauncher.label = launcher.label;
   svedaLauncher.icon = launcher.icon;
   svedaLauncher.image = launcher.image;
+
+  const chrome = sanitizeSvedaChrome(resolved?.chrome);
+  svedaChrome.modelSelect = chrome.modelSelect;
+  svedaChrome.thinking = chrome.thinking;
 
   if (typeof document === 'undefined') {
     return;

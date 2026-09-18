@@ -15,7 +15,7 @@
   const Icon = computed(() => svedaLauncherIconComponent(props.icon));
 
   const triggerClass =
-    'flex h-10 min-w-[200px] items-center justify-start gap-2 rounded-bl-none rounded-br-none rounded-tl-[var(--sveda-radius)] rounded-tr-none bg-primary px-3 text-primary-foreground shadow-2xl transition-all hover:bg-primary/90 min-[768px]:min-w-0 min-[1872px]:h-14 min-[1872px]:justify-center min-[1872px]:gap-3 min-[1872px]:rounded-[var(--sveda-radius)] min-[1872px]:px-4 [&_svg]:!h-6 [&_svg]:!w-6 min-[1872px]:[&_svg]:!h-10 min-[1872px]:[&_svg]:!w-10';
+    'inline-flex h-auto min-w-0 items-center justify-center gap-2 rounded-none border border-primary bg-primary px-3.5 py-2 font-mono text-[11px] tracking-[0.14em] text-primary-foreground shadow-none transition-opacity hover:opacity-90 [&_svg]:!h-3.5 [&_svg]:!w-3.5';
 </script>
 
 <template>
@@ -37,7 +37,7 @@
     />
     <span
       v-if="label"
-      class="font-semibold"
+      class="font-mono text-[11px] font-normal tracking-[0.14em]"
     >{{ label }}</span>
   </Button>
 </template>

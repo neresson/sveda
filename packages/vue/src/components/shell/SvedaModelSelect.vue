@@ -12,7 +12,7 @@
 <template>
   <Select v-model="model">
     <SelectTrigger
-      class="h-7 w-fit min-w-[110px] border-none bg-transparent px-2 text-xs text-muted-foreground shadow-none hover:bg-muted/50 hover:text-foreground focus:ring-0 focus:ring-offset-0"
+      class="h-7 w-fit min-w-[110px] border-none bg-transparent px-2 font-mono text-[11px] tracking-[0.08em] text-muted-foreground shadow-none hover:text-foreground focus:ring-0 focus:ring-offset-0"
     >
       <SelectValue :placeholder="placeholder" />
     </SelectTrigger>

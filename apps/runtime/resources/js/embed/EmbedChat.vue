@@ -18,7 +18,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="sveda-chat sveda-chat-host relative h-full min-h-0 w-full bg-transparent">
+    <div class="sveda-chat sveda-chat-host sveda-chat-frame relative h-full min-h-0 w-full bg-background">
         <SvedaChat :brand-name="props.brandName" :page-url="props.pageUrl" />
         <Toaster />
     </div>

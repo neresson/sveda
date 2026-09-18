@@ -38,5 +38,10 @@ export default {
     launcher_image_remove: 'Убрать',
     launcher_image_type: 'Нужен файл PNG, JPEG, WebP или GIF.',
     launcher_image_size: 'Файл больше 256 КБ.',
+    chrome: 'Элементы чата',
+    chrome_model: 'Выбор модели',
+    chrome_model_hint: 'Показать список моделей в поле ввода. Выключено — берётся модель по умолчанию.',
+    chrome_thinking: 'Рассуждения',
+    chrome_thinking_hint: 'Показать переключатель рассуждений. Выключено — скрывает его и не шлёт thinking.',
     parameters_hint: 'Тёмную тему включай через appearance.theme: "dark". Свою палитру — через appearance.tokens.',
 };

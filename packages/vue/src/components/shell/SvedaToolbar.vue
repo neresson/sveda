@@ -34,7 +34,7 @@
 
   const headerClass = computed(() => {
     const base =
-      'flex h-14 shrink-0 flex-row items-center justify-between border-b border-border/50 bg-background/70 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:px-6 xl:h-16';
+      'flex h-12 shrink-0 flex-row items-center justify-between border-b border-border bg-card px-3';
     if (props.viewMode === 'immersive') {
       return `${base} rounded-none`;
     }
@@ -68,7 +68,7 @@
             <p>{{ t('chatHistory') }}</p>
           </TooltipContent>
         </Tooltip>
-        <h2 class="min-w-0 flex-1 truncate text-left text-sm font-medium leading-tight text-foreground xl:text-base">
+        <h2 class="min-w-0 flex-1 truncate text-left font-mono text-[11px] font-normal uppercase tracking-[0.14em] text-foreground">
           {{ title }}
         </h2>
       </div>
@@ -93,7 +93,7 @@
             </span>
           </div>
         </div>
-        <h2 class="min-w-0 flex-1 truncate text-left text-sm font-medium leading-tight text-foreground xl:text-base">
+        <h2 class="min-w-0 flex-1 truncate text-left font-mono text-[11px] font-normal uppercase tracking-[0.14em] text-foreground">
           {{ title }}
         </h2>
       </div>

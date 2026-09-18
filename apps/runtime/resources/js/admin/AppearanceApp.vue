@@ -46,18 +46,18 @@ const tokenHsl = (presetId, mode, key, fallback) => {
 };
 
 const surfaceStyle = (presetId, mode) => ({
-    backgroundColor: tokenHsl(presetId, mode, 'background', mode === 'dark' ? '222.2 47.4% 11.2%' : '210 20% 98%'),
-    color: tokenHsl(presetId, mode, 'foreground', mode === 'dark' ? '210 40% 98%' : '0 0% 9%'),
+    backgroundColor: tokenHsl(presetId, mode, 'background', mode === 'dark' ? '30 12% 9%' : '0 0% 100%'),
+    color: tokenHsl(presetId, mode, 'foreground', mode === 'dark' ? '40 24% 94%' : '0 0% 4%'),
 });
 
 const brandStyle = (presetId, mode, radius) => ({
-    backgroundColor: tokenHsl(presetId, mode, 'brand', mode === 'dark' ? '210 40% 98%' : '0 0% 9%'),
+    backgroundColor: tokenHsl(presetId, mode, 'brand', mode === 'dark' ? '40 24% 94%' : '0 0% 4%'),
     borderRadius: radius,
 });
 
 const cardStyle = (presetId, mode, radius) => ({
-    backgroundColor: tokenHsl(presetId, mode, 'card', mode === 'dark' ? '222.2 47.4% 14%' : '0 0% 100%'),
-    borderColor: tokenHsl(presetId, mode, 'border', mode === 'dark' ? '217.2 32.6% 17.5%' : '220 13% 91%'),
+    backgroundColor: tokenHsl(presetId, mode, 'card', mode === 'dark' ? '30 10% 12%' : '0 0% 100%'),
+    borderColor: tokenHsl(presetId, mode, 'border', mode === 'dark' ? '30 8% 22%' : '42 18% 82%'),
     borderRadius: radius,
 });
 
@@ -77,6 +77,8 @@ const fromDocument = (document) => {
             ? appearance.launcher.icon
             : SVEDA_DEFAULT_LAUNCHER_ICON,
         image: sanitizeSvedaLauncherImage(appearance.launcher?.image),
+        modelSelect: appearance.chrome?.modelSelect !== false,
+        thinking: appearance.chrome?.thinking !== false,
     };
 };
 
@@ -97,15 +99,20 @@ const liveAppearance = computed(() => {
         icon: form.icon,
         image: form.image,
     };
+    const chrome = {
+        modelSelect: form.modelSelect,
+        thinking: form.thinking,
+    };
     const preset = colorPreset.value;
     if (!preset) {
-        return { radius: form.radius, launcher };
+        return { radius: form.radius, launcher, chrome };
     }
 
     return {
         ...preset,
         radius: form.radius,
         launcher,
+        chrome,
     };
 });
 
@@ -195,6 +202,10 @@ const savePayload = () => {
         icon: form.icon,
         image: form.image,
     };
+    const chrome = {
+        modelSelect: form.modelSelect,
+        thinking: form.thinking,
+    };
 
     if (form.preset === 'custom') {
         return {
@@ -204,6 +215,7 @@ const savePayload = () => {
                 tokens: savedAppearance.value?.tokens ?? {},
                 dark_tokens: savedAppearance.value?.dark_tokens ?? {},
                 launcher,
+                chrome,
             },
         };
     }
@@ -213,6 +225,7 @@ const savePayload = () => {
             preset: form.preset,
             radius: form.radius,
             launcher,
+            chrome,
         },
     };
 };
@@ -411,6 +424,32 @@ const save = async () => {
                     </div>
                     <span class="font-mono text-[11px] text-muted">{{ t('appearance.launcher_image_hint') }}</span>
                 </div>
+            </div>
+
+            <div class="flex flex-col gap-3 border-t border-grid pt-4">
+                <p class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('appearance.chrome') }}</p>
+                <label class="flex cursor-pointer items-start gap-3 border border-grid px-3.5 py-3 hover:border-ink">
+                    <input
+                        v-model="form.modelSelect"
+                        type="checkbox"
+                        class="mt-1 accent-ink"
+                    >
+                    <span>
+                        <span class="block font-mono text-[11px] tracking-[0.14em]">{{ t('appearance.chrome_model') }}</span>
+                        <span class="mt-1 block font-serif text-sm text-muted">{{ t('appearance.chrome_model_hint') }}</span>
+                    </span>
+                </label>
+                <label class="flex cursor-pointer items-start gap-3 border border-grid px-3.5 py-3 hover:border-ink">
+                    <input
+                        v-model="form.thinking"
+                        type="checkbox"
+                        class="mt-1 accent-ink"
+                    >
+                    <span>
+                        <span class="block font-mono text-[11px] tracking-[0.14em]">{{ t('appearance.chrome_thinking') }}</span>
+                        <span class="mt-1 block font-serif text-sm text-muted">{{ t('appearance.chrome_thinking_hint') }}</span>
+                    </span>
+                </label>
             </div>
 
             <p class="font-mono text-[11px] leading-relaxed text-muted">{{ t('appearance.parameters_hint') }}</p>

@@ -332,11 +332,11 @@
   const micStopButtonClass = 'h-8 w-8 rounded-[var(--sveda-radius)] text-destructive hover:bg-destructive/10 hover:text-destructive';
 
   const sendButtonClass =
-    'h-8 w-8 rounded-[var(--sveda-radius)] text-brand-primary-purple hover:bg-brand-primary-purple/10 hover:text-brand-primary-purple disabled:opacity-50 dark:text-purple-400 dark:hover:bg-purple-400/10 dark:hover:text-purple-300';
+    'h-8 w-8 rounded-none border border-dashed border-primary bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50';
 
-  const streamStopButtonClass = 'h-8 w-8 rounded-[var(--sveda-radius)] text-destructive hover:bg-destructive/10 hover:text-destructive';
+  const streamStopButtonClass = 'h-8 w-8 rounded-none border border-dashed border-destructive text-destructive hover:bg-destructive/10';
 
-  const controlToolbarClass = 'flex items-center justify-between px-2';
+  const controlToolbarClass = 'flex items-center justify-between border-t border-dashed border-foreground px-2 py-1';
 
   const adjustTextareaHeight = () => {
     nextTick(() => {
@@ -393,12 +393,12 @@
     :class="
       noBorder
         ? 'flex flex-shrink-0 flex-col bg-transparent p-4'
-        : 'sveda-chat-surface flex flex-shrink-0 flex-col border-t border-border/50 p-4 dark:border-slate-700'
+        : 'flex flex-shrink-0 flex-col bg-background p-3'
     "
   >
     <div
       v-if="hasStatusBanner"
-      class="mb-3 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+      class="mb-3 flex items-center gap-2 border border-dashed border-foreground bg-muted px-3 py-2 font-mono text-[11px] tracking-[0.08em] text-muted-foreground"
     >
       <Loader2 class="h-4 w-4 shrink-0 animate-spin" />
       <span class="leading-snug">{{ statusBanner }}</span>
@@ -412,8 +412,8 @@
       @change="onFileInputChange"
     />
     <div
-      class="border-input-transparent relative flex flex-col rounded-[var(--sveda-radius)] border bg-background shadow-sm transition-colors"
-      :class="isDragActive && !attachmentToolbarDisabled ? 'border-brand-primary-purple/70 ring-1 ring-brand-primary-purple/30' : ''"
+      class="sveda-chat-frame relative flex flex-col bg-background transition-colors"
+      :class="isDragActive && !attachmentToolbarDisabled ? 'bg-muted' : ''"
       @dragenter="onDragEnter"
       @dragleave="onDragLeave"
       @dragover="onDragOver"
@@ -450,7 +450,7 @@
         :placeholder="t('typeMessage')"
         :disabled="isLoading"
         :readonly="isListening"
-        class="sveda-chat-input-textarea max-h-[250px] min-h-[60px] w-full resize-none border-0 bg-transparent p-3 shadow-none !outline-none !ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+        class="sveda-chat-input-textarea max-h-[250px] min-h-[60px] w-full resize-none border-0 bg-transparent p-3 font-sans text-sm text-foreground shadow-none !outline-none !ring-0 placeholder:font-mono placeholder:text-[11px] placeholder:tracking-[0.08em] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
         style="height: 60px; outline: none; box-shadow: none"
       />
 

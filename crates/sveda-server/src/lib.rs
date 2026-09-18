@@ -3,8 +3,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use axum::extract::{DefaultBodyLimit, Path, State};
+use axum::extract::{DefaultBodyLimit, Path, Request, State};
 use axum::http::{header, HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
+use axum::middleware::{self, Next};
 use axum::response::sse::Sse;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
@@ -528,7 +529,24 @@ pub fn app(state: AppState) -> Router {
         .fallback(ui::not_found)
         .layer(DefaultBodyLimit::max(extract_limit))
         .layer(cors_layer(cors_origins))
+        .layer(middleware::from_fn(expose_embed_assets))
         .with_state(state)
+}
+
+async fn expose_embed_assets(request: Request, next: Next) -> Response {
+    let is_embed_asset = request.uri().path().starts_with("/build/sveda/");
+    let mut response = next.run(request).await;
+    if is_embed_asset
+        && !response
+            .headers()
+            .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+    {
+        response.headers_mut().insert(
+            header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            HeaderValue::from_static("*"),
+        );
+    }
+    response
 }
 
 fn cors_layer(origins: Arc<Mutex<Vec<String>>>) -> CorsLayer {

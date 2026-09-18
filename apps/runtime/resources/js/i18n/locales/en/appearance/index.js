@@ -38,5 +38,10 @@ export default {
     launcher_image_remove: 'Remove',
     launcher_image_type: 'Use a PNG, JPEG, WebP, or GIF file.',
     launcher_image_size: 'The file is larger than 256 KB.',
+    chrome: 'Chat controls',
+    chrome_model: 'Model picker',
+    chrome_model_hint: 'Show the model dropdown in the composer. Off keeps the default catalog model.',
+    chrome_thinking: 'Reasoning toggle',
+    chrome_thinking_hint: 'Show the thinking switch. Off hides it and does not send reasoning.',
     parameters_hint: 'Turn dark mode on with appearance.theme: "dark". Exact palettes still go in appearance.tokens.',
 };

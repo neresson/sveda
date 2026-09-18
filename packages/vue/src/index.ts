@@ -29,11 +29,14 @@ export {
   isSvedaHsl,
   parseRadiusPx,
   resolveSvedaAppearance,
+  sanitizeSvedaChrome,
   sanitizeSvedaLauncher,
   sanitizeSvedaLauncherImage,
   sanitizeSvedaRadius,
   sanitizeSvedaTheme,
+  useSvedaChrome,
   useSvedaLauncher,
+  svedaChrome,
   svedaLauncher,
   SVEDA_APPEARANCE_PRESET_IDS,
   SVEDA_APPEARANCE_PRESETS,
@@ -46,6 +49,7 @@ export {
 } from './appearance';
 export type {
   SvedaAppearance,
+  SvedaAppearanceChrome,
   SvedaAppearanceLauncher,
   SvedaAppearancePresetId,
   SvedaAppearanceTheme,

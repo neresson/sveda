@@ -211,20 +211,20 @@
   ></div>
   <div
     v-else-if="message.role === 'user'"
-    class="max-w-[80%] rounded-lg bg-brand-primary-purple p-3 text-white"
+    class="max-w-[80%] border border-primary bg-primary p-3 text-primary-foreground"
   >
     <div
       v-if="userAttachmentNames.length"
-      class="mb-2 flex flex-col gap-1.5 border-b border-white/20 pb-2"
-    >
-      <p class="text-[11px] font-medium uppercase tracking-wide text-white/80">
+          class="mb-2 flex flex-col gap-1.5 border-b border-primary-foreground/20 pb-2"
+        >
+          <p class="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-primary-foreground/80">
         {{ t('attachmentsLabel') }}
       </p>
       <div class="flex flex-wrap gap-1.5">
         <span
           v-for="(name, i) in userAttachmentNames"
           :key="`${name}-${i}`"
-          class="inline-flex max-w-full items-center gap-1 rounded-md bg-white/15 px-2 py-1 text-xs [overflow-wrap:anywhere]"
+          class="inline-flex max-w-full items-center gap-1 border border-primary-foreground/20 bg-primary-foreground/10 px-2 py-1 text-xs [overflow-wrap:anywhere]"
         >
           <Paperclip class="h-3 w-3 shrink-0 opacity-90" />
           <span>{{ name }}</span>
@@ -245,7 +245,7 @@
     <div
       v-if="workflowSegments.length > 0"
       ref="workflowPanelRef"
-      class="assistant-workflow-panel max-h-[25dvh] touch-pan-y overflow-y-auto overflow-x-hidden rounded-lg border border-border/50 bg-muted/20 p-2"
+      class="assistant-workflow-panel max-h-[25dvh] touch-pan-y overflow-y-auto overflow-x-hidden border border-border bg-muted/40 p-2"
       :class="{ 'assistant-workflow-panel--locked': shouldFollowWorkflowStream }"
       @wheel="blockWorkflowPanelUserScroll"
       @touchmove="blockWorkflowPanelUserScroll"
@@ -292,7 +292,7 @@
     >
       <div :class="message.isError ? 'text-destructive' : ''">
         <div
-          class="prose prose-sm dark:prose-invert max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere] [&_code]:rounded [&_code]:bg-muted/60 [&_code]:px-1 [&_code]:py-0.5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-muted/50 [&_pre]:p-2 [&_pre]:text-xs"
+          class="prose prose-sm dark:prose-invert max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere] [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-border [&_pre]:bg-muted [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-xs"
           @click="handleContentClick"
         >
           <div

@@ -127,9 +127,15 @@ const mountElement = async (element: HTMLElement): Promise<SvedaChatApi | null> 
 };
 
 class SvedaChatCustomElement extends HTMLElement {
+  static get observedAttributes(): string[] {
+    return ['origin', 'token', 'session'];
+  }
+
   ready: Promise<void>;
 
   #resolveReady: () => void = () => {};
+
+  #mounting = false;
 
   constructor() {
     super();
@@ -139,7 +145,29 @@ class SvedaChatCustomElement extends HTMLElement {
   }
 
   connectedCallback(): void {
-    void mountElement(this).finally(() => this.#resolveReady());
+    void this.#mount();
+  }
+
+  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+    if (oldValue === newValue || !this.isConnected) {
+      return;
+    }
+    if (name === 'origin' || name === 'token' || name === 'session') {
+      void this.#mount();
+    }
+  }
+
+  async #mount(): Promise<void> {
+    if (this.#mounting || this.dataset.svedaMounted === 'true') {
+      return;
+    }
+    this.#mounting = true;
+    try {
+      await mountElement(this);
+    } finally {
+      this.#mounting = false;
+      this.#resolveReady();
+    }
   }
 }
 

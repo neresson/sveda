@@ -676,6 +676,30 @@ async fn host_mcp_instructions_and_tool_names_reach_the_model() {
 }
 
 #[tokio::test]
+async fn embed_widget_assets_allow_cross_origin_module_load() {
+    let mut config = Config::test();
+    config.cors_origins = vec!["http://localhost:8001".into()];
+    let mut headers = HeaderMap::new();
+    headers.insert("origin", "http://127.0.0.1:8788".parse().unwrap());
+
+    let (status, response_headers, body) = send(
+        test_state_with(config),
+        "GET",
+        "/build/sveda/sveda-chat.js",
+        headers,
+        Body::empty(),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert!(!body.is_empty());
+    assert_eq!(
+        response_headers.get("access-control-allow-origin").unwrap(),
+        "*"
+    );
+}
+
+#[tokio::test]
 async fn cors_preflight_allows_contract_headers() {
     let mut config = Config::test();
     config.cors_origins = vec!["http://localhost:8001".into()];

@@ -15,10 +15,21 @@ const switchUi = readFileSync(join(dir, 'ui/switch/Switch.vue'), 'utf8');
 
 test('theme.css exposes zero-specificity public sveda tokens without cycling host variables', () => {
   assert.match(theme, /:where\(\.sveda-chat, sveda-chat\)/);
-  assert.match(theme, /--sveda-background:/);
+  assert.match(chat, /SvedaFrameTicks/);
+  assert.match(theme, /--sveda-background:\s*0 0% 100%/);
+  assert.match(theme, /--sveda-border:\s*42 18% 82%/);
+  assert.match(theme, /\.sveda-chat-frame/);
+  assert.match(theme, /border:\s*1px dashed hsl\(var\(--sveda-foreground\)\)/);
+  assert.match(theme, /--font-serif:\s*Newsreader/);
+  assert.match(appearance, /background: '0 0% 100%'/);
+  assert.match(chat, /sveda-chat-frame/);
+  assert.match(trigger, /tracking-\[0\.14em\]/);
+  assert.match(trigger, /font-mono/);
   assert.match(theme, /--sveda-foreground:/);
   assert.match(theme, /--sveda-brand:/);
   assert.match(theme, /--sveda-radius:\s*0/);
+  assert.match(theme, /:where\(\.sveda-chat\.dark, sveda-chat\.dark/);
+  assert.match(theme, /--sveda-background:\s*30 12% 9%/);
   assert.match(theme, /\.sveda-chat-surface/);
   assert.match(theme, /body\.sveda-chat-immersive-mode/);
   assert.doesNotMatch(theme, /--background:\s*var\(--sveda-background\)/);
@@ -54,6 +65,9 @@ test('appearance helper injects radius and token declarations onto .sveda-chat',
   assert.match(appearance, /useSvedaLauncher/);
   assert.match(appearance, /sanitizeSvedaLauncher/);
   assert.match(appearance, /sanitizeSvedaLauncherImage/);
+  assert.match(appearance, /sanitizeSvedaChrome/);
+  assert.match(appearance, /useSvedaChrome/);
+  assert.match(appearance, /svedaChrome/);
   assert.match(appearance, /SVEDA_LAUNCHER_IMAGE_MAX_BYTES/);
 });
 
@@ -77,4 +91,17 @@ test('toast viewport stays inside the chat window', () => {
   assert.match(viewport, /absolute inset-x-0 bottom-0/);
   assert.match(viewport, /max-h-48/);
   assert.doesNotMatch(viewport, /max-h-screen/);
+});
+
+test('composer uses the dashed paper frame and chrome can hide model and thinking', () => {
+  const input = readFileSync(join(dir, 'components/chat/ChatInput.vue'), 'utf8');
+  const controls = readFileSync(join(dir, 'components/shell/SvedaModelControls.vue'), 'utf8');
+  const model = readFileSync(join(dir, 'composables/useSvedaModel.ts'), 'utf8');
+  assert.match(input, /sveda-chat-frame/);
+  assert.match(input, /placeholder:font-mono/);
+  assert.match(input, /border-t border-dashed border-foreground/);
+  assert.match(controls, /useSvedaChrome/);
+  assert.match(controls, /showModelSelect/);
+  assert.match(controls, /showThinking/);
+  assert.match(model, /chrome\.thinking && selectedModelSupportsThinking/);
 });

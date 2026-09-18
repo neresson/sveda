@@ -62,9 +62,9 @@ export function useSvedaShell(
       return `${base} h-full w-[min(20rem,88vw)] border-r border-border`;
     }
     if (layout.viewMode.value === 'fixed') {
-      return `${base} absolute right-full top-0 z-10 h-full w-[min(20rem,40vw)] border-r border-border shadow-sm`;
+      return `${base} absolute right-full top-0 z-10 h-full w-[min(20rem,40vw)] border-r border-border`;
     }
-    return `${base} h-full w-[min(20rem,40vw)] rounded-[var(--sveda-radius)] border border-border shadow-sm`;
+    return `${base} h-full w-[min(20rem,40vw)] rounded-[var(--sveda-radius)] border border-border`;
   });
 
   const floatNonImmersiveShellStyle = computed(() => {
