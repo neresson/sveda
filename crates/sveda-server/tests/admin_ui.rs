@@ -54,7 +54,7 @@ async fn login_cookie(state: AppState) -> String {
     let (status, response_headers, _) = send(
         state,
         "POST",
-        "/sveda/admin/login",
+        "/admin/login",
         headers,
         Body::from("key=sveda-admin-secret"),
     )
@@ -100,7 +100,7 @@ async fn setup_page_renders_when_admin_key_is_missing() {
     let (status, _, body) = send(
         AppState::new(Config::test()),
         "GET",
-        "/sveda/admin",
+        "/admin",
         HeaderMap::new(),
         Body::empty(),
     )
@@ -109,7 +109,7 @@ async fn setup_page_renders_when_admin_key_is_missing() {
     let html = String::from_utf8(body).unwrap();
     assert!(html.contains("id=\"sveda-admin\""));
     assert!(html.contains("\"page\":\"setup\""));
-    assert!(html.contains("/sveda/admin/setup"));
+    assert!(html.contains("/admin/setup"));
 }
 
 #[tokio::test]
@@ -117,7 +117,7 @@ async fn login_page_renders_when_unauthenticated() {
     let (status, _, body) = send(
         admin_state(),
         "GET",
-        "/sveda/admin",
+        "/admin",
         HeaderMap::new(),
         Body::empty(),
     )
@@ -126,7 +126,7 @@ async fn login_page_renders_when_unauthenticated() {
     let html = String::from_utf8(body).unwrap();
     assert!(html.contains("id=\"sveda-admin\""));
     assert!(html.contains("\"page\":\"login\""));
-    assert!(html.contains("/sveda/admin/login"));
+    assert!(html.contains("/admin/login"));
 }
 
 #[tokio::test]
@@ -139,7 +139,7 @@ async fn login_rejects_wrong_key() {
     let (status, response_headers, _) = send(
         admin_state(),
         "POST",
-        "/sveda/admin/login",
+        "/admin/login",
         headers,
         Body::from("key=wrong"),
     )
@@ -149,7 +149,7 @@ async fn login_rejects_wrong_key() {
         .get(header::LOCATION)
         .and_then(|value| value.to_str().ok())
         .unwrap_or_default();
-    assert!(location.contains("/sveda/admin"));
+    assert!(location.contains("/admin"));
     assert!(response_headers.get(header::SET_COOKIE).is_none());
 }
 
@@ -159,15 +159,15 @@ async fn dashboard_page_renders_after_login() {
     let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
     headers.insert(header::COOKIE, cookie.parse().unwrap());
-    let (status, _, body) = send(state, "GET", "/sveda/admin", headers, Body::empty()).await;
+    let (status, _, body) = send(state, "GET", "/admin", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let html = String::from_utf8(body).unwrap();
     assert!(html.contains("\"page\":\"dashboard\""));
-    assert!(html.contains("/sveda/admin/models"));
-    assert!(html.contains("/sveda/admin/mcp"));
-    assert!(html.contains("/sveda/admin/appearance"));
-    assert!(html.contains("/sveda/admin/prompts"));
-    assert!(html.contains("/sveda/admin/settings"));
+    assert!(html.contains("/admin/models"));
+    assert!(html.contains("/admin/mcp"));
+    assert!(html.contains("/admin/appearance"));
+    assert!(html.contains("/admin/prompts"));
+    assert!(html.contains("/admin/settings"));
 }
 
 #[tokio::test]
@@ -177,7 +177,7 @@ async fn runtime_page_renders_after_login() {
     let mut headers = HeaderMap::new();
     headers.insert(header::COOKIE, cookie.parse().unwrap());
     let (status, _, body) =
-        send(state, "GET", "/sveda/admin/runtime", headers, Body::empty()).await;
+        send(state, "GET", "/admin/runtime", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let html = String::from_utf8(body).unwrap();
     assert!(html.contains("\"page\":\"runtime\""));
@@ -189,7 +189,7 @@ async fn models_page_renders_after_login() {
     let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
     headers.insert(header::COOKIE, cookie.parse().unwrap());
-    let (status, _, body) = send(state, "GET", "/sveda/admin/models", headers, Body::empty()).await;
+    let (status, _, body) = send(state, "GET", "/admin/models", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let html = String::from_utf8(body).unwrap();
     assert!(html.contains("\"page\":\"models\""));
@@ -205,7 +205,7 @@ async fn mcp_and_appearance_pages_render_after_login() {
         let (status, _, body) = send(
             state.clone(),
             "GET",
-            &format!("/sveda/admin/{page}"),
+            &format!("/admin/{page}"),
             headers,
             Body::empty(),
         )
@@ -224,7 +224,7 @@ async fn admin_spa_accepts_json() {
     headers.insert(header::COOKIE, cookie.parse().unwrap());
     headers.insert(header::ACCEPT, "application/json".parse().unwrap());
     let (status, response_headers, body) =
-        send(state, "GET", "/sveda/admin/mcp", headers, Body::empty()).await;
+        send(state, "GET", "/admin/mcp", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     assert!(response_headers
         .get(header::CONTENT_TYPE)
@@ -233,7 +233,7 @@ async fn admin_spa_accepts_json() {
         .contains("application/json"));
     let payload: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(payload["page"], "mcp");
-    assert_eq!(payload["urls"]["appearance"], "/sveda/admin/appearance");
+    assert_eq!(payload["urls"]["appearance"], "/admin/appearance");
 }
 
 #[tokio::test]
@@ -242,8 +242,11 @@ async fn unknown_admin_section_is_not_found() {
     let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
     headers.insert(header::COOKIE, cookie.parse().unwrap());
-    let (status, _, _) = send(state, "GET", "/sveda/admin/unknown", headers, Body::empty()).await;
+    let (status, _, body) = send(state, "GET", "/admin/unknown", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
+    let html = String::from_utf8(body).unwrap();
+    assert!(html.contains("id=\"sveda-site\""));
+    assert!(html.contains("Section not found"));
 }
 
 #[tokio::test]
@@ -256,7 +259,7 @@ async fn session_can_update_settings() {
     let (status, _, body) = send(
         state,
         "POST",
-        "/sveda/admin/settings",
+        "/admin/settings",
         headers,
         Body::from(
             serde_json::to_vec(&json!({
@@ -282,7 +285,7 @@ async fn setup_creates_admin_key() {
     let (status, response_headers, _) = send(
         state.clone(),
         "POST",
-        "/sveda/admin/setup",
+        "/admin/setup",
         headers,
         Body::from(
             "key=sveda-admin-secret-from-setup&key_confirmation=sveda-admin-secret-from-setup",
@@ -294,7 +297,7 @@ async fn setup_creates_admin_key() {
     assert!(cookie.starts_with("sveda_admin="));
     let mut headers = HeaderMap::new();
     headers.insert(header::COOKIE, cookie.parse().unwrap());
-    let (status, _, body) = send(state, "GET", "/sveda/admin", headers, Body::empty()).await;
+    let (status, _, body) = send(state, "GET", "/admin", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let html = String::from_utf8(body).unwrap();
     assert!(html.contains("\"page\":\"dashboard\""));

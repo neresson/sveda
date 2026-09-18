@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use axum::extract::{Form, Path, Query, State};
+use axum::extract::{Form, Path, Query, Request, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::Json;
@@ -12,6 +12,15 @@ use crate::token;
 use crate::{keys_match, AppState};
 
 const COOKIE_NAME: &str = "sveda_admin";
+pub const ADMIN_BASE: &str = "/admin";
+
+fn admin_path(segment: &str) -> String {
+    if segment.is_empty() {
+        ADMIN_BASE.to_string()
+    } else {
+        format!("{ADMIN_BASE}/{segment}")
+    }
+}
 const ADMIN_PAGES: &[&str] = &[
     "dashboard",
     "usage",
@@ -47,6 +56,40 @@ pub struct SetupForm {
 pub struct EmbedQuery {
     #[serde(default)]
     pub token: String,
+}
+
+pub async fn home() -> Html<String> {
+    Html(static_page(
+        "Sveda",
+        "00 / SITE",
+        "Under construction",
+        "The runtime is up. Configure models and embed settings in the admin panel.",
+        ADMIN_BASE,
+        "Open admin",
+    ))
+}
+
+pub async fn not_found(request: Request) -> Response {
+    let path = request.uri().path();
+    if path.starts_with("/sveda/") || wants_json(request.headers()) {
+        return (
+            StatusCode::NOT_FOUND,
+            axum::Json(json!({ "ok": false, "error": "not_found" })),
+        )
+            .into_response();
+    }
+    (
+        StatusCode::NOT_FOUND,
+        Html(static_page(
+            "Not found — Sveda",
+            "404",
+            "Page not found",
+            "This path is not part of the Sveda runtime surface.",
+            ADMIN_BASE,
+            "Admin panel",
+        )),
+    )
+        .into_response()
 }
 
 pub async fn health() -> Response {
@@ -109,41 +152,41 @@ pub async fn section(
     Query(query): Query<AdminQuery>,
 ) -> Response {
     if !ADMIN_PAGES.contains(&page.as_str()) {
-        return StatusCode::NOT_FOUND.into_response();
+        return (StatusCode::NOT_FOUND, admin_not_found()).into_response();
     }
     render(&state, &headers, &page, query.error)
 }
 
 pub async fn login(State(state): State<AppState>, Form(form): Form<LoginForm>) -> Response {
     let Some(expected) = expected_admin_key(&state) else {
-        return Redirect::to("/sveda/admin").into_response();
+        return Redirect::to(ADMIN_BASE).into_response();
     };
     if keys_match(&expected, form.key.trim()) {
-        return with_session_cookie(&state, Redirect::to("/sveda/admin"));
+        return with_session_cookie(&state, Redirect::to(ADMIN_BASE));
     }
-    Redirect::to("/sveda/admin?error=1").into_response()
+    Redirect::to("/admin?error=1").into_response()
 }
 
 pub async fn setup(State(state): State<AppState>, Form(form): Form<SetupForm>) -> Response {
     if state.config.database_url.is_some() {
-        return Redirect::to("/sveda/admin").into_response();
+        return Redirect::to(ADMIN_BASE).into_response();
     }
     if expected_admin_key(&state).is_some() {
-        return Redirect::to("/sveda/admin").into_response();
+        return Redirect::to(ADMIN_BASE).into_response();
     }
     let key = form.key.trim();
     if key.chars().count() < 16 {
-        return Redirect::to("/sveda/admin?error=min").into_response();
+        return Redirect::to("/admin?error=min").into_response();
     }
     if key != form.key_confirmation.trim() {
-        return Redirect::to("/sveda/admin?error=confirmed").into_response();
+        return Redirect::to("/admin?error=confirmed").into_response();
     }
     *state.admin_key.lock().expect("admin key") = Some(key.to_string());
-    with_session_cookie(&state, Redirect::to("/sveda/admin"))
+    with_session_cookie(&state, Redirect::to(ADMIN_BASE))
 }
 
 pub async fn logout() -> Response {
-    let mut response = Redirect::to("/sveda/admin").into_response();
+    let mut response = Redirect::to(ADMIN_BASE).into_response();
     if let Ok(value) = HeaderValue::from_str(&format!(
         "{COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
     )) {
@@ -168,14 +211,14 @@ fn render(state: &AppState, headers: &HeaderMap, page: &str, error: String) -> R
         json!({
             "page": "setup",
             "csrf": "",
-            "action": "/sveda/admin/setup",
+            "action": format!("{}/setup", ADMIN_BASE),
             "error": setup_error(&error),
         })
     } else if !session_ok(state, headers) {
         json!({
             "page": "login",
             "csrf": "",
-            "action": "/sveda/admin/login",
+            "action": format!("{}/login", ADMIN_BASE),
             "error": if error.is_empty() { "" } else { "invalid" },
         })
     } else {
@@ -203,26 +246,26 @@ fn settings_payload(state: &AppState, page: &str) -> Value {
     json!({
         "page": page,
         "csrf": "",
-        "saveUrl": "/sveda/admin/settings",
-        "logoutUrl": "/sveda/admin/logout",
+        "saveUrl": admin_path("settings"),
+        "logoutUrl": admin_path("logout"),
         "urls": {
-            "dashboard": "/sveda/admin",
-            "usage": "/sveda/admin/usage",
-            "runtime": "/sveda/admin/runtime",
-            "models": "/sveda/admin/models",
-            "mcp": "/sveda/admin/mcp",
-            "prompts": "/sveda/admin/prompts",
-            "appearance": "/sveda/admin/appearance",
-            "sources": "/sveda/admin/sources",
+            "dashboard": ADMIN_BASE,
+            "usage": admin_path("usage"),
+            "runtime": admin_path("runtime"),
+            "models": admin_path("models"),
+            "mcp": admin_path("mcp"),
+            "prompts": admin_path("prompts"),
+            "appearance": admin_path("appearance"),
+            "sources": admin_path("sources"),
         },
         "codeIndex": {
-            "sources": "/sveda/admin/code-index/sources",
-            "progress": "/sveda/admin/code-index/progress",
-            "store": "/sveda/admin/code-index/store",
-            "sourceBase": "/sveda/admin/code-index/sources",
-            "localBrowse": "/sveda/admin/code-index/local-browse",
-            "localPreview": "/sveda/admin/code-index/local-preview",
-            "estimate": "/sveda/admin/code-index/estimate",
+            "sources": admin_path("code-index/sources"),
+            "progress": admin_path("code-index/progress"),
+            "store": admin_path("code-index/store"),
+            "sourceBase": admin_path("code-index/sources"),
+            "localBrowse": admin_path("code-index/local-browse"),
+            "localPreview": admin_path("code-index/local-preview"),
+            "estimate": admin_path("code-index/estimate"),
         },
         "appearancePresets": {},
         "settings": state.settings.document().masked(),
@@ -272,6 +315,63 @@ fn wants_json(headers: &HeaderMap) -> bool {
         .is_some_and(|value| value.contains("application/json"))
 }
 
+fn admin_not_found() -> Html<String> {
+    Html(static_page(
+        "Not found — Sveda admin",
+        "404",
+        "Section not found",
+        "This admin section does not exist.",
+        ADMIN_BASE,
+        "Back to dashboard",
+    ))
+}
+
+fn static_page(
+    document_title: &str,
+    kicker: &str,
+    heading: &str,
+    lede: &str,
+    link_href: &str,
+    link_label: &str,
+) -> String {
+    let styles = vite_style_tags();
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{document_title}</title>
+    {styles}
+</head>
+<body class="min-h-screen bg-canvas font-sans text-ink antialiased">
+    <main id="sveda-site" class="relative flex min-h-screen flex-col border border-ink">
+        <div class="sveda-grid pointer-events-none absolute inset-0"></div>
+        <div class="pointer-events-none absolute -bottom-16 -left-16 size-[280px] rotate-45 border border-ink max-md:hidden"></div>
+        <div class="relative flex flex-1 flex-col justify-between px-16 py-16 max-lg:px-5 max-lg:py-8">
+            <div class="flex items-center gap-3">
+                <span class="flex size-7 items-center justify-center border border-ink">
+                    <span class="size-3 bg-ink"></span>
+                </span>
+                <p class="font-mono text-xs tracking-[0.16em]">Sveda</p>
+            </div>
+            <div class="max-w-xl">
+                <p class="font-mono text-xs tracking-[0.2em] text-muted">{kicker}</p>
+                <h1 class="mt-4 font-serif text-5xl tracking-[-0.03em] max-md:text-4xl">{heading}</h1>
+                <p class="mt-4 font-serif text-xl text-muted max-lg:text-base">{lede}</p>
+                <p class="mt-10">
+                    <a href="{link_href}" class="inline-block border border-ink bg-ink px-5 py-3 font-mono text-[11px] tracking-[0.14em] text-canvas no-underline hover:bg-canvas hover:text-ink">{link_label}</a>
+                    <a href="/" class="ml-4 inline-block border border-grid px-5 py-3 font-mono text-[11px] tracking-[0.14em] text-ink no-underline hover:bg-grid">Home</a>
+                </p>
+            </div>
+            <p class="font-mono text-[11px] tracking-[0.14em] text-muted max-lg:hidden">sveda-server</p>
+        </div>
+    </main>
+</body>
+</html>"#
+    )
+}
+
 fn shell(payload: &Value) -> String {
     let json = serde_json::to_string(payload)
         .unwrap_or_else(|_| "{}".into())
@@ -319,7 +419,15 @@ fn embed_shell(payload: &Value) -> String {
     )
 }
 
+fn vite_style_tags() -> String {
+    manifest_assets(false)
+}
+
 fn vite_tags() -> String {
+    manifest_assets(true)
+}
+
+fn manifest_assets(include_script: bool) -> String {
     let dist = admin_dist();
     let Some(manifest) = ["manifest.json", ".vite/manifest.json"]
         .into_iter()
@@ -342,10 +450,12 @@ fn vite_tags() -> String {
             }
         }
     }
-    if let Some(file) = entry.get("file").and_then(Value::as_str) {
-        tags.push_str(&format!(
-            r#"<script type="module" src="/build/{file}"></script>"#
-        ));
+    if include_script {
+        if let Some(file) = entry.get("file").and_then(Value::as_str) {
+            tags.push_str(&format!(
+                r#"<script type="module" src="/build/{file}"></script>"#
+            ));
+        }
     }
     tags
 }

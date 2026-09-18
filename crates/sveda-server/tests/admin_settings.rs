@@ -53,7 +53,7 @@ async fn admin_settings_are_not_found_when_admin_key_is_unconfigured() {
     let (status, _) = send(
         AppState::new(Config::test()),
         "GET",
-        "/sveda/admin/settings",
+        "/admin/settings",
         HeaderMap::new(),
         Body::empty(),
     )
@@ -66,7 +66,7 @@ async fn admin_settings_require_admin_key() {
     let (status, _) = send(
         admin_state(),
         "GET",
-        "/sveda/admin/settings",
+        "/admin/settings",
         HeaderMap::new(),
         Body::empty(),
     )
@@ -87,7 +87,7 @@ async fn embed_host_key_cannot_read_admin_settings() {
     let (status, _) = send(
         AppState::new(config),
         "GET",
-        "/sveda/admin/settings",
+        "/admin/settings",
         headers,
         Body::empty(),
     )
@@ -100,7 +100,7 @@ async fn reads_settings_with_admin_key_header() {
     let (status, body) = send(
         admin_state(),
         "GET",
-        "/sveda/admin/settings",
+        "/admin/settings",
         admin_headers(),
         Body::empty(),
     )
@@ -133,7 +133,7 @@ async fn reads_settings_with_bearer_admin_key() {
     let (status, _) = send(
         admin_state(),
         "GET",
-        "/sveda/admin/settings",
+        "/admin/settings",
         headers,
         Body::empty(),
     )
@@ -147,7 +147,7 @@ async fn updates_settings_and_masks_secrets() {
     let (status, _) = send(
         state.clone(),
         "PUT",
-        "/sveda/admin/settings",
+        "/admin/settings",
         admin_headers(),
         Body::from(
             serde_json::to_vec(&json!({
@@ -183,7 +183,7 @@ async fn updates_settings_and_masks_secrets() {
     let (status, body) = send(
         state,
         "GET",
-        "/sveda/admin/settings",
+        "/admin/settings",
         admin_headers(),
         Body::empty(),
     )
@@ -211,7 +211,7 @@ async fn post_can_add_and_update_model_without_replacing_key() {
     let (status, body) = send(
         state.clone(),
         "POST",
-        "/sveda/admin/settings",
+        "/admin/settings",
         admin_headers(),
         Body::from(
             serde_json::to_vec(&json!({
@@ -239,7 +239,7 @@ async fn post_can_add_and_update_model_without_replacing_key() {
     let (status, body) = send(
         state,
         "POST",
-        "/sveda/admin/settings",
+        "/admin/settings",
         admin_headers(),
         Body::from(
             serde_json::to_vec(&json!({
@@ -272,7 +272,7 @@ async fn public_embed_config_omits_secrets() {
     let (status, _) = send(
         state.clone(),
         "PUT",
-        "/sveda/admin/settings",
+        "/admin/settings",
         admin_headers(),
         Body::from(
             serde_json::to_vec(&json!({
@@ -347,7 +347,7 @@ async fn updated_model_is_usable_on_stream() {
     let (status, _) = send(
         state.clone(),
         "POST",
-        "/sveda/admin/settings",
+        "/admin/settings",
         admin_headers(),
         Body::from(
             serde_json::to_vec(&json!({

@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use axum::extract::{DefaultBodyLimit, State};
+use axum::extract::{DefaultBodyLimit, Path, State};
 use axum::http::{header, HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use axum::response::sse::Sse;
-use axum::response::{IntoResponse, Response};
+use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use futures_util::StreamExt;
@@ -424,6 +424,27 @@ pub fn app(state: AppState) -> Router {
         .saturating_add(1024 * 1024)
         .max(2 * 1024 * 1024);
     let mut router = Router::new()
+        .route("/", get(ui::home))
+        .route("/admin", get(ui::show))
+        .route("/admin/{page}", get(ui::section))
+        .route(
+            "/admin/settings",
+            get(admin::show_settings)
+                .put(admin::update_settings)
+                .post(admin::update_settings),
+        )
+        .route("/admin/login", post(ui::login))
+        .route("/admin/setup", post(ui::setup))
+        .route("/admin/logout", post(ui::logout))
+        .route("/sveda/admin", get(|| async { Redirect::permanent(ui::ADMIN_BASE) }))
+        .route(
+            "/sveda/admin/{page}",
+            get(|Path(page): Path<String>| async move {
+                let location = format!("{}/{page}", ui::ADMIN_BASE);
+                let value = HeaderValue::from_str(&location).expect("redirect location");
+                (StatusCode::MOVED_PERMANENTLY, [(header::LOCATION, value)]).into_response()
+            }),
+        )
         .route("/sveda/health", get(ui::health))
         .route("/sveda/ready", get(ui::ready))
         .route("/sveda/embed", get(ui::embed_page))
@@ -442,22 +463,13 @@ pub fn app(state: AppState) -> Router {
             "/sveda/documents/extract",
             post(documents::extract_documents),
         )
-        .route(
-            "/sveda/admin/settings",
-            get(admin::show_settings)
-                .put(admin::update_settings)
-                .post(admin::update_settings),
-        )
-        .route("/sveda/admin/login", post(ui::login))
-        .route("/sveda/admin/setup", post(ui::setup))
-        .route("/sveda/admin/logout", post(ui::logout))
-        .route("/sveda/admin", get(ui::show))
-        .route("/sveda/admin/{page}", get(ui::section));
+        ;
     let dist = ui::admin_dist();
     if dist.is_dir() {
         router = router.nest_service("/build", ServeDir::new(dist));
     }
     router
+        .fallback(ui::not_found)
         .layer(DefaultBodyLimit::max(extract_limit))
         .layer(cors_layer(cors_origins))
         .with_state(state)
