@@ -31,9 +31,23 @@ cargo test --workspace
 
 Cluster integration tests run when `SVEDA_TEST_DATABASE_URL` and `SVEDA_TEST_REDIS_URL` are set (CI provides them; locally `docker compose up -d postgres redis`, then `postgres://sveda:sveda@127.0.0.1:5433/sveda` and `redis://127.0.0.1:6380`).
 
-## Run
+## Install (Docker)
 
-Local stack (Postgres + Redis + `sveda-server`):
+No clone required — pull the published image:
+
+```bash
+curl -fsSL https://sveda.dev/compose.yaml -o compose.yaml
+curl -fsSL https://sveda.dev/compose.env -o .env
+# Edit .env: DEEPSEEK_API_KEY, SVEDA_EMBED_HOST_API_KEY, SVEDA_CORS_ORIGINS
+docker compose up -d
+curl -s http://127.0.0.1:8787/sveda/ready
+```
+
+See [deploy/README.md](deploy/README.md). Image: `ghcr.io/neresson/sveda-server:latest` (set the GHCR package to Public after the first [Publish image](https://github.com/neresson/sveda/actions/workflows/publish-image.yml) run).
+
+## Develop (local stack)
+
+From this checkout, build and run Postgres + Redis + `sveda-server` (exposes store ports for tests):
 
 ```bash
 docker compose up --build
@@ -41,7 +55,7 @@ docker compose up --build
 
 Health: `GET /sveda/health`. Readiness (store ping): `GET /sveda/ready`.
 
-Kubernetes: `charts/sveda-server`. Images: `ghcr.io/neresson/sveda-server` and, when Hub credentials are configured, `neresson/sveda-server`.
+Kubernetes: `charts/sveda-server` — use `--set image.tag=latest` until a matching `v*` image tag exists.
 
 ## License
 

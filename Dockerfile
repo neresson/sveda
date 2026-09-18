@@ -16,14 +16,18 @@ FROM rust:1-bookworm AS rust
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
-RUN cargo build --release -p sveda-server
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/src/target \
+    cargo build --release -p sveda-server \
+    && cp /src/target/release/sveda-server /tmp/sveda-server
 
 FROM debian:bookworm-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 65532 --create-home sveda
-COPY --from=rust /src/target/release/sveda-server /usr/local/bin/sveda-server
+COPY --from=rust /tmp/sveda-server /usr/local/bin/sveda-server
 COPY --from=ui /src/apps/runtime/public/build /app/public/build
 USER sveda
 ENV SVEDA_BIND=0.0.0.0:8787 \

@@ -8,6 +8,7 @@ Point the chart at managed stores:
 
 ```bash
 helm install sveda charts/sveda-server \
+  --set image.tag=latest \
   --set secrets.appKey="$SVEDA_APP_KEY" \
   --set secrets.adminApiKey="$SVEDA_ADMIN_API_KEY" \
   --set secrets.hostApiKey="$SVEDA_EMBED_HOST_API_KEY" \
@@ -21,6 +22,7 @@ Bundled Postgres and Redis are **demo only** (single replica, official images, n
 
 ```bash
 helm install sveda charts/sveda-server \
+  --set image.tag=latest \
   --set postgresql.enabled=true \
   --set redis.enabled=true \
   --set secrets.appKey=dev-app-key-change-me \
