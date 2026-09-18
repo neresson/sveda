@@ -50,10 +50,13 @@ export const buildSvedaChatCss = (hostCss, embedCss) => {
   });
 
   const scoped = scopeEmbedCssForHost(embedCss);
+  // Host preflight must share the page's `base` layer. A custom layer declared
+  // after the host page's `@layer` list is appended last and then beats utilities —
+  // which made embed buttons ignore font-mono / background classes.
   const prelude = [
     ...imports,
-    '@layer sveda-host,properties,theme,components,utilities;',
-    `@layer sveda-host{${hostCss.trim()}}`,
+    '@layer properties,theme,base,components,utilities;',
+    `@layer base{${hostCss.trim()}}`,
   ].join('');
 
   return `${prelude}${scoped}`;

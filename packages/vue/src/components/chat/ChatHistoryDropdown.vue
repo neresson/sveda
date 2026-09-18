@@ -1,6 +1,5 @@
 <script setup>
   import { Button } from '../../ui/button/index.js';
-  import { Input } from '../../ui/input/index.js';
   import { ScrollArea } from '../../ui/scroll-area/index.js';
   import { useSvedaT } from '../../i18n/index.js';
   import { Search, SquarePen, Trash2, X } from 'lucide-vue-next';
@@ -158,12 +157,14 @@
           <X class="h-4 w-4" />
         </Button>
       </div>
-      <div class="relative">
-        <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
+      <div class="flex h-10 items-center gap-2 rounded-[var(--sveda-radius)] border border-input-border bg-input px-3">
+        <Search class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <input
           v-model="searchQuery"
+          type="text"
+          autocomplete="off"
           :placeholder="t('searchChats')"
-          class="pl-9"
+          class="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-card-foreground outline-none placeholder:text-muted-foreground focus-visible:outline-none"
         />
       </div>
     </div>

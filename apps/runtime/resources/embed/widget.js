@@ -33,6 +33,10 @@
   iframe.allow = 'clipboard-write';
 
   const applyMinimizedLayout = function () {
+    container.style.left = 'auto';
+    container.style.right = '0';
+    container.style.top = 'auto';
+    container.style.bottom = '0';
     container.style.width = '240px';
     container.style.minWidth = '0';
     container.style.height = '48px';
@@ -57,10 +61,47 @@
 
   const applyExpandedLayout = function (width, height) {
     const size = clampSize(width, height);
+    container.style.left = 'auto';
+    container.style.right = '0';
+    container.style.top = 'auto';
+    container.style.bottom = '0';
     container.style.width = size.width + 'px';
     container.style.height = size.height + 'px';
     container.style.maxWidth = 'calc(100vw - 40px)';
     container.style.maxHeight = 'calc(100vh - 40px)';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.minHeight = '0';
+  };
+
+  const applyFixedLayout = function (width) {
+    const size = clampSize(width, window.innerHeight);
+    container.style.left = 'auto';
+    container.style.right = '0';
+    container.style.top = '0';
+    container.style.bottom = '0';
+    container.style.width = size.width + 'px';
+    container.style.height = '100%';
+    container.style.minWidth = '0';
+    container.style.minHeight = '0';
+    container.style.maxWidth = '100vw';
+    container.style.maxHeight = 'none';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.minHeight = '0';
+  };
+
+  const applyFullscreenLayout = function () {
+    container.style.left = '0';
+    container.style.right = '0';
+    container.style.top = '0';
+    container.style.bottom = '0';
+    container.style.width = '100%';
+    container.style.height = '100%';
+    container.style.minWidth = '0';
+    container.style.minHeight = '0';
+    container.style.maxWidth = 'none';
+    container.style.maxHeight = 'none';
     iframe.style.width = '100%';
     iframe.style.height = '100%';
     iframe.style.minHeight = '0';
@@ -117,6 +158,14 @@
     }
     if (data.isMinimized) {
       applyMinimizedLayout();
+      return;
+    }
+    if (data.immersive) {
+      applyFullscreenLayout();
+      return;
+    }
+    if (data.fixed) {
+      applyFixedLayout(data.frameWidth);
       return;
     }
     applyExpandedLayout(data.frameWidth, data.frameHeight);

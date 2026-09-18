@@ -95,6 +95,8 @@ export {
   SVEDA_CHAT_LAYOUT_MAX_WIDTH,
   SVEDA_CHAT_LAYOUT_MAX_HEIGHT,
   SVEDA_CHAT_MAIN_CONTENT_MIN_WIDTH,
+  SVEDA_HISTORY_SIDEBAR_WIDTH,
+  resolveEmbedHostSize,
 } from './composables/useSvedaChatLayout';
 export type { SvedaChatViewMode } from './composables/useSvedaChatLayout';
 export { useSvedaAgentTasks } from './composables/useSvedaAgentTasks';

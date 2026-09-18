@@ -58,8 +58,6 @@ sveda-chat {
     letter-spacing: inherit;
     background-color: transparent;
     border: 0;
-    padding: 0;
-    margin: 0;
 }
 
 :where(sveda-chat) button,
@@ -73,11 +71,15 @@ sveda-chat {
 }
 
 :where(sveda-chat) img,
-:where(sveda-chat) svg,
 :where(sveda-chat) video,
 :where(sveda-chat) canvas {
     display: block;
     max-width: 100%;
+}
+
+:where(sveda-chat) svg {
+    display: block;
+    overflow: visible;
 }
 
 sveda-chat[data-sveda-open='true'] {
@@ -105,6 +107,22 @@ sveda-chat[data-sveda-open='true']::before {
     background-repeat: no-repeat;
     background-size: 10px 1px, 1px 10px, 10px 1px, 1px 10px, 10px 1px, 1px 10px, 10px 1px, 1px 10px;
     background-position: top left, top left, top right, top right, bottom left, bottom left, bottom right, bottom right;
+}
+
+sveda-chat[data-sveda-open='true'][data-sveda-immersive='true'] {
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+}
+
+sveda-chat[data-sveda-open='true'][data-sveda-fixed='true'] {
+    inset: 0 0 0 auto;
+    width: var(--sveda-embed-width, 24rem);
+    height: auto;
+    max-width: none;
+    max-height: none;
 }
 
 sveda-chat:not([data-sveda-open='true']) {

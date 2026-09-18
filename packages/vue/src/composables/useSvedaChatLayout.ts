@@ -4,10 +4,12 @@ import {
   applyFixedLeftResize,
   applyFloatingResize,
   pointerScreenDelta,
+  resolveEmbedHostSize,
   SVEDA_CHAT_LAYOUT_MAX_HEIGHT,
   SVEDA_CHAT_LAYOUT_MAX_WIDTH,
   SVEDA_CHAT_LAYOUT_MIN_HEIGHT,
   SVEDA_CHAT_LAYOUT_MIN_WIDTH,
+  SVEDA_HISTORY_SIDEBAR_WIDTH,
 } from '../lib/chatResize';
 import { SvedaFillHostKey, SvedaHostEmbedKey } from '../plugin';
 
@@ -20,6 +22,8 @@ export {
   SVEDA_CHAT_LAYOUT_MIN_HEIGHT,
   SVEDA_CHAT_LAYOUT_MAX_WIDTH,
   SVEDA_CHAT_LAYOUT_MAX_HEIGHT,
+  SVEDA_HISTORY_SIDEBAR_WIDTH,
+  resolveEmbedHostSize,
 };
 
 export const SVEDA_CHAT_MAIN_CONTENT_MIN_WIDTH = 768;
@@ -41,9 +45,13 @@ const IMMERSIVE_MODE_TRANSITION_MS = 300;
 
 export type SvedaChatViewMode = 'floating' | 'fixed' | 'immersive';
 
-export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
+export const useSvedaChatLayout = (
+  isMinimized: ComputedRef<boolean>,
+  options?: { historySidebarVisible?: Ref<boolean> }
+) => {
   const hostEmbed = inject(SvedaHostEmbedKey, false);
   const fillHost = inject(SvedaFillHostKey, false);
+  const historySidebarVisible = computed(() => Boolean(options?.historySidebarVisible?.value));
   const isViewportMobile = useMediaQuery('(max-width: 768px)');
   const { width: windowWidth, height: windowHeight } = useWindowSize();
 
@@ -146,16 +154,46 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
     return undefined;
   });
 
+  const syncEmbedHostAttributes = (size: { immersive: boolean; fixed: boolean }) => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    document.querySelectorAll('sveda-chat').forEach(el => {
+      if (size.immersive) {
+        el.setAttribute('data-sveda-immersive', 'true');
+      } else {
+        el.removeAttribute('data-sveda-immersive');
+      }
+      if (size.fixed) {
+        el.setAttribute('data-sveda-fixed', 'true');
+      } else {
+        el.removeAttribute('data-sveda-fixed');
+      }
+    });
+  };
+
   const applyEmbedHostSize = () => {
     if (typeof document === 'undefined' || !fillHost) {
       return;
     }
 
-    document.documentElement.style.setProperty(EMBED_WIDTH_CSS_VAR, `${chatWidth.value}px`);
-    document.documentElement.style.setProperty(EMBED_HEIGHT_CSS_VAR, `${chatHeight.value}px`);
+    const size = resolveEmbedHostSize({
+      chatWidth: chatWidth.value,
+      chatHeight: chatHeight.value,
+      fixedWidth: fixedWidth.value,
+      historyOpen: historySidebarVisible.value && viewMode.value !== 'immersive' && !isMobile.value,
+      viewMode: isMinimized.value ? 'floating' : viewMode.value,
+      viewportWidth: typeof window === 'undefined' ? chatWidth.value : window.innerWidth,
+      viewportHeight: typeof window === 'undefined' ? chatHeight.value : window.innerHeight,
+    });
+
+    document.documentElement.style.setProperty(EMBED_WIDTH_CSS_VAR, `${size.width}px`);
+    document.documentElement.style.setProperty(EMBED_HEIGHT_CSS_VAR, `${size.height}px`);
+    syncEmbedHostAttributes(size);
     window.dispatchEvent(
       new CustomEvent('sveda:embed-host-size', {
-        detail: { width: chatWidth.value, height: chatHeight.value },
+        detail: size,
       })
     );
   };
@@ -167,6 +205,7 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
 
     document.documentElement.style.removeProperty(EMBED_WIDTH_CSS_VAR);
     document.documentElement.style.removeProperty(EMBED_HEIGHT_CSS_VAR);
+    syncEmbedHostAttributes({ immersive: false, fixed: false });
   };
 
   const loadChatDimensions = () => {
@@ -384,13 +423,19 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
     };
 
     if (viewMode.value === 'fixed' && direction === 'fixed-left') {
-      document.body.classList.add(FIXED_RESIZE_BODY_CLASS);
+      if (!fillHost) {
+        document.body.classList.add(FIXED_RESIZE_BODY_CLASS);
+      }
       let dragFixedWidth = startWidth;
-      const reservePx = SVEDA_CHAT_MAIN_CONTENT_MIN_WIDTH;
+      const reservePx = fillHost
+        ? historySidebarVisible.value
+          ? SVEDA_HISTORY_SIDEBAR_WIDTH
+          : 0
+        : SVEDA_CHAT_MAIN_CONTENT_MIN_WIDTH;
       const handleMouseMoveFixed = (e: MouseEvent) => {
         if (!isResizing.value) return;
         const { deltaX } = pointerScreenDelta(e, startX, startY);
-        const maxChat = window.innerWidth - reservePx;
+        const maxChat = Math.max(MIN_WIDTH, window.innerWidth - reservePx);
         const result = applyFixedLeftResize(startWidth, deltaX, maxChat);
         const endFixedResize = () => {
           if (finished) {
@@ -408,14 +453,18 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
           dragFixedWidth = result.width;
           fixedWidth.value = result.width;
           lastNonImmersiveViewMode.value = 'fixed';
-          applyChatWidthVar(result.width);
+          if (!fillHost) {
+            applyChatWidthVar(result.width);
+          }
           clearFixedResizeBodyClass();
           isEnteringImmersiveFromDrag.value = true;
           endFixedResize();
           const targetW = typeof window !== 'undefined' ? window.innerWidth : result.width;
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              applyChatWidthVar(targetW);
+              if (!fillHost) {
+                applyChatWidthVar(targetW);
+              }
             });
           });
           clearImmersiveFromDragTimer();
@@ -429,7 +478,10 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
           return;
         }
         dragFixedWidth = result.width;
-        applyChatWidthVar(dragFixedWidth);
+        fixedWidth.value = dragFixedWidth;
+        if (!fillHost) {
+          applyChatWidthVar(dragFixedWidth);
+        }
       };
 
       const handleMouseUpFixed = () => {
@@ -513,9 +565,19 @@ export const useSvedaChatLayout = (isMinimized: ComputedRef<boolean>) => {
     clearEmbedHostSize();
   });
 
-  watch([chatWidth, chatHeight], () => {
-    applyEmbedHostSize();
-  });
+  watch(
+    [
+      chatWidth,
+      chatHeight,
+      fixedWidth,
+      historySidebarVisible,
+      () => viewMode.value,
+      () => isMinimized.value,
+    ],
+    () => {
+      applyEmbedHostSize();
+    }
+  );
 
   watch([maxFixedSplitWidth, () => viewMode.value, () => isMinimized.value], () => {
     if (viewMode.value !== 'fixed' || isMinimized.value || isMobile.value) {

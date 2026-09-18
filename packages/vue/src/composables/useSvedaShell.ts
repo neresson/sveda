@@ -50,29 +50,32 @@ export function useSvedaShell(
       return 'relative flex h-full min-h-0 min-w-0 flex-1 flex-row';
     }
     if (layout.fillHost) {
-      return 'flex h-full min-h-0 min-w-0 w-full flex-row items-stretch';
+      return 'relative flex h-full min-h-0 min-w-0 w-full flex-row items-stretch overflow-hidden';
     }
-    return 'flex min-h-0 flex-row items-stretch gap-2';
+    return 'relative flex min-h-0 flex-row items-stretch gap-2';
   });
 
   const historyAsideSurfaceClass = computed(() => {
     const base =
-      'sveda-chat-surface flex min-h-0 shrink-0 flex-col overflow-hidden bg-background';
+      'sveda-chat-surface flex min-h-0 w-80 shrink-0 flex-col overflow-hidden bg-background';
     if (layout.isMobile.value) {
-      return `${base} h-full w-[min(20rem,88vw)] border-r border-border`;
+      return `${base} h-full max-w-[88vw] border-r border-border`;
+    }
+    if (layout.fillHost) {
+      return `${base} h-full border-r border-border`;
     }
     if (layout.viewMode.value === 'fixed') {
-      return `${base} absolute right-full top-0 z-10 h-full w-[min(20rem,40vw)] border-r border-border`;
+      return `${base} absolute right-full top-0 z-10 h-full border-r border-border`;
     }
-    return `${base} h-full w-[min(20rem,40vw)] rounded-[var(--sveda-radius)] border border-border`;
+    return `${base} h-full rounded-[var(--sveda-radius)] border border-border`;
   });
 
   const floatNonImmersiveShellStyle = computed(() => {
-    if (layout.isMobile.value || layout.viewMode.value !== 'floating') {
-      return undefined;
-    }
     if (layout.fillHost) {
       return { height: '100%', minHeight: 0 };
+    }
+    if (layout.isMobile.value || layout.viewMode.value !== 'floating') {
+      return undefined;
     }
     return { height: `${layout.chatHeight.value}px`, minHeight: 0 };
   });

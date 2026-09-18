@@ -38,14 +38,14 @@ const sizeClasses = computed(() =>
   <SwitchRoot
     v-bind="forwarded"
     :class="cn(
-      'peer inline-flex shrink-0 cursor-pointer items-center rounded-full p-0.5 shadow-inner transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-brand-primary-purple data-[state=checked]:shadow-[inset_0_1px_2px_rgba(0,0,0,0.22),0_1px_8px_-2px_rgba(0,0,0,0.35)] data-[state=unchecked]:bg-muted-foreground/35 data-[state=unchecked]:shadow-[inset_0_1px_3px_rgba(0,0,0,0.28)] dark:data-[state=unchecked]:bg-white/25 dark:data-[state=unchecked]:shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]',
+      'peer inline-flex shrink-0 cursor-pointer items-center rounded-full p-0.5 shadow-inner transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-muted-foreground',
       sizeClasses.root,
       props.class,
     )"
   >
     <SwitchThumb
       :class="cn(
-        'pointer-events-none block rounded-full bg-brand-primary-purple-foreground shadow-[0_1px_2px_rgba(0,0,0,0.28),0_2px_6px_rgba(0,0,0,0.18)] ring-0 transition-transform data-[state=unchecked]:translate-x-0',
+        'pointer-events-none block rounded-full border border-foreground/25 bg-background shadow-[0_1px_2px_rgba(0,0,0,0.28)] ring-0 transition-transform data-[state=unchecked]:translate-x-0',
         sizeClasses.thumb,
       )"
     >

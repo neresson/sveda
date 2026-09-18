@@ -2,6 +2,57 @@ export const SVEDA_CHAT_LAYOUT_MIN_WIDTH = 320;
 export const SVEDA_CHAT_LAYOUT_MIN_HEIGHT = 400;
 export const SVEDA_CHAT_LAYOUT_MAX_WIDTH = 800;
 export const SVEDA_CHAT_LAYOUT_MAX_HEIGHT = 900;
+export const SVEDA_HISTORY_SIDEBAR_WIDTH = 320;
+
+export interface EmbedHostSize {
+  width: number;
+  height: number;
+  immersive: boolean;
+  fixed: boolean;
+}
+
+export const resolveEmbedHostSize = ({
+  chatWidth,
+  chatHeight,
+  fixedWidth,
+  historyOpen,
+  viewMode,
+  viewportWidth,
+  viewportHeight,
+}: {
+  chatWidth: number;
+  chatHeight: number;
+  fixedWidth: number;
+  historyOpen: boolean;
+  viewMode: 'floating' | 'fixed' | 'immersive';
+  viewportWidth: number;
+  viewportHeight: number;
+}): EmbedHostSize => {
+  if (viewMode === 'immersive') {
+    return {
+      width: viewportWidth,
+      height: viewportHeight,
+      immersive: true,
+      fixed: false,
+    };
+  }
+
+  if (viewMode === 'fixed') {
+    return {
+      width: fixedWidth + (historyOpen ? SVEDA_HISTORY_SIDEBAR_WIDTH : 0),
+      height: viewportHeight,
+      immersive: false,
+      fixed: true,
+    };
+  }
+
+  return {
+    width: chatWidth + (historyOpen ? SVEDA_HISTORY_SIDEBAR_WIDTH : 0),
+    height: chatHeight,
+    immersive: false,
+    fixed: false,
+  };
+};
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));

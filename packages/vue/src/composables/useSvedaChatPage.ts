@@ -72,7 +72,10 @@ export function useSvedaChatPage(options: SvedaChatPageOptions, elementRefs: Sve
     setLoading,
   } = chatStore;
 
-  const layout = useSvedaChatLayout(isMinimized);
+  const showHistorySidebar = ref(false);
+  const layout = useSvedaChatLayout(isMinimized, {
+    historySidebarVisible: showHistorySidebar,
+  });
 
   const model = useSvedaModel(options.models ?? computed(() => []));
   const documents = useSvedaDocuments({
@@ -89,7 +92,6 @@ export function useSvedaChatPage(options: SvedaChatPageOptions, elementRefs: Sve
     useSvedaAgentTasks({ subscribe: options.agentTasksSubscribe });
 
   const { messagesContainerRef } = elementRefs;
-  const showHistorySidebar = ref(false);
 
   const scrollBridge: {
     scrollToBottom?: (options?: { behavior?: string; onlyIfNearBottom?: boolean }) => void;

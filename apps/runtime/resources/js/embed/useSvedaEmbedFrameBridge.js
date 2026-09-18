@@ -27,12 +27,15 @@ const readHostSize = () => {
     return {
         frameWidth: Number.isFinite(width) && width > 0 ? width : DEFAULT_FRAME_WIDTH,
         frameHeight: Number.isFinite(height) && height > 0 ? height : DEFAULT_FRAME_HEIGHT,
+        immersive: false,
+        fixed: false,
     };
 };
 
 export const useSvedaEmbedFrameBridge = () => {
     const chatStore = useSvedaChat();
     let frameRaf = 0;
+    let lastHostSize = readHostSize();
 
     const flushFrame = () => {
         if (chatStore.isMinimized.value) {
@@ -40,12 +43,13 @@ export const useSvedaEmbedFrameBridge = () => {
             return;
         }
 
-        const size = readHostSize();
         postToParent({
             type: 'sveda:resize',
             isMinimized: false,
-            frameWidth: size.frameWidth,
-            frameHeight: size.frameHeight,
+            frameWidth: lastHostSize.frameWidth,
+            frameHeight: lastHostSize.frameHeight,
+            immersive: Boolean(lastHostSize.immersive),
+            fixed: Boolean(lastHostSize.fixed),
         });
     };
 
@@ -60,13 +64,18 @@ export const useSvedaEmbedFrameBridge = () => {
         });
     };
 
-    watch(
-        () => chatStore.isMinimized.value,
-        () => {
-            scheduleFrame();
-        },
-        { immediate: true, flush: 'post' },
-    );
+    const onHostSize = (event) => {
+        const detail = event && event.detail ? event.detail : {};
+        const width = Number(detail.width);
+        const height = Number(detail.height);
+        lastHostSize = {
+            frameWidth: Number.isFinite(width) && width > 0 ? width : lastHostSize.frameWidth,
+            frameHeight: Number.isFinite(height) && height > 0 ? height : lastHostSize.frameHeight,
+            immersive: Boolean(detail.immersive),
+            fixed: Boolean(detail.fixed),
+        };
+        scheduleFrame();
+    };
 
     const onParentMessage = (event) => {
         const data = event.data;
@@ -84,16 +93,24 @@ export const useSvedaEmbedFrameBridge = () => {
         }
     };
 
+    watch(
+        () => chatStore.isMinimized.value,
+        () => {
+            scheduleFrame();
+        },
+        { immediate: true, flush: 'post' },
+    );
+
     const init = () => {
         window.addEventListener('message', onParentMessage);
-        window.addEventListener('sveda:embed-host-size', scheduleFrame);
+        window.addEventListener('sveda:embed-host-size', onHostSize);
         postToParent({ type: 'sveda:ready' });
         scheduleFrame();
     };
 
     const teardown = () => {
         window.removeEventListener('message', onParentMessage);
-        window.removeEventListener('sveda:embed-host-size', scheduleFrame);
+        window.removeEventListener('sveda:embed-host-size', onHostSize);
         if (frameRaf) {
             cancelAnimationFrame(frameRaf);
             frameRaf = 0;

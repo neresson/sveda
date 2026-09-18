@@ -18,6 +18,8 @@ describe('host stylesheet', () => {
     assert.match(css, /font:\s*inherit/);
     assert.equal(/sveda-chat\s*\{[^}]*\binset\b/.test(css), false);
     assert.equal(/sveda-chat\s*\{[^}]*top:\s*0/.test(css), false);
+    assert.match(css, /sveda-chat\[data-sveda-open='true'\]\[data-sveda-immersive='true'\]/);
+    assert.match(css, /sveda-chat\[data-sveda-open='true'\]\[data-sveda-fixed='true'\]/);
     assert.match(css, /sveda-chat\[data-sveda-open='true'\] > \.sveda-chat/);
     assert.match(css, /0 0% 100%/);
     assert.match(css, /border:\s*1px dashed/);
@@ -70,13 +72,13 @@ describe('host stylesheet', () => {
 
     assert.equal(css.indexOf('@import'), 0);
     assert.match(css, /@import "https:\/\/fonts\.example\/css2\?family=Geist:wght@400;500";/);
-    assert.match(css, /@layer sveda-host,properties,theme,components,utilities;/);
-    assert.match(css, /@layer sveda-host\{sveda-chat\{position:fixed\}\}/);
+    assert.match(css, /@layer properties,theme,base,components,utilities;/);
+    assert.match(css, /@layer base\{sveda-chat\{position:fixed\}\}/);
     assert.match(css, /@layer theme\{:root,:host\{/);
     assert.match(css, /\.flex\{display:flex\}/);
     assert.match(css, /sveda-chat,sveda-chat \*,sveda-chat :before/);
-    assert.equal(css.includes('@layer base'), false);
     assert.equal(css.includes('*{margin:0'), false);
+    assert.equal(css.includes('button{background:#000}'), false);
     assert.match(css, /sveda-chat \*,\.sveda-chat \*\{scrollbar-width:thin/);
     assert.match(css, /sveda-chat ::-webkit-scrollbar,\.sveda-chat ::-webkit-scrollbar/);
     assert.match(css, /sveda-chat,\.sveda-chat,\.sveda-chat \.overflow-auto/);
@@ -102,6 +104,35 @@ describe('host stylesheet', () => {
     assert.match(element, /relative flex h-full min-h-0 w-full flex-col/);
     assert.match(chat, /chat\.fillHost/);
     assert.match(chat, /relative h-full min-h-0 w-full overflow-hidden/);
+    assert.match(chat, /SvedaResizeHandles/);
+    assert.match(
+      chat,
+      /<\/Card>\s*<SvedaFrameTicks[\s\S]*<SvedaResizeHandles/,
+    );
+  });
+
+  it('expands the iframe host for history and fullscreen', async () => {
+    const widget = await readFile(
+      new URL('../../../apps/runtime/resources/embed/widget.js', import.meta.url),
+      'utf8'
+    );
+    const layout = await readFile(
+      new URL('../../vue/src/composables/useSvedaChatLayout.ts', import.meta.url),
+      'utf8'
+    );
+    const history = await readFile(
+      new URL('../../vue/src/components/chat/ChatHistoryDropdown.vue', import.meta.url),
+      'utf8'
+    );
+
+    assert.match(widget, /applyFullscreenLayout/);
+    assert.match(widget, /applyFixedLayout/);
+    assert.match(widget, /data\.immersive/);
+    assert.match(widget, /data\.fixed/);
+    assert.match(layout, /historySidebarVisible/);
+    assert.match(layout, /data-sveda-immersive/);
+    assert.match(history, /flex h-10 items-center gap-2/);
+    assert.equal(history.includes('absolute left-3 top-1/2'), false);
   });
 });
 

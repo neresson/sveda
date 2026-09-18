@@ -75,7 +75,10 @@ test('thinking switch stays a pill with a raised thumb', () => {
   assert.match(switchUi, /rounded-full/);
   assert.match(switchUi, /shadow-inner/);
   assert.match(switchUi, /size === 'sm'/);
+  assert.match(switchUi, /data-\[state=checked\]:bg-foreground/);
+  assert.match(switchUi, /bg-background/);
   assert.doesNotMatch(switchUi, /rounded-\[var\(--sveda-radius\)\]/);
+  assert.doesNotMatch(switchUi, /bg-brand-primary-purple-foreground/);
 });
 
 test('minimized trigger uses launcher label, icon, and image', () => {

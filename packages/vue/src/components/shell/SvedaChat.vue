@@ -303,12 +303,6 @@
             }"
             :style="chat.chatCardStyle"
           >
-            <SvedaFrameTicks v-if="!chat.isMobile && (chat.viewMode === 'floating' || chat.fillHost)" />
-            <SvedaResizeHandles
-              :is-mobile="chat.isMobile"
-              :view-mode="chat.viewMode"
-              @start-resize="chat.startResize"
-            />
             <SvedaToolbar
               :is-mobile="chat.isMobile"
               :view-mode="chat.viewMode"
@@ -398,6 +392,12 @@
               </div>
             </CardContent>
           </Card>
+          <SvedaFrameTicks v-if="!chat.isMobile && chat.viewMode === 'floating'" />
+          <SvedaResizeHandles
+            :is-mobile="chat.isMobile"
+            :view-mode="chat.viewMode"
+            @start-resize="chat.startResize"
+          />
         </div>
       </div>
     </Transition>

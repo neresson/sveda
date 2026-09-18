@@ -3,9 +3,11 @@ import {
   applyFixedLeftResize,
   applyFloatingResize,
   pointerScreenDelta,
+  resolveEmbedHostSize,
   SVEDA_CHAT_LAYOUT_MAX_WIDTH,
   SVEDA_CHAT_LAYOUT_MIN_HEIGHT,
   SVEDA_CHAT_LAYOUT_MIN_WIDTH,
+  SVEDA_HISTORY_SIDEBAR_WIDTH,
 } from '../src/lib/chatResize';
 
 describe('chatResize', () => {
@@ -56,5 +58,60 @@ describe('chatResize', () => {
   it('enters immersive when a fixed-left drag exceeds the remaining page width', () => {
     expect(applyFixedLeftResize(400, -500, 800)).toEqual({ width: 800, enterImmersive: true });
     expect(applyFixedLeftResize(400, 20, 800)).toEqual({ width: 380, enterImmersive: false });
+  });
+
+  it('adds history width to the embed host and fills the viewport in immersive mode', () => {
+    expect(
+      resolveEmbedHostSize({
+        chatWidth: 384,
+        chatHeight: 600,
+        fixedWidth: 400,
+        historyOpen: false,
+        viewMode: 'floating',
+        viewportWidth: 1440,
+        viewportHeight: 900,
+      })
+    ).toEqual({ width: 384, height: 600, immersive: false, fixed: false });
+
+    expect(
+      resolveEmbedHostSize({
+        chatWidth: 384,
+        chatHeight: 600,
+        fixedWidth: 400,
+        historyOpen: true,
+        viewMode: 'floating',
+        viewportWidth: 1440,
+        viewportHeight: 900,
+      })
+    ).toEqual({ width: 384 + SVEDA_HISTORY_SIDEBAR_WIDTH, height: 600, immersive: false, fixed: false });
+
+    expect(
+      resolveEmbedHostSize({
+        chatWidth: 384,
+        chatHeight: 600,
+        fixedWidth: 400,
+        historyOpen: true,
+        viewMode: 'fixed',
+        viewportWidth: 1440,
+        viewportHeight: 900,
+      })
+    ).toEqual({
+      width: 400 + SVEDA_HISTORY_SIDEBAR_WIDTH,
+      height: 900,
+      immersive: false,
+      fixed: true,
+    });
+
+    expect(
+      resolveEmbedHostSize({
+        chatWidth: 384,
+        chatHeight: 600,
+        fixedWidth: 400,
+        historyOpen: true,
+        viewMode: 'immersive',
+        viewportWidth: 1440,
+        viewportHeight: 900,
+      })
+    ).toEqual({ width: 1440, height: 900, immersive: true, fixed: false });
   });
 });
