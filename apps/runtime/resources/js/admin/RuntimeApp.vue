@@ -20,8 +20,6 @@ const error = ref('');
 
 const fromDocument = (document) => {
     const compaction = document.compaction ?? {};
-    const cors = document.cors ?? {};
-    const origins = Array.isArray(cors.allowed_origins) ? cors.allowed_origins : [];
     const failover = Array.isArray(document.failover) ? document.failover : [];
 
     return {
@@ -31,7 +29,6 @@ const fromDocument = (document) => {
         compaction_enabled: Boolean(compaction.enabled ?? true),
         min_messages: Number(compaction.min_messages ?? 40),
         keep_tail_messages: Number(compaction.keep_tail_messages ?? 20),
-        cors_origins: origins.join('\n'),
     };
 };
 
@@ -75,9 +72,6 @@ const save = async () => {
                     enabled: Boolean(form.compaction_enabled),
                     min_messages: Number(form.min_messages),
                     keep_tail_messages: Number(form.keep_tail_messages),
-                },
-                cors: {
-                    allowed_origins: splitList(form.cors_origins, /\r?\n/),
                 },
             }),
         });
@@ -183,17 +177,6 @@ const save = async () => {
                     >
                 </label>
             </div>
-
-            <label class="flex flex-col gap-2 border-t border-grid pt-4">
-                <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('runtime.cors') }}</span>
-                <textarea
-                    v-model="form.cors_origins"
-                    name="cors_allowed_origins"
-                    rows="4"
-                    class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none"
-                ></textarea>
-                <span class="font-mono text-[11px] text-muted">{{ t('runtime.cors_hint') }}</span>
-            </label>
 
             <div class="flex items-center gap-4">
                 <button

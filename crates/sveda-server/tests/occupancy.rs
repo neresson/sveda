@@ -125,3 +125,70 @@ async fn stream_succeeds_when_occupancy_slot_is_free() {
     let text = String::from_utf8(body).unwrap();
     assert!(text.contains("Hello from Sveda"));
 }
+
+#[tokio::test]
+async fn stream_throttle_returns_429_per_visitor() {
+    let mut config = Config::test();
+    config.stream_throttle_max = 1;
+    config.stream_throttle_window_secs = 60;
+    let state = AppState::new(config);
+    let token = token_for(state.clone(), "visitor-stream-rl").await;
+    let mut headers = json_headers();
+    headers.insert(HEADER_EMBED_TOKEN, token.parse().unwrap());
+    let (first, _, _) = send(
+        state.clone(),
+        "POST",
+        "/sveda/stream",
+        headers.clone(),
+        Body::from(serde_json::to_vec(&json!({ "prompt": "Hi" })).unwrap()),
+    )
+    .await;
+    assert_eq!(first, StatusCode::OK);
+    let (second, retry_headers, body) = send(
+        state,
+        "POST",
+        "/sveda/stream",
+        headers,
+        Body::from(serde_json::to_vec(&json!({ "prompt": "Hi" })).unwrap()),
+    )
+    .await;
+    assert_eq!(second, StatusCode::TOO_MANY_REQUESTS);
+    assert!(retry_headers.get("retry-after").is_some());
+    let payload: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(payload["message"], "Too Many Attempts.");
+}
+
+#[tokio::test]
+async fn ip_throttle_returns_429_when_header_configured() {
+    let mut config = Config::test();
+    config.client_ip_header = "CF-Connecting-IP".into();
+    config.ip_throttle_max = 1;
+    config.ip_throttle_window_secs = 60;
+    let state = AppState::new(config);
+    let token_a = token_for(state.clone(), "visitor-ip-a").await;
+    let token_b = token_for(state.clone(), "visitor-ip-b").await;
+    let mut headers_a = json_headers();
+    headers_a.insert(HEADER_EMBED_TOKEN, token_a.parse().unwrap());
+    headers_a.insert("cf-connecting-ip", "203.0.113.9".parse().unwrap());
+    let (first, _, _) = send(
+        state.clone(),
+        "POST",
+        "/sveda/stream",
+        headers_a,
+        Body::from(serde_json::to_vec(&json!({ "prompt": "Hi" })).unwrap()),
+    )
+    .await;
+    assert_eq!(first, StatusCode::OK);
+    let mut headers_b = json_headers();
+    headers_b.insert(HEADER_EMBED_TOKEN, token_b.parse().unwrap());
+    headers_b.insert("cf-connecting-ip", "203.0.113.9".parse().unwrap());
+    let (second, _, _) = send(
+        state,
+        "POST",
+        "/sveda/stream",
+        headers_b,
+        Body::from(serde_json::to_vec(&json!({ "prompt": "Hi" })).unwrap()),
+    )
+    .await;
+    assert_eq!(second, StatusCode::TOO_MANY_REQUESTS);
+}

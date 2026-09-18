@@ -39,6 +39,7 @@ No clone required — pull the published image:
 curl -fsSL https://raw.githubusercontent.com/neresson/sveda/main/deploy/compose.yaml -o compose.yaml
 curl -fsSL https://raw.githubusercontent.com/neresson/sveda/main/deploy/compose.env -o .env
 # Edit .env: DEEPSEEK_API_KEY, SVEDA_EMBED_HOST_API_KEY, SVEDA_CORS_ORIGINS
+# After boot, CORS and rate limits can also be changed in /admin/security
 docker compose up -d
 curl -s http://127.0.0.1:8787/sveda/ready
 ```

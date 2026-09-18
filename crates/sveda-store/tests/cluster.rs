@@ -46,19 +46,12 @@ async fn postgres_histories_and_settings_roundtrip() {
 
     assert_eq!(store.list(&visitor).await.expect("list").len(), 1);
     assert!(store.list("other").await.expect("other").is_empty());
-    assert!(store
-        .get("other", chat)
-        .await
-        .expect("get other")
-        .is_none());
+    assert!(store.get("other", chat).await.expect("get other").is_none());
     assert!(!store
         .rename("other", chat, "Nope")
         .await
         .expect("rename other"));
-    assert!(store
-        .rename(&visitor, chat, "Two")
-        .await
-        .expect("rename"));
+    assert!(store.rename(&visitor, chat, "Two").await.expect("rename"));
     let detail = store.get(&visitor, chat).await.expect("get").expect("row");
     assert_eq!(detail.title, "Two");
     assert!(store
@@ -90,13 +83,8 @@ async fn redis_occupancy_drop_and_ttl() {
         return;
     };
     let client = RedisClient::connect(&url).expect("redis");
-    let occupancy = Occupancy::redis_with_lease(
-        client,
-        1,
-        0,
-        Duration::from_secs(1),
-        Duration::ZERO,
-    );
+    let occupancy =
+        Occupancy::redis_with_lease(client, 1, 0, Duration::from_secs(1), Duration::ZERO);
     let first = occupancy.acquire("drop-a").expect("first");
     assert_eq!(
         occupancy.acquire("drop-b").unwrap_err(),

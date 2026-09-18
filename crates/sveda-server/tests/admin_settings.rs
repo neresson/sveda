@@ -114,6 +114,9 @@ async fn reads_settings_with_admin_key_header() {
     assert!(payload.get("models").is_some());
     assert!(payload.get("compaction").is_some());
     assert!(payload.get("cors").is_some());
+    assert!(payload.get("security").is_some());
+    assert_eq!(payload["security"]["embed_token_throttle_max"], 0);
+    assert_eq!(payload["security"]["stream_throttle_max"], 0);
     assert!(payload.get("failover").is_some());
     assert!(
         payload["deepseek"]["key"].as_str().unwrap() == ""
@@ -400,4 +403,71 @@ async fn updated_model_is_usable_on_stream() {
     assert_eq!(status, StatusCode::OK);
     let text = String::from_utf8(body).unwrap();
     assert!(text.contains("Hello from Sveda"));
+}
+
+#[tokio::test]
+async fn updates_security_settings_and_throttles_stream() {
+    let state = admin_state();
+    let (status, body) = send(
+        state.clone(),
+        "PUT",
+        "/admin/settings",
+        admin_headers(),
+        Body::from(
+            serde_json::to_vec(&json!({
+                "cors": { "allowed_origins": ["https://sveda.dev"] },
+                "security": {
+                    "stream_throttle_max": 1,
+                    "stream_throttle_window_secs": 60,
+                    "occupancy_global": 4,
+                    "occupancy_per_visitor": 1,
+                    "embed_token_throttle_max": 0,
+                    "client_ip_header": "CF-Connecting-IP",
+                    "ip_throttle_max": 30
+                }
+            }))
+            .unwrap(),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let payload: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(payload["cors"]["allowed_origins"][0], "https://sveda.dev");
+    assert_eq!(payload["security"]["stream_throttle_max"], 1);
+    assert_eq!(payload["security"]["occupancy_global"], 4);
+    assert_eq!(payload["security"]["client_ip_header"], "CF-Connecting-IP");
+
+    let (status, body) = send(
+        state.clone(),
+        "POST",
+        "/sveda/embed/token",
+        json_headers(),
+        Body::from(serde_json::to_vec(&json!({ "visitor_id": "sec-visitor" })).unwrap()),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let token = serde_json::from_slice::<Value>(&body).unwrap()["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let mut headers = json_headers();
+    headers.insert(HEADER_EMBED_TOKEN, token.parse().unwrap());
+    let (first, _) = send(
+        state.clone(),
+        "POST",
+        "/sveda/stream",
+        headers.clone(),
+        Body::from(serde_json::to_vec(&json!({ "prompt": "Hi" })).unwrap()),
+    )
+    .await;
+    assert_eq!(first, StatusCode::OK);
+    let (second, _) = send(
+        state,
+        "POST",
+        "/sveda/stream",
+        headers,
+        Body::from(serde_json::to_vec(&json!({ "prompt": "Hi" })).unwrap()),
+    )
+    .await;
+    assert_eq!(second, StatusCode::TOO_MANY_REQUESTS);
 }

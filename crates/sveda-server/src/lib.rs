@@ -17,8 +17,8 @@ use sveda_protocol::{
     PROTOCOL_VERSION, TOKEN_PREFIX,
 };
 use sveda_store::{
-    mcp_key, parse_laravel_throttle, DocumentStore, HistoryStore, KvStore, Occupancy,
-    OccupancyError, Postgres, RateLimiter, RedisClient,
+    mcp_key, parse_laravel_throttle, parse_optional_laravel_throttle, DocumentStore, HistoryStore,
+    KvStore, Occupancy, OccupancyError, Postgres, RateLimiter, RedisClient,
 };
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::services::ServeDir;
@@ -63,6 +63,11 @@ pub struct Config {
     pub occupancy_per_visitor: usize,
     pub embed_throttle_max: u32,
     pub embed_throttle_window_secs: u64,
+    pub stream_throttle_max: u32,
+    pub stream_throttle_window_secs: u64,
+    pub ip_throttle_max: u32,
+    pub ip_throttle_window_secs: u64,
+    pub client_ip_header: String,
     pub redis_url: Option<String>,
     pub database_url: Option<String>,
     pub index_root: Option<PathBuf>,
@@ -95,6 +100,11 @@ impl Config {
             occupancy_per_visitor: 0,
             embed_throttle_max: 0,
             embed_throttle_window_secs: 60,
+            stream_throttle_max: 0,
+            stream_throttle_window_secs: 60,
+            ip_throttle_max: 0,
+            ip_throttle_window_secs: 60,
+            client_ip_header: String::new(),
             redis_url: None,
             database_url: None,
             index_root: None,
@@ -205,6 +215,33 @@ impl Config {
                 );
                 window
             },
+            stream_throttle_max: {
+                let (max, _) = parse_optional_laravel_throttle(
+                    &std::env::var("SVEDA_STREAM_THROTTLE").unwrap_or_default(),
+                );
+                max
+            },
+            stream_throttle_window_secs: {
+                let (_, window) = parse_optional_laravel_throttle(
+                    &std::env::var("SVEDA_STREAM_THROTTLE").unwrap_or_default(),
+                );
+                window
+            },
+            ip_throttle_max: {
+                let (max, _) = parse_optional_laravel_throttle(
+                    &std::env::var("SVEDA_IP_THROTTLE").unwrap_or_default(),
+                );
+                max
+            },
+            ip_throttle_window_secs: {
+                let (_, window) = parse_optional_laravel_throttle(
+                    &std::env::var("SVEDA_IP_THROTTLE").unwrap_or_default(),
+                );
+                window
+            },
+            client_ip_header: settings::sanitize_ip_header(
+                &std::env::var("SVEDA_CLIENT_IP_HEADER").unwrap_or_default(),
+            ),
             redis_url: std::env::var("SVEDA_REDIS_URL")
                 .ok()
                 .map(|value| value.trim().to_string())
@@ -260,6 +297,9 @@ pub struct AppState {
     pub(crate) cors_origins: Arc<Mutex<Vec<String>>>,
     pub occupancy: Occupancy,
     pub(crate) throttle: RateLimiter,
+    pub(crate) stream_throttle: RateLimiter,
+    pub(crate) ip_throttle: RateLimiter,
+    pub(crate) client_ip_header: Arc<Mutex<String>>,
     pub(crate) index: Option<Arc<sveda_index::WorkspaceIndex>>,
     pub(crate) admin_key: Arc<Mutex<Option<String>>>,
 }
@@ -353,6 +393,17 @@ impl AppState {
             config.embed_throttle_max,
             Duration::from_secs(config.embed_throttle_window_secs.max(1)),
         );
+        let stream_throttle = RateLimiter::connect(
+            redis.as_ref(),
+            config.stream_throttle_max,
+            Duration::from_secs(config.stream_throttle_window_secs.max(1)),
+        );
+        let ip_throttle = RateLimiter::connect(
+            redis.as_ref(),
+            config.ip_throttle_max,
+            Duration::from_secs(config.ip_throttle_window_secs.max(1)),
+        );
+        let client_ip_header = Arc::new(Mutex::new(config.client_ip_header.clone()));
         let index = config
             .index_root
             .as_ref()
@@ -374,6 +425,9 @@ impl AppState {
             cors_origins,
             occupancy,
             throttle,
+            stream_throttle,
+            ip_throttle,
+            client_ip_header,
             index,
             admin_key,
         };
@@ -436,7 +490,10 @@ pub fn app(state: AppState) -> Router {
         .route("/admin/login", post(ui::login))
         .route("/admin/setup", post(ui::setup))
         .route("/admin/logout", post(ui::logout))
-        .route("/sveda/admin", get(|| async { Redirect::permanent(ui::ADMIN_BASE) }))
+        .route(
+            "/sveda/admin",
+            get(|| async { Redirect::permanent(ui::ADMIN_BASE) }),
+        )
         .route(
             "/sveda/admin/{page}",
             get(|Path(page): Path<String>| async move {
@@ -462,8 +519,7 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/sveda/documents/extract",
             post(documents::extract_documents),
-        )
-        ;
+        );
     let dist = ui::admin_dist();
     if dist.is_dir() {
         router = router.nest_service("/build", ServeDir::new(dist));
@@ -606,9 +662,9 @@ async fn stream_chat(
         Ok(visitor_id) => visitor_id,
         Err(status) => return status.into_response(),
     };
-    let lease = match state.occupancy.acquire(&visitor_id) {
+    let lease = match admit_turn(&state, &headers, &visitor_id) {
         Ok(lease) => lease,
-        Err(error) => return occupancy_rejected(error),
+        Err(response) => return response,
     };
     let events = match turn::run_turn(state.clone(), visitor_id, request).await {
         Ok(events) => events,
@@ -646,9 +702,9 @@ async fn json_message(
         Ok(visitor_id) => visitor_id,
         Err(status) => return status.into_response(),
     };
-    let _lease = match state.occupancy.acquire(&visitor_id) {
+    let _lease = match admit_turn(&state, &headers, &visitor_id) {
         Ok(lease) => lease,
-        Err(error) => return occupancy_rejected(error),
+        Err(response) => return response,
     };
     let fallback_chat_id = request
         .chat_id
@@ -705,6 +761,39 @@ fn occupancy_rejected(error: OccupancyError) -> Response {
         Json(serde_json::json!({ "message": error.message() })),
     )
         .into_response()
+}
+
+fn admit_turn(
+    state: &AppState,
+    headers: &HeaderMap,
+    visitor_id: &str,
+) -> Result<sveda_store::OccupancyLease, Response> {
+    if let Err(retry_after) = state.stream_throttle.hit(&format!("stream:{visitor_id}")) {
+        return Err(throttle_rejected(retry_after));
+    }
+    let header_name = state.client_ip_header.lock().expect("ip header").clone();
+    if !header_name.is_empty() {
+        if let Some(ip) = client_ip(headers, &header_name) {
+            if let Err(retry_after) = state.ip_throttle.hit(&format!("ip:{ip}")) {
+                return Err(throttle_rejected(retry_after));
+            }
+        }
+    }
+    match state.occupancy.acquire(visitor_id) {
+        Ok(lease) => Ok(lease),
+        Err(error) => Err(occupancy_rejected(error)),
+    }
+}
+
+fn client_ip(headers: &HeaderMap, name: &str) -> Option<String> {
+    let header = HeaderName::from_bytes(name.as_bytes()).ok()?;
+    headers
+        .get(&header)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(',').next())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
 }
 
 fn throttle_rejected(retry_after: u64) -> Response {

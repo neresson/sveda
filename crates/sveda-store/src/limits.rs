@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -55,8 +56,8 @@ pub struct Occupancy {
 }
 
 struct OccupancyInner {
-    global_max: usize,
-    per_visitor_max: usize,
+    global_max: AtomicUsize,
+    per_visitor_max: AtomicUsize,
     lease_ttl: Duration,
     heartbeat: Duration,
     backend: OccupancyBackend,
@@ -86,7 +87,13 @@ impl Occupancy {
     }
 
     pub fn redis(client: RedisClient, global_max: usize, per_visitor_max: usize) -> Self {
-        Self::redis_with_lease(client, global_max, per_visitor_max, OCC_LEASE_TTL, OCC_HEARTBEAT)
+        Self::redis_with_lease(
+            client,
+            global_max,
+            per_visitor_max,
+            OCC_LEASE_TTL,
+            OCC_HEARTBEAT,
+        )
     }
 
     pub fn redis_with_lease(
@@ -105,11 +112,7 @@ impl Occupancy {
         )
     }
 
-    pub fn connect(
-        redis: Option<&RedisClient>,
-        global_max: usize,
-        per_visitor_max: usize,
-    ) -> Self {
+    pub fn connect(redis: Option<&RedisClient>, global_max: usize, per_visitor_max: usize) -> Self {
         match redis {
             Some(client) => Self::redis(client.clone(), global_max, per_visitor_max),
             None => Self::memory(global_max, per_visitor_max),
@@ -125,8 +128,8 @@ impl Occupancy {
     ) -> Self {
         Self {
             inner: Arc::new(OccupancyInner {
-                global_max,
-                per_visitor_max,
+                global_max: AtomicUsize::new(global_max),
+                per_visitor_max: AtomicUsize::new(per_visitor_max),
                 lease_ttl,
                 heartbeat,
                 backend,
@@ -134,35 +137,46 @@ impl Occupancy {
         }
     }
 
+    pub fn set_limits(&self, global_max: usize, per_visitor_max: usize) {
+        self.inner.global_max.store(global_max, Ordering::Relaxed);
+        self.inner
+            .per_visitor_max
+            .store(per_visitor_max, Ordering::Relaxed);
+    }
+
     pub fn visitor_key(visitor_id: &str) -> String {
         format!("{OCC_VISITOR_PREFIX}{visitor_id}")
     }
 
     pub fn acquire(&self, visitor_id: &str) -> Result<OccupancyLease, OccupancyError> {
-        if self.inner.global_max == 0 && self.inner.per_visitor_max == 0 {
+        let global_max = self.inner.global_max.load(Ordering::Relaxed);
+        let per_visitor_max = self.inner.per_visitor_max.load(Ordering::Relaxed);
+        if global_max == 0 && per_visitor_max == 0 {
             return Ok(OccupancyLease {
                 inner: None,
                 visitor_id: visitor_id.to_string(),
                 lease_id: String::new(),
                 heartbeat: None,
+                counted_global: false,
+                counted_visitor: false,
             });
         }
         let lease_id = uuid::Uuid::new_v4().to_string();
         match &self.inner.backend {
             OccupancyBackend::Memory(store) => {
-                if self.inner.global_max > 0 {
+                if global_max > 0 {
                     let next = store.incr(OCC_GLOBAL_KEY);
-                    if next > self.inner.global_max as i64 {
+                    if next > global_max as i64 {
                         store.decr(OCC_GLOBAL_KEY);
                         return Err(OccupancyError::Global);
                     }
                 }
-                if self.inner.per_visitor_max > 0 {
+                if per_visitor_max > 0 {
                     let key = Self::visitor_key(visitor_id);
                     let next = store.incr(&key);
-                    if next > self.inner.per_visitor_max as i64 {
+                    if next > per_visitor_max as i64 {
                         store.decr(&key);
-                        if self.inner.global_max > 0 {
+                        if global_max > 0 {
                             store.decr(OCC_GLOBAL_KEY);
                         }
                         return Err(OccupancyError::Visitor);
@@ -180,8 +194,8 @@ impl Occupancy {
                             lease_id.clone(),
                             now.to_string(),
                             expire_at.to_string(),
-                            self.inner.global_max.to_string(),
-                            self.inner.per_visitor_max.to_string(),
+                            global_max.to_string(),
+                            per_visitor_max.to_string(),
                         ],
                     )
                     .map_err(|_| OccupancyError::Global)?;
@@ -193,10 +207,18 @@ impl Occupancy {
             }
         }
         Ok(OccupancyLease {
-            heartbeat: start_heartbeat(self.inner.clone(), visitor_id.to_string(), lease_id.clone()),
+            heartbeat: start_heartbeat(
+                self.inner.clone(),
+                visitor_id.to_string(),
+                lease_id.clone(),
+                global_max > 0,
+                per_visitor_max > 0,
+            ),
             inner: Some(self.inner.clone()),
             visitor_id: visitor_id.to_string(),
             lease_id,
+            counted_global: global_max > 0,
+            counted_visitor: per_visitor_max > 0,
         })
     }
 }
@@ -205,6 +227,8 @@ fn start_heartbeat(
     inner: Arc<OccupancyInner>,
     visitor_id: String,
     lease_id: String,
+    counted_global: bool,
+    counted_visitor: bool,
 ) -> Option<tokio::task::AbortHandle> {
     if inner.heartbeat.is_zero() {
         return None;
@@ -223,7 +247,7 @@ fn start_heartbeat(
                 interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
                 loop {
                     interval.tick().await;
-                    inner.heartbeat(&lease_id, &visitor_id);
+                    inner.heartbeat(&lease_id, &visitor_id, counted_global, counted_visitor);
                 }
             })
             .abort_handle(),
@@ -231,34 +255,46 @@ fn start_heartbeat(
 }
 
 impl OccupancyInner {
-    fn heartbeat(&self, lease_id: &str, visitor_id: &str) {
+    fn heartbeat(
+        &self,
+        lease_id: &str,
+        visitor_id: &str,
+        counted_global: bool,
+        counted_visitor: bool,
+    ) {
         let OccupancyBackend::Redis(client) = &self.backend else {
             return;
         };
         let expire_at = now_secs() + self.lease_ttl.as_secs() as i64;
-        if self.global_max > 0 {
+        if counted_global {
             let _ = client.zadd_xx(OCC_GLOBAL_KEY, expire_at, lease_id);
         }
-        if self.per_visitor_max > 0 {
+        if counted_visitor {
             let _ = client.zadd_xx(&Occupancy::visitor_key(visitor_id), expire_at, lease_id);
         }
     }
 
-    fn release(&self, lease_id: &str, visitor_id: &str) {
+    fn release(
+        &self,
+        lease_id: &str,
+        visitor_id: &str,
+        counted_global: bool,
+        counted_visitor: bool,
+    ) {
         match &self.backend {
             OccupancyBackend::Memory(store) => {
-                if self.per_visitor_max > 0 {
+                if counted_visitor {
                     store.decr(&Occupancy::visitor_key(visitor_id));
                 }
-                if self.global_max > 0 {
+                if counted_global {
                     store.decr(OCC_GLOBAL_KEY);
                 }
             }
             OccupancyBackend::Redis(client) => {
-                if self.per_visitor_max > 0 {
+                if counted_visitor {
                     let _ = client.zrem(&Occupancy::visitor_key(visitor_id), lease_id);
                 }
-                if self.global_max > 0 {
+                if counted_global {
                     let _ = client.zrem(OCC_GLOBAL_KEY, lease_id);
                 }
             }
@@ -271,6 +307,8 @@ pub struct OccupancyLease {
     visitor_id: String,
     lease_id: String,
     heartbeat: Option<tokio::task::AbortHandle>,
+    counted_global: bool,
+    counted_visitor: bool,
 }
 
 impl std::fmt::Debug for OccupancyLease {
@@ -289,15 +327,20 @@ impl Drop for OccupancyLease {
             handle.abort();
         }
         if let Some(inner) = self.inner.take() {
-            inner.release(&self.lease_id, &self.visitor_id);
+            inner.release(
+                &self.lease_id,
+                &self.visitor_id,
+                self.counted_global,
+                self.counted_visitor,
+            );
         }
     }
 }
 
 #[derive(Clone)]
 pub struct RateLimiter {
-    max: u32,
-    window: Duration,
+    max: Arc<AtomicU32>,
+    window_secs: Arc<AtomicU64>,
     backend: LimitBackend,
 }
 
@@ -310,16 +353,16 @@ enum LimitBackend {
 impl RateLimiter {
     pub fn memory(max: u32, window: Duration) -> Self {
         Self {
-            max,
-            window,
+            max: Arc::new(AtomicU32::new(max)),
+            window_secs: Arc::new(AtomicU64::new(window.as_secs().max(1))),
             backend: LimitBackend::Memory(MemoryStore::default()),
         }
     }
 
     pub fn redis(client: RedisClient, max: u32, window: Duration) -> Self {
         Self {
-            max,
-            window,
+            max: Arc::new(AtomicU32::new(max)),
+            window_secs: Arc::new(AtomicU64::new(window.as_secs().max(1))),
             backend: LimitBackend::Redis(client),
         }
     }
@@ -331,34 +374,56 @@ impl RateLimiter {
         }
     }
 
+    pub fn set_limits(&self, max: u32, window: Duration) {
+        self.max.store(max, Ordering::Relaxed);
+        self.window_secs
+            .store(window.as_secs().max(1), Ordering::Relaxed);
+    }
+
     pub fn throttle_key(id: &str) -> String {
         format!("{RL_PREFIX}{id}")
     }
 
     pub fn hit(&self, key: &str) -> Result<(), u64> {
-        if self.max == 0 {
+        let max = self.max.load(Ordering::Relaxed);
+        if max == 0 {
             return Ok(());
         }
+        let window = Duration::from_secs(self.window_secs.load(Ordering::Relaxed).max(1));
         match &self.backend {
-            LimitBackend::Memory(store) => {
-                store.hit(&Self::throttle_key(key), self.max, self.window)
-            }
-            LimitBackend::Redis(client) => redis_hit(client, &Self::throttle_key(key), self.max, self.window),
+            LimitBackend::Memory(store) => store.hit(&Self::throttle_key(key), max, window),
+            LimitBackend::Redis(client) => redis_hit(client, &Self::throttle_key(key), max, window),
         }
     }
 }
 
 pub fn parse_laravel_throttle(value: &str) -> (u32, u64) {
+    parse_laravel_throttle_default(value, 30)
+}
+
+pub fn parse_optional_laravel_throttle(value: &str) -> (u32, u64) {
+    if value.trim().is_empty() {
+        return (0, 60);
+    }
+    parse_laravel_throttle_default(value, 0)
+}
+
+fn parse_laravel_throttle_default(value: &str, default_max: u32) -> (u32, u64) {
     let trimmed = value.trim();
     if trimmed.is_empty() {
-        return (30, 60);
+        return (default_max, 60);
     }
     let mut parts = trimmed.split(',');
-    let max = parts
-        .next()
-        .and_then(|part| part.trim().parse::<u32>().ok())
-        .filter(|value| *value > 0)
-        .unwrap_or(30);
+    let max_raw = parts.next().unwrap_or("").trim();
+    let max = if max_raw == "0" {
+        0
+    } else {
+        max_raw
+            .parse::<u32>()
+            .ok()
+            .filter(|value| *value > 0)
+            .unwrap_or(default_max)
+    };
     let minutes = parts
         .next()
         .and_then(|part| part.trim().parse::<u64>().ok())
@@ -414,7 +479,10 @@ fn redis_hit(client: &RedisClient, key: &str, max: u32, window: Duration) -> Res
             .query(&mut connection);
     }
     if count > i64::from(max) {
-        let ttl: i64 = redis::cmd("TTL").arg(key).query(&mut connection).unwrap_or(1);
+        let ttl: i64 = redis::cmd("TTL")
+            .arg(key)
+            .query(&mut connection)
+            .unwrap_or(1);
         return Err(ttl.max(1) as u64);
     }
     Ok(())

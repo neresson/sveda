@@ -23,6 +23,8 @@ pub struct SettingsDocument {
     pub mcp: Value,
     #[serde(default = "default_appearance")]
     pub appearance: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub security: Option<SecuritySettings>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -67,6 +69,48 @@ pub struct CorsSettings {
     pub allowed_origins: Vec<String>,
 }
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SecuritySettings {
+    #[serde(default)]
+    pub embed_token_throttle_max: u32,
+    #[serde(default = "default_throttle_window_secs")]
+    pub embed_token_throttle_window_secs: u64,
+    #[serde(default)]
+    pub stream_throttle_max: u32,
+    #[serde(default = "default_throttle_window_secs")]
+    pub stream_throttle_window_secs: u64,
+    #[serde(default)]
+    pub occupancy_global: usize,
+    #[serde(default)]
+    pub occupancy_per_visitor: usize,
+    #[serde(default)]
+    pub client_ip_header: String,
+    #[serde(default)]
+    pub ip_throttle_max: u32,
+    #[serde(default = "default_throttle_window_secs")]
+    pub ip_throttle_window_secs: u64,
+}
+
+fn default_throttle_window_secs() -> u64 {
+    60
+}
+
+impl SecuritySettings {
+    pub fn from_config(config: &Config) -> Self {
+        Self {
+            embed_token_throttle_max: config.embed_throttle_max,
+            embed_token_throttle_window_secs: config.embed_throttle_window_secs.max(1),
+            stream_throttle_max: config.stream_throttle_max,
+            stream_throttle_window_secs: config.stream_throttle_window_secs.max(1),
+            occupancy_global: config.occupancy_global,
+            occupancy_per_visitor: config.occupancy_per_visitor,
+            client_ip_header: sanitize_ip_header(&config.client_ip_header),
+            ip_throttle_max: config.ip_throttle_max,
+            ip_throttle_window_secs: config.ip_throttle_window_secs.max(1),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct SettingsPatch {
     pub default_model: Option<String>,
@@ -81,6 +125,7 @@ pub struct SettingsPatch {
     pub system_prompt: Option<String>,
     pub mcp: Option<Value>,
     pub appearance: Option<Value>,
+    pub security: Option<SecurityPatch>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -93,6 +138,19 @@ pub struct CompactionPatch {
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct CorsPatch {
     pub allowed_origins: Option<Vec<String>>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct SecurityPatch {
+    pub embed_token_throttle_max: Option<u32>,
+    pub embed_token_throttle_window_secs: Option<u64>,
+    pub stream_throttle_max: Option<u32>,
+    pub stream_throttle_window_secs: Option<u64>,
+    pub occupancy_global: Option<usize>,
+    pub occupancy_per_visitor: Option<usize>,
+    pub client_ip_header: Option<String>,
+    pub ip_throttle_max: Option<u32>,
+    pub ip_throttle_window_secs: Option<u64>,
 }
 
 impl SettingsDocument {
@@ -123,6 +181,7 @@ impl SettingsDocument {
             system_prompt: config.system_prompt.clone(),
             mcp: default_mcp(),
             appearance: default_appearance(),
+            security: Some(SecuritySettings::from_config(config)),
         }
     }
 
@@ -178,6 +237,46 @@ impl SettingsDocument {
         }
         if let Some(appearance) = patch.appearance {
             next.appearance = appearance;
+        }
+        if let Some(security) = patch.security {
+            let mut current = next.security.take().unwrap_or_default();
+            if current.embed_token_throttle_window_secs == 0 {
+                current.embed_token_throttle_window_secs = default_throttle_window_secs();
+            }
+            if current.stream_throttle_window_secs == 0 {
+                current.stream_throttle_window_secs = default_throttle_window_secs();
+            }
+            if current.ip_throttle_window_secs == 0 {
+                current.ip_throttle_window_secs = default_throttle_window_secs();
+            }
+            if let Some(value) = security.embed_token_throttle_max {
+                current.embed_token_throttle_max = value;
+            }
+            if let Some(value) = security.embed_token_throttle_window_secs {
+                current.embed_token_throttle_window_secs = value.max(1);
+            }
+            if let Some(value) = security.stream_throttle_max {
+                current.stream_throttle_max = value;
+            }
+            if let Some(value) = security.stream_throttle_window_secs {
+                current.stream_throttle_window_secs = value.max(1);
+            }
+            if let Some(value) = security.occupancy_global {
+                current.occupancy_global = value;
+            }
+            if let Some(value) = security.occupancy_per_visitor {
+                current.occupancy_per_visitor = value;
+            }
+            if let Some(value) = security.client_ip_header {
+                current.client_ip_header = sanitize_ip_header(&value);
+            }
+            if let Some(value) = security.ip_throttle_max {
+                current.ip_throttle_max = value;
+            }
+            if let Some(value) = security.ip_throttle_window_secs {
+                current.ip_throttle_window_secs = value.max(1);
+            }
+            next.security = Some(current);
         }
         next
     }
@@ -339,6 +438,21 @@ fn default_appearance() -> Value {
     json!({})
 }
 
+pub fn sanitize_ip_header(value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    if trimmed
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+    {
+        trimmed.to_string()
+    } else {
+        String::new()
+    }
+}
+
 fn string_list(values: Vec<String>) -> Vec<String> {
     values
         .into_iter()
@@ -428,7 +542,12 @@ impl SettingsStore {
 
     pub async fn load_or_seed(&self, seed: SettingsDocument) -> SettingsDocument {
         if let Ok(Some(value)) = self.documents.load().await {
-            if let Ok(document) = serde_json::from_value::<SettingsDocument>(value) {
+            if let Ok(mut document) = serde_json::from_value::<SettingsDocument>(value) {
+                if document.security.is_none() {
+                    document.security = seed.security.clone();
+                    let _ = self.persist(document.clone()).await;
+                    return document;
+                }
                 let mut guard = self.inner.lock().expect("settings");
                 guard.document = document.clone();
                 return document;
@@ -436,5 +555,38 @@ impl SettingsStore {
         }
         let _ = self.persist(seed.clone()).await;
         seed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn missing_security_deserializes_as_none() {
+        let value = json!({
+            "default_model": "x",
+            "model": "x",
+            "failover": [],
+            "deepseek": {},
+            "models": [],
+            "max_steps": 1,
+            "compaction": { "enabled": true, "min_messages": 1, "keep_tail_messages": 1 },
+            "cors": {},
+            "welcome_message": "",
+            "system_prompt": ""
+        });
+        let document: SettingsDocument = serde_json::from_value(value).unwrap();
+        assert!(document.security.is_none());
+    }
+
+    #[test]
+    fn sanitize_ip_header_rejects_junk() {
+        assert_eq!(sanitize_ip_header("CF-Connecting-IP"), "CF-Connecting-IP");
+        assert_eq!(sanitize_ip_header(" X-Real-IP "), "X-Real-IP");
+        assert_eq!(sanitize_ip_header("X-Forwarded-For"), "X-Forwarded-For");
+        assert_eq!(sanitize_ip_header("bad header"), "");
+        assert_eq!(sanitize_ip_header(""), "");
     }
 }

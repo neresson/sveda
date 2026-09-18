@@ -13,6 +13,7 @@ const items = [
     { id: 'dashboard' },
     { id: 'usage' },
     { id: 'runtime' },
+    { id: 'security' },
     { id: 'models' },
     { id: 'mcp' },
     { id: 'prompts' },

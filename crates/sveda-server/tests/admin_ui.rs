@@ -167,6 +167,7 @@ async fn dashboard_page_renders_after_login() {
     assert!(html.contains("/admin/mcp"));
     assert!(html.contains("/admin/appearance"));
     assert!(html.contains("/admin/prompts"));
+    assert!(html.contains("/admin/security"));
     assert!(html.contains("/admin/settings"));
 }
 
@@ -176,8 +177,7 @@ async fn runtime_page_renders_after_login() {
     let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
     headers.insert(header::COOKIE, cookie.parse().unwrap());
-    let (status, _, body) =
-        send(state, "GET", "/admin/runtime", headers, Body::empty()).await;
+    let (status, _, body) = send(state, "GET", "/admin/runtime", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let html = String::from_utf8(body).unwrap();
     assert!(html.contains("\"page\":\"runtime\""));
@@ -199,7 +199,7 @@ async fn models_page_renders_after_login() {
 async fn mcp_and_appearance_pages_render_after_login() {
     let state = admin_state();
     let cookie = login_cookie(state.clone()).await;
-    for page in ["mcp", "appearance", "usage", "sources"] {
+    for page in ["mcp", "appearance", "usage", "sources", "security"] {
         let mut headers = HeaderMap::new();
         headers.insert(header::COOKIE, cookie.parse().unwrap());
         let (status, _, body) = send(
@@ -234,6 +234,7 @@ async fn admin_spa_accepts_json() {
     let payload: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(payload["page"], "mcp");
     assert_eq!(payload["urls"]["appearance"], "/admin/appearance");
+    assert_eq!(payload["urls"]["security"], "/admin/security");
 }
 
 #[tokio::test]

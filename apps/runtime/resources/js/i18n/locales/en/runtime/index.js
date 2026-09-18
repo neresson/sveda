@@ -13,6 +13,4 @@ export default {
     compaction_enabled: 'Enabled',
     min_messages: 'Min messages',
     keep_tail: 'Keep tail messages',
-    cors: 'CORS origins',
-    cors_hint: 'One origin per line.',
 };

@@ -2,6 +2,8 @@
 
 Installs horizontally scalable `sveda-server` replicas. Chat history and admin settings live in Postgres. Occupancy, throttle, MCP creds, and settings revision live in Redis.
 
+CORS, occupancy, and rate limits can be changed at runtime in **Admin → Security** (`/admin/security`). Env vars such as `SVEDA_STREAM_THROTTLE` only seed the first boot.
+
 ## Production
 
 Point the chart at managed stores:

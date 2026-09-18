@@ -13,6 +13,4 @@ export default {
     compaction_enabled: 'Включено',
     min_messages: 'Минимум сообщений',
     keep_tail: 'Оставить хвост',
-    cors: 'CORS-источники',
-    cors_hint: 'По одному origin на строку.',
 };

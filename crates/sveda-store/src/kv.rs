@@ -66,12 +66,7 @@ impl RedisClient {
             .map_err(|error| error.to_string())
     }
 
-    pub fn eval_i64(
-        &self,
-        script: &str,
-        keys: &[&str],
-        args: &[String],
-    ) -> Result<i64, String> {
+    pub fn eval_i64(&self, script: &str, keys: &[&str], args: &[String]) -> Result<i64, String> {
         let mut connection = self.connection()?;
         let mut cmd = redis::cmd("EVAL");
         cmd.arg(script).arg(keys.len());
@@ -161,7 +156,9 @@ impl KvStore {
             }
             Self::Redis(client) => {
                 let ttl_secs = ttl.map(|value| value.as_secs().max(1)).unwrap_or(3600);
-                client.set_ex(key, &encoded, ttl_secs).map_err(StoreError::Redis)
+                client
+                    .set_ex(key, &encoded, ttl_secs)
+                    .map_err(StoreError::Redis)
             }
         }
     }

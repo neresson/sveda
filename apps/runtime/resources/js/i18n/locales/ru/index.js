@@ -8,6 +8,7 @@ import nav from './nav';
 import prompts from './prompts';
 import appearance from './appearance';
 import runtime from './runtime';
+import security from './security';
 import setup from './setup';
 import shell from './shell';
 import sources from './sources';
@@ -19,6 +20,7 @@ export default {
     dashboard,
     usage,
     runtime,
+    security,
     models,
     mcp,
     prompts,

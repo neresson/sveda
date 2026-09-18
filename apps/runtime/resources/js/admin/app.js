@@ -10,6 +10,7 @@ import McpApp from './McpApp.vue';
 import PromptsApp from './PromptsApp.vue';
 import AppearanceApp from './AppearanceApp.vue';
 import RuntimeApp from './RuntimeApp.vue';
+import SecurityApp from './SecurityApp.vue';
 import SetupApp from './SetupApp.vue';
 import SourcesApp from './SourcesApp.vue';
 
@@ -19,6 +20,7 @@ const pages = {
     dashboard: DashboardApp,
     usage: UsageApp,
     runtime: RuntimeApp,
+    security: SecurityApp,
     models: ModelsApp,
     mcp: McpApp,
     prompts: PromptsApp,
@@ -26,7 +28,7 @@ const pages = {
     sources: SourcesApp,
 };
 
-const AUTHENTICATED_PAGES = ['dashboard', 'usage', 'runtime', 'models', 'mcp', 'prompts', 'appearance', 'sources'];
+const AUTHENTICATED_PAGES = ['dashboard', 'usage', 'runtime', 'security', 'models', 'mcp', 'prompts', 'appearance', 'sources'];
 
 const el = document.getElementById('sveda-admin');
 

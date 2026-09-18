@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -88,6 +90,26 @@ pub(crate) fn apply_runtime(state: &AppState, document: &crate::settings::Settin
     *state.catalog.lock().expect("catalog") = document.to_catalog();
     let mut origins = state.cors_origins.lock().expect("cors");
     *origins = document.cors.allowed_origins.clone();
+    let security = document
+        .security
+        .clone()
+        .unwrap_or_else(|| crate::settings::SecuritySettings::from_config(&state.config));
+    state
+        .occupancy
+        .set_limits(security.occupancy_global, security.occupancy_per_visitor);
+    state.throttle.set_limits(
+        security.embed_token_throttle_max,
+        Duration::from_secs(security.embed_token_throttle_window_secs.max(1)),
+    );
+    state.stream_throttle.set_limits(
+        security.stream_throttle_max,
+        Duration::from_secs(security.stream_throttle_window_secs.max(1)),
+    );
+    state.ip_throttle.set_limits(
+        security.ip_throttle_max,
+        Duration::from_secs(security.ip_throttle_window_secs.max(1)),
+    );
+    *state.client_ip_header.lock().expect("ip header") = security.client_ip_header;
 }
 
 pub fn overlay(base: &crate::Config, settings: &SettingsStore) -> crate::Config {
@@ -99,5 +121,17 @@ pub fn overlay(base: &crate::Config, settings: &SettingsStore) -> crate::Config 
     config.compaction_min_messages = document.compaction.min_messages;
     config.compaction_keep_tail = document.compaction.keep_tail_messages;
     config.cors_origins = document.cors.allowed_origins;
+    let security = document
+        .security
+        .unwrap_or_else(|| crate::settings::SecuritySettings::from_config(&config));
+    config.embed_throttle_max = security.embed_token_throttle_max;
+    config.embed_throttle_window_secs = security.embed_token_throttle_window_secs;
+    config.stream_throttle_max = security.stream_throttle_max;
+    config.stream_throttle_window_secs = security.stream_throttle_window_secs;
+    config.occupancy_global = security.occupancy_global;
+    config.occupancy_per_visitor = security.occupancy_per_visitor;
+    config.client_ip_header = security.client_ip_header;
+    config.ip_throttle_max = security.ip_throttle_max;
+    config.ip_throttle_window_secs = security.ip_throttle_window_secs;
     config
 }
