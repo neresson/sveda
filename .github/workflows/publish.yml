@@ -3,6 +3,7 @@ name: Publish
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,10 +17,11 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
+      # Do not set registry-url: setup-node would write always-auth and a dummy
+      # NODE_AUTH_TOKEN, which makes npm skip OIDC trusted publishing and PUT 404.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
       - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @sveda-ai/protocol --filter @sveda-ai/core --filter @sveda-ai/vue run build
@@ -32,6 +34,12 @@ jobs:
       - name: Publish unpublished packages
         run: |
           set -euo pipefail
+          unset NODE_AUTH_TOKEN NPM_TOKEN || true
+          if [ -n "${NPM_CONFIG_USERCONFIG:-}" ] && [ -f "${NPM_CONFIG_USERCONFIG}" ]; then
+            sed -i '/_authToken/d; /always-auth/d' "${NPM_CONFIG_USERCONFIG}"
+          fi
+          npm --version
+          failed=0
           for dir in protocol core vue element; do
             name="$(node -p "require('./packages/${dir}/package.json').name")"
             ver="$(node -p "require('./packages/${dir}/package.json').version")"
@@ -39,5 +47,10 @@ jobs:
               echo "${name}@${ver} already on npm, skip"
               continue
             fi
-            pnpm --filter "${name}" publish --access public --no-git-checks
+            echo "Publishing ${name}@${ver}"
+            if ! (cd "packages/${dir}" && npm publish --access public); then
+              echo "::error::Failed to publish ${name}@${ver}"
+              failed=1
+            fi
           done
+          exit "${failed}"
