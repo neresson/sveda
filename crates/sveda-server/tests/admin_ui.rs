@@ -172,6 +172,56 @@ async fn dashboard_page_renders_after_login() {
 }
 
 #[tokio::test]
+async fn dashboard_and_usage_include_recorded_requests() {
+    let state = admin_state();
+    state
+        .usage()
+        .record(sveda_store::UsageEvent {
+            visitor_id: "visitor-1".into(),
+            chat_id: "chat-1".into(),
+            model: "deepseek-v4-flash-responses".into(),
+            status: "completed".into(),
+            prompt_tokens: 8,
+            completion_tokens: 2,
+            tokens_used: 10,
+        })
+        .await
+        .unwrap();
+    let cookie = login_cookie(state.clone()).await;
+    let mut headers = HeaderMap::new();
+    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert(header::ACCEPT, "application/json".parse().unwrap());
+
+    let (status, _, body) = send(
+        state.clone(),
+        "GET",
+        "/admin",
+        headers.clone(),
+        Body::empty(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let payload: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(payload["page"], "dashboard");
+    assert_eq!(payload["stats"]["requests"], 1);
+    assert_eq!(payload["stats"]["tokens_used"], 10);
+    assert_eq!(payload["stats"]["prompt_tokens"], 8);
+    assert_eq!(payload["stats"]["completion_tokens"], 2);
+    assert_eq!(payload["stats"]["series"].as_array().unwrap().len(), 14);
+
+    let (status, _, body) = send(state, "GET", "/admin/usage", headers, Body::empty()).await;
+    assert_eq!(status, StatusCode::OK);
+    let payload: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(payload["page"], "usage");
+    assert_eq!(payload["usage"]["requests"]["total"], 1);
+    assert_eq!(payload["usage"]["by_model"][0]["tokens_used"], 10);
+    assert_eq!(
+        payload["usage"]["by_model"][0]["model_label"],
+        "DeepSeek V4 Flash (Responses)"
+    );
+}
+
+#[tokio::test]
 async fn runtime_page_renders_after_login() {
     let state = admin_state();
     let cookie = login_cookie(state.clone()).await;

@@ -14,7 +14,7 @@ use sveda_agent::{
 use sveda_llm::ChatMessage;
 use sveda_mcp::{HostMcpClient, McpCallContext, McpCredentials};
 use sveda_protocol::{StreamEvent, StreamRequest};
-use sveda_store::Checkpoint;
+use sveda_store::{Checkpoint, UsageEvent};
 use uuid::Uuid;
 
 use crate::AppState;
@@ -50,6 +50,10 @@ pub async fn run_turn(
     }
     let runtime_config = state.runtime_config();
     let catalog = state.catalog();
+    let model_id = catalog
+        .resolve(request.model.as_deref())
+        .map(|model| model.id.clone())
+        .unwrap_or_default();
     let full_history = history.clone();
     if stored
         .as_ref()
@@ -131,6 +135,7 @@ pub async fn run_turn(
         state,
         visitor_id,
         chat_id,
+        model_id,
         prompt,
         incoming,
         full_history,
@@ -142,6 +147,7 @@ fn finalize_turn(
     state: AppState,
     visitor_id: String,
     chat_id: String,
+    model_id: String,
     prompt: String,
     incoming: Vec<serde_json::Value>,
     full_history: Vec<ChatMessage>,
@@ -152,16 +158,26 @@ fn finalize_turn(
         let mut assistant = String::new();
         let mut reasoning = String::new();
         let mut tokens = 0u64;
+        let mut prompt_tokens = 0u64;
+        let mut completion_tokens = 0u64;
         let mut errored = false;
         while let Some(event) = events.next().await {
             match &event {
                 StreamEvent::TextDelta { delta, .. } => assistant.push_str(delta),
                 StreamEvent::ReasoningDelta { delta, .. } => reasoning.push_str(delta),
                 StreamEvent::MessageEnd { usage, .. } => {
+                    prompt_tokens = usage
+                        .as_ref()
+                        .and_then(|usage| usage.prompt_tokens)
+                        .unwrap_or(0);
+                    completion_tokens = usage
+                        .as_ref()
+                        .and_then(|usage| usage.completion_tokens)
+                        .unwrap_or(0);
                     tokens = usage
                         .as_ref()
                         .and_then(|usage| usage.total_tokens)
-                        .unwrap_or(0);
+                        .unwrap_or(prompt_tokens.saturating_add(completion_tokens));
                 }
                 StreamEvent::Error { .. } => errored = true,
                 _ => {}
@@ -210,6 +226,18 @@ fn finalize_turn(
                 preview: preview_from(&messages, &prompt),
                 messages,
                 conversation_history: conversation.clone(),
+                tokens_used: tokens,
+            })
+            .await;
+        let _ = state
+            .usage
+            .record(UsageEvent {
+                visitor_id: visitor_id.clone(),
+                chat_id: chat_id.clone(),
+                model: model_id.clone(),
+                status: if errored { "failed".into() } else { "completed".into() },
+                prompt_tokens,
+                completion_tokens,
                 tokens_used: tokens,
             })
             .await;

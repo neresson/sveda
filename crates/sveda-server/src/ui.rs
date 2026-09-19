@@ -37,6 +37,8 @@ const ADMIN_PAGES: &[&str] = &[
 pub struct AdminQuery {
     #[serde(default)]
     pub error: String,
+    #[serde(default)]
+    pub page: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -161,7 +163,7 @@ pub async fn show(
     headers: HeaderMap,
     Query(query): Query<AdminQuery>,
 ) -> Response {
-    render(&state, &headers, "dashboard", query.error)
+    render(&state, &headers, "dashboard", query).await
 }
 
 pub async fn section(
@@ -173,7 +175,7 @@ pub async fn section(
     if !ADMIN_PAGES.contains(&page.as_str()) {
         return (StatusCode::NOT_FOUND, admin_not_found()).into_response();
     }
-    render(&state, &headers, &page, query.error)
+    render(&state, &headers, &page, query).await
 }
 
 pub async fn login(State(state): State<AppState>, Form(form): Form<LoginForm>) -> Response {
@@ -224,24 +226,24 @@ pub fn session_ok(state: &AppState, headers: &HeaderMap) -> bool {
     keys_match(&session_token(&state.config.hmac_key, &expected), &cookie)
 }
 
-fn render(state: &AppState, headers: &HeaderMap, page: &str, error: String) -> Response {
+async fn render(state: &AppState, headers: &HeaderMap, page: &str, query: AdminQuery) -> Response {
     let configured = expected_admin_key(state).is_some();
     let payload = if !configured {
         json!({
             "page": "setup",
             "csrf": "",
             "action": format!("{}/setup", ADMIN_BASE),
-            "error": setup_error(&error),
+            "error": setup_error(&query.error),
         })
     } else if !session_ok(state, headers) {
         json!({
             "page": "login",
             "csrf": "",
             "action": format!("{}/login", ADMIN_BASE),
-            "error": if error.is_empty() { "" } else { "invalid" },
+            "error": if query.error.is_empty() { "" } else { "invalid" },
         })
     } else {
-        settings_payload(state, page)
+        settings_payload(state, page, query.page.unwrap_or(1)).await
     };
     if wants_json(headers) {
         if payload.get("page").and_then(Value::as_str) == Some("login")
@@ -261,7 +263,23 @@ fn setup_error(error: &str) -> &str {
     }
 }
 
-fn settings_payload(state: &AppState, page: &str) -> Value {
+async fn settings_payload(state: &AppState, page: &str, page_number: u32) -> Value {
+    let stats = match state
+        .usage
+        .dashboard(sveda_store::DASHBOARD_PERIOD_DAYS)
+        .await
+    {
+        Ok(stats) => stats_json(&stats),
+        Err(_) => empty_stats(),
+    };
+    let usage = match state
+        .usage
+        .page(page_number, sveda_store::USAGE_PAGE_SIZE)
+        .await
+    {
+        Ok(list) => usage_json(state, &list),
+        Err(_) => empty_usage(),
+    };
     json!({
         "page": page,
         "csrf": "",
@@ -289,9 +307,84 @@ fn settings_payload(state: &AppState, page: &str) -> Value {
         },
         "appearancePresets": {},
         "settings": state.settings.document().masked(),
-        "stats": empty_stats(),
-        "usage": empty_usage(),
+        "stats": stats,
+        "usage": usage,
     })
+}
+
+fn stats_json(stats: &sveda_store::DashboardStats) -> Value {
+    json!({
+        "period_days": stats.period_days,
+        "requests": stats.requests,
+        "completed": stats.completed,
+        "failed": stats.failed,
+        "pending": stats.pending,
+        "prompt_tokens": stats.prompt_tokens,
+        "completion_tokens": stats.completion_tokens,
+        "tokens_used": stats.tokens_used,
+        "unsplit_tokens": stats.unsplit_tokens,
+        "users": stats.users,
+        "conversations": stats.conversations,
+        "avg_tokens": stats.avg_tokens,
+        "success_rate": stats.success_rate,
+        "series": stats.series.iter().map(|day| json!({
+            "date": day.date.to_string(),
+            "requests": day.requests,
+            "prompt_tokens": day.prompt_tokens,
+            "completion_tokens": day.completion_tokens,
+            "tokens_used": day.tokens_used,
+            "unsplit_tokens": day.unsplit_tokens,
+        })).collect::<Vec<_>>(),
+    })
+}
+
+fn usage_json(state: &AppState, list: &sveda_store::UsageList) -> Value {
+    json!({
+        "by_model": list.by_model.iter().map(|row| json!({
+            "model": row.model,
+            "model_label": model_label(state, &row.model),
+            "requests": row.requests,
+            "tokens_used": row.tokens_used,
+        })).collect::<Vec<_>>(),
+        "requests": {
+            "data": list.rows.iter().map(|row| json!({
+                "id": row.id,
+                "model": row.model,
+                "model_label": model_label(state, &row.model),
+                "created_at": row.created_at.to_rfc3339(),
+                "tokens_used": row.tokens_used,
+            })).collect::<Vec<_>>(),
+            "current_page": list.current_page,
+            "last_page": list.last_page,
+            "per_page": list.per_page,
+            "total": list.total,
+            "prev_page_url": if list.current_page > 1 {
+                Value::String(format!("{}?page={}", admin_path("usage"), list.current_page - 1))
+            } else {
+                Value::Null
+            },
+            "next_page_url": if list.current_page < list.last_page {
+                Value::String(format!("{}?page={}", admin_path("usage"), list.current_page + 1))
+            } else {
+                Value::Null
+            },
+        }
+    })
+}
+
+fn model_label(state: &AppState, model_id: &str) -> String {
+    state
+        .catalog()
+        .find(model_id)
+        .map(|model| {
+            if model.label.trim().is_empty() {
+                model.id.clone()
+            } else {
+                model.label.clone()
+            }
+        })
+        .filter(|label| !label.is_empty())
+        .unwrap_or_else(|| model_id.to_string())
 }
 
 fn empty_stats() -> Value {

@@ -702,7 +702,9 @@ async fn embed_widget_assets_allow_cross_origin_module_load() {
         "public, max-age=0, must-revalidate"
     );
     assert_eq!(
-        response_headers.get("cloudflare-cdn-cache-control").unwrap(),
+        response_headers
+            .get("cloudflare-cdn-cache-control")
+            .unwrap(),
         "no-cache"
     );
 }

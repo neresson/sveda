@@ -3,6 +3,7 @@ mod history;
 mod kv;
 mod limits;
 mod postgres;
+mod usage;
 
 pub use error::StoreError;
 pub use history::{Checkpoint, HistoryRecord, HistoryStore, MemoryHistoryStore};
@@ -13,3 +14,7 @@ pub use limits::{
     RL_PREFIX,
 };
 pub use postgres::{DocumentStore, Postgres};
+pub use usage::{
+    DashboardStats, DayBucket, UsageByModel, UsageEvent, UsageList, UsageRow, UsageStore,
+    DASHBOARD_PERIOD_DAYS, USAGE_PAGE_SIZE,
+};

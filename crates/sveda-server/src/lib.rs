@@ -19,7 +19,7 @@ use sveda_protocol::{
 };
 use sveda_store::{
     mcp_key, parse_laravel_throttle, parse_optional_laravel_throttle, DocumentStore, HistoryStore,
-    KvStore, Occupancy, OccupancyError, Postgres, RateLimiter, RedisClient,
+    KvStore, Occupancy, OccupancyError, Postgres, RateLimiter, RedisClient, UsageStore,
 };
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::services::ServeDir;
@@ -294,6 +294,7 @@ pub struct AppState {
     pub(crate) llm: Arc<dyn LlmClient>,
     mcp: KvStore,
     pub(crate) store: HistoryStore,
+    pub(crate) usage: UsageStore,
     pub(crate) settings: SettingsStore,
     pub(crate) cors_origins: Arc<Mutex<Vec<String>>>,
     pub occupancy: Occupancy,
@@ -412,9 +413,13 @@ impl AppState {
             .map(sveda_index::prepare)
             .map(Arc::new);
         let admin_key = Arc::new(Mutex::new(config.admin_api_key.clone()));
-        let store = match postgres {
+        let store = match postgres.clone() {
             Some(postgres) => HistoryStore::postgres(postgres),
             None => HistoryStore::memory(),
+        };
+        let usage = match postgres {
+            Some(postgres) => UsageStore::postgres(postgres),
+            None => UsageStore::memory(),
         };
         let state = Self {
             catalog: Arc::new(Mutex::new(catalog)),
@@ -422,6 +427,7 @@ impl AppState {
             config,
             mcp: kv,
             store,
+            usage,
             settings,
             cors_origins,
             occupancy,
@@ -438,6 +444,10 @@ impl AppState {
 
     pub fn store(&self) -> &HistoryStore {
         &self.store
+    }
+
+    pub fn usage(&self) -> &UsageStore {
+        &self.usage
     }
 
     pub(crate) fn catalog(&self) -> Catalog {

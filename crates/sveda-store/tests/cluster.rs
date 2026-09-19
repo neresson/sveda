@@ -3,6 +3,7 @@ use std::time::Duration;
 use serde_json::json;
 use sveda_store::{
     Checkpoint, DocumentStore, HistoryStore, Occupancy, OccupancyError, Postgres, RedisClient,
+    UsageEvent, UsageStore,
 };
 
 fn test_database_url() -> Option<String> {
@@ -75,6 +76,34 @@ async fn postgres_histories_and_settings_roundtrip() {
         .expect("save settings");
     let loaded = documents.load().await.expect("load").expect("doc");
     assert_eq!(loaded["marker"], marker);
+}
+
+#[tokio::test]
+async fn postgres_usage_roundtrip() {
+    let Some(url) = test_database_url() else {
+        return;
+    };
+    let postgres = Postgres::connect(&url).await.expect("postgres");
+    postgres.migrate().await.expect("migrate");
+    let usage = UsageStore::postgres(postgres);
+    usage
+        .record(UsageEvent {
+            visitor_id: format!("usage-{}", uuid::Uuid::new_v4()),
+            chat_id: "chat-usage".into(),
+            model: "flash".into(),
+            status: "completed".into(),
+            prompt_tokens: 5,
+            completion_tokens: 2,
+            tokens_used: 7,
+        })
+        .await
+        .expect("record");
+    let stats = usage.dashboard(14).await.expect("dashboard");
+    assert!(stats.requests >= 1);
+    assert!(stats.tokens_used >= 7);
+    let page = usage.page(1, 25).await.expect("page");
+    assert!(page.total >= 1);
+    assert!(page.rows.iter().any(|row| row.tokens_used == 7));
 }
 
 #[tokio::test]

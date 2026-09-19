@@ -13,6 +13,10 @@ pub struct Postgres {
 }
 
 impl Postgres {
+    pub(crate) fn pool(&self) -> &sqlx::PgPool {
+        &self.pool
+    }
+
     pub async fn connect(url: &str) -> Result<Self, StoreError> {
         let pool = PgPoolOptions::new()
             .max_connections(10)
