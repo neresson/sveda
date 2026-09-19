@@ -154,7 +154,8 @@ jobs:
               sleep 2
             done
             curl -fsS http://127.0.0.1:8787/sveda/ready >/dev/null
-            revision="$(curl -fsS http://127.0.0.1:8787/sveda/health | jq -r '.revision // empty')"
+            health="$(curl -fsS http://127.0.0.1:8787/sveda/health)"
+            revision="$(printf '%s' "$health" | sed -n 's/.*"revision":"\([^"]*\)".*/\1/p' | head -n1)"
             if [ "$revision" != "$ROLLOUT_GIT_SHA" ]; then
               echo "Expected revision ${ROLLOUT_GIT_SHA}, got ${revision:-<empty>}"
               exit 1
