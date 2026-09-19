@@ -44,4 +44,7 @@ export default {
     chrome_thinking: 'Рассуждения',
     chrome_thinking_hint: 'Показать переключатель рассуждений. Выключено — скрывает его и не шлёт thinking.',
     parameters_hint: 'Тёмную тему включай через appearance.theme: "dark". Свою палитру — через appearance.tokens.',
+    host_priority:
+        'Всё, что хост передаёт в JS, важнее этого экрана. Если хост ничего не передаёт, виджет берёт эти пресеты. Default — чернильный вид с пунктирной рамкой, как на лендинге и в playground.',
+    host_priority_docs: 'Документация appearance',
 };

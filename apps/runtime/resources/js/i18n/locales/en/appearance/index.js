@@ -44,4 +44,7 @@ export default {
     chrome_thinking: 'Reasoning toggle',
     chrome_thinking_hint: 'Show the thinking switch. Off hides it and does not send reasoning.',
     parameters_hint: 'Turn dark mode on with appearance.theme: "dark". Exact palettes still go in appearance.tokens.',
+    host_priority:
+        'Appearance from the host page JS wins over this form. If the host passes nothing, the widget uses these presets. Default is the ink dashed-frame look on the landing and playgrounds.',
+    host_priority_docs: 'Appearance docs',
 };

@@ -63,7 +63,8 @@ if (el) {
                 token: session.token,
                 prefix: payload.chat?.prefix,
                 protocolMode: payload.chat?.protocol,
-                models: payload.chat?.models,
+                models: payload.chat?.models ?? payload.settings?.models,
+                appearance: payload.settings?.appearance ?? {},
             });
         }
 

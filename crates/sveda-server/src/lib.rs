@@ -499,6 +499,7 @@ pub fn app(state: AppState) -> Router {
                 .post(admin::update_settings),
         )
         .route("/admin/login", post(ui::login))
+        .route("/admin/session", post(ui::admin_session))
         .route("/admin/setup", post(ui::setup))
         .route("/admin/logout", post(ui::logout))
         .route(

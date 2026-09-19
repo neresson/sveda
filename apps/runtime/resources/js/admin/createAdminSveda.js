@@ -60,17 +60,18 @@ export const requestAdminSvedaSession = async (sessionUrl, csrf, fetchFn = fetch
         }
 
         const payload = await response.json();
-        if (!payload.origin || !payload.token) {
+        const origin = String(payload.origin ?? '').trim() || (typeof window === 'undefined' ? '' : window.location.origin);
+        if (!origin || !payload.token) {
             return null;
         }
 
-        return { origin: payload.origin, token: payload.token };
+        return { origin, token: payload.token };
     } catch {
         return null;
     }
 };
 
-export const createAdminSveda = ({ origin, token, prefix, protocolMode, models, hostEmbed, hideLauncher } = {}) => {
+export const createAdminSveda = ({ origin, token, prefix, protocolMode, models, appearance, hostEmbed, hideLauncher } = {}) => {
     return createSveda({
         endpoints: chatEndpoints(origin, prefix),
         protocolMode: protocolMode === 'vercel' ? 'vercel' : 'sveda',
@@ -84,6 +85,7 @@ export const createAdminSveda = ({ origin, token, prefix, protocolMode, models, 
         locale: i18n.global.locale.value,
         brand: { name: 'Sveda' },
         models: buildAdminSvedaModels(models),
+        appearance: appearance && typeof appearance === 'object' ? appearance : {},
         quickPrompts: [],
     });
 };

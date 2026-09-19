@@ -1,4 +1,10 @@
-import { applySvedaAppearance, createSveda, type SvedaModelOption } from '@sveda-ai/vue';
+import {
+  applySvedaAppearance,
+  createSveda,
+  mergeSvedaAppearance,
+  type SvedaAppearance,
+  type SvedaModelOption,
+} from '@sveda-ai/vue';
 import { createApp } from 'vue';
 import './host.css';
 import SvedaChatElement from './SvedaChatElement.vue';
@@ -91,10 +97,12 @@ const mountElement = async (element: HTMLElement): Promise<SvedaChatApi | null> 
   const config = sessionState.token
     ? await loadEmbedConfig(sessionState.origin, sessionState.token)
     : {};
-  const appearance = session.appearance ?? (config as { appearance?: Record<string, unknown> }).appearance ?? null;
-  if (appearance) {
-    applySvedaAppearance(appearance);
-  }
+  const appearance =
+    mergeSvedaAppearance(
+      (config as { appearance?: SvedaAppearance | null }).appearance,
+      (session.appearance ?? undefined) as SvedaAppearance | null | undefined,
+    ) ?? {};
+  applySvedaAppearance(appearance);
 
   const plugin = createSveda({
     endpoints: chatEndpoints(sessionState.origin),
@@ -116,7 +124,7 @@ const mountElement = async (element: HTMLElement): Promise<SvedaChatApi | null> 
   });
 
   const app = createApp(SvedaChatElement, {
-    session,
+    session: { ...session, appearance },
     brandName: (appearance as { brand?: { name?: string } })?.brand?.name,
     startOpen: !hideLauncher,
   });

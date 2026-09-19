@@ -1,6 +1,6 @@
 {
   "name": "@sveda-ai/vue",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "license": "MIT",
   "description": "Vue 3 SDK for Sveda — SvedaChat, composables, and default UI theme.",
@@ -41,7 +41,7 @@
   "scripts": {
     "build": "vite build && vue-tsc -p tsconfig.json --emitDeclarationOnly && pnpm build:css",
     "build:css": "tailwindcss -c tailwind.config.ts -i src/styles.css -o dist/styles.css --minify",
-    "test": "node --test src/theme.test.mjs",
+    "test": "node --test src/theme.test.mjs && vitest run tests/appearance.test.ts",
     "typecheck": "vue-tsc -p tsconfig.json --noEmit",
     "lint": "echo 'no lint configured'"
   },

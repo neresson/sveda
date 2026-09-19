@@ -59,6 +59,7 @@ describe('host stylesheet', () => {
     assert.equal(pkg.includes('@tailwindcss/vite'), false);
     assert.equal(pkg.includes('"tailwindcss"'), false);
     assert.match(index, /import '\.\/host\.css'/);
+    assert.match(index, /mergeSvedaAppearance/);
     assert.match(index, /static get observedAttributes/);
     assert.match(index, /attributeChangedCallback/);
   });

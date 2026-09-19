@@ -216,6 +216,47 @@ pub async fn logout() -> Response {
     response
 }
 
+pub async fn admin_session(State(state): State<AppState>, headers: HeaderMap) -> Response {
+    if !session_ok(&state, &headers) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    if !state.config.embed_enabled {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+
+    let ttl = state.config.token_ttl_seconds.max(60);
+    let token = token::issue(&state.config.hmac_key, "sveda-admin", ttl);
+    Json(json!({
+        "origin": request_origin(&headers),
+        "token": token,
+        "expires_in": ttl,
+        "appearance": Value::Null,
+    }))
+    .into_response()
+}
+
+fn request_origin(headers: &HeaderMap) -> String {
+    headers
+        .get(header::ORIGIN)
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+        .unwrap_or_else(|| {
+            let host = headers
+                .get(header::HOST)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("127.0.0.1:8787");
+            let proto = headers
+                .get("x-forwarded-proto")
+                .and_then(|value| value.to_str().ok())
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .unwrap_or("http");
+            format!("{proto}://{host}")
+        })
+}
+
 pub fn session_ok(state: &AppState, headers: &HeaderMap) -> bool {
     let Some(expected) = expected_admin_key(state) else {
         return false;
@@ -280,6 +321,8 @@ async fn settings_payload(state: &AppState, page: &str, page_number: u32) -> Val
         Ok(list) => usage_json(state, &list),
         Err(_) => empty_usage(),
     };
+    let settings = state.settings.document();
+    let public = settings.public();
     json!({
         "page": page,
         "csrf": "",
@@ -306,7 +349,13 @@ async fn settings_payload(state: &AppState, page: &str, page_number: u32) -> Val
             "estimate": admin_path("code-index/estimate"),
         },
         "appearancePresets": {},
-        "settings": state.settings.document().masked(),
+        "chat": {
+            "sessionUrl": admin_path("session"),
+            "prefix": "sveda",
+            "protocol": "sveda",
+            "models": public.get("models").cloned().unwrap_or_else(|| json!([])),
+        },
+        "settings": settings.masked(),
         "stats": stats,
         "usage": usage,
     })

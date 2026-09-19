@@ -578,6 +578,77 @@ export const buildAppearanceCss = (appearance: SvedaAppearance | null | undefine
   return `.sveda-chat{${light}}.dark .sveda-chat,.sveda-chat.dark{${dark}}`;
 };
 
+const isPlainAppearance = (value: unknown): value is SvedaAppearance =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+export const isSvedaAppearanceProvided = (value: unknown): value is SvedaAppearance =>
+  isPlainAppearance(value) && Object.keys(value).length > 0;
+
+const overlayRecord = <T extends Record<string, unknown>>(
+  admin: T | null | undefined,
+  host: T | null | undefined,
+): T | undefined => {
+  if (!host && !admin) {
+    return undefined;
+  }
+
+  return { ...(admin ?? {}), ...(host ?? {}) } as T;
+};
+
+export const mergeSvedaAppearance = (
+  admin: SvedaAppearance | null | undefined,
+  host: SvedaAppearance | null | undefined,
+): SvedaAppearance | null => {
+  const adminProvided = isSvedaAppearanceProvided(admin);
+  const hostProvided = isSvedaAppearanceProvided(host);
+  if (!adminProvided && !hostProvided) {
+    return null;
+  }
+
+  if (!hostProvided) {
+    return { ...(admin as SvedaAppearance) };
+  }
+
+  if (!adminProvided) {
+    return { ...(host as SvedaAppearance) };
+  }
+
+  const base = admin as SvedaAppearance;
+  const overlay = host as SvedaAppearance;
+  const merged: SvedaAppearance = { ...base, ...overlay };
+  const launcher = overlayRecord(base.launcher as Record<string, unknown> | undefined, overlay.launcher as Record<string, unknown> | undefined);
+  const chrome = overlayRecord(base.chrome as Record<string, unknown> | undefined, overlay.chrome as Record<string, unknown> | undefined);
+
+  if (launcher) {
+    merged.launcher = launcher;
+  }
+
+  if (chrome) {
+    merged.chrome = chrome;
+  }
+
+  const hostSetsPreset = Object.prototype.hasOwnProperty.call(overlay, 'preset');
+  const hostSetsTokens = Object.prototype.hasOwnProperty.call(overlay, 'tokens');
+  const hostSetsDarkTokens = Object.prototype.hasOwnProperty.call(overlay, 'dark_tokens');
+
+  if (hostSetsPreset && !hostSetsTokens) {
+    delete merged.tokens;
+  } else if (base.tokens || overlay.tokens) {
+    merged.tokens = overlayRecord(base.tokens as Record<string, unknown> | undefined, overlay.tokens as Record<string, unknown> | undefined);
+  }
+
+  if (hostSetsPreset && !hostSetsDarkTokens) {
+    delete merged.dark_tokens;
+  } else if (base.dark_tokens || overlay.dark_tokens) {
+    merged.dark_tokens = overlayRecord(
+      base.dark_tokens as Record<string, unknown> | undefined,
+      overlay.dark_tokens as Record<string, unknown> | undefined,
+    );
+  }
+
+  return merged;
+};
+
 export const applySvedaAppearance = (appearance: SvedaAppearance | null | undefined): void => {
   const resolved = resolveSvedaAppearance(appearance);
   const launcher = sanitizeSvedaLauncher(resolved?.launcher);

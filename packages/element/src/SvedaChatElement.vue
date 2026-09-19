@@ -50,7 +50,7 @@ const syncHostOpenState = () => {
 };
 
 onMounted(() => {
-  if (props.session.appearance) {
+  if (props.session.appearance !== undefined) {
     applySvedaAppearance(props.session.appearance);
   }
 

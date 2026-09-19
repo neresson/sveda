@@ -1,6 +1,6 @@
 {
   "name": "@sveda-ai/element",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "license": "MIT",
   "description": "Web component <sveda-chat> for embedding Sveda without a frontend framework.",

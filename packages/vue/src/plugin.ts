@@ -1,6 +1,10 @@
 import { SvedaClient } from '@sveda-ai/core';
 import { inject, type App, type InjectionKey } from 'vue';
-import { applySvedaAppearance, type SvedaAppearance } from './appearance';
+import {
+  applySvedaAppearance,
+  mergeSvedaAppearance,
+  type SvedaAppearance,
+} from './appearance';
 import {
   createSvedaI18n,
   installSvedaI18n,
@@ -86,6 +90,36 @@ const DEFAULT_CONFIG: SvedaConfig = {
   quickPrompts: [],
 };
 
+const scheduleEmbedAppearance = (stream: string): void => {
+  if (typeof fetch === 'undefined') {
+    return;
+  }
+
+  let origin = '';
+  try {
+    const url = new URL(stream);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return;
+    }
+    origin = url.origin;
+  } catch {
+    return;
+  }
+
+  void fetch(`${origin}/sveda/embed/config`)
+    .then((response) => (response.ok ? response.json() : null))
+    .then((config) => {
+      if (!config || typeof config !== 'object') {
+        return;
+      }
+
+      applySvedaAppearance(
+        mergeSvedaAppearance((config as { appearance?: SvedaAppearance | null }).appearance, undefined),
+      );
+    })
+    .catch(() => {});
+};
+
 export function createSveda(options: SvedaPluginOptions): SvedaPlugin {
   const client = new SvedaClient({
     endpoints: options.endpoints,
@@ -132,6 +166,8 @@ export function createSveda(options: SvedaPluginOptions): SvedaPlugin {
         ...(options.theme ? { theme: options.theme } : {}),
       });
     }
+  } else {
+    scheduleEmbedAppearance(options.endpoints.stream);
   }
 
   return {

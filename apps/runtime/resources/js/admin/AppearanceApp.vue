@@ -6,6 +6,7 @@ import {
     formatRadiusPx,
     parseRadiusPx,
     sanitizeSvedaLauncherImage,
+    SVEDA_APPEARANCE_PRESETS,
     SVEDA_DEFAULT_LAUNCHER_ICON,
     SVEDA_LAUNCHER_ICON_IDS,
     SVEDA_LAUNCHER_IMAGE_MAX_BYTES,
@@ -33,13 +34,17 @@ const lookPresets = [
     { id: 'lms', color: 'lms', radius: '8px' },
     { id: 'rounded', color: 'forest', radius: '20px' },
 ];
+const appearancePresets = computed(() => ({
+    ...SVEDA_APPEARANCE_PRESETS,
+    ...(props.appearancePresets ?? {}),
+}));
 const colorIds = ['default', 'lms', 'ocean', 'forest', 'sunset', 'sand'];
 const launcherIcons = SVEDA_LAUNCHER_ICON_IDS;
 const launcherImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const previewModes = ['light', 'dark'];
 
 const tokenHsl = (presetId, mode, key, fallback) => {
-    const preset = props.appearancePresets?.[presetId] ?? {};
+    const preset = appearancePresets.value?.[presetId] ?? {};
     const tokens = (mode === 'dark' ? preset.dark_tokens : preset.tokens) ?? {};
 
     return `hsl(${tokens[key] ?? fallback})`;
@@ -90,7 +95,7 @@ const colorPreset = computed(() => {
         return savedAppearance.value;
     }
 
-    return props.appearancePresets?.[form.preset] ?? props.appearancePresets?.default ?? null;
+    return appearancePresets.value?.[form.preset] ?? appearancePresets.value?.default ?? null;
 });
 
 const liveAppearance = computed(() => {
@@ -275,6 +280,15 @@ const save = async () => {
             <p class="font-mono text-[11px] tracking-[0.18em] text-muted">{{ t('appearance.eyebrow') }}</p>
             <h1 class="mt-2 text-4xl font-bold tracking-tighter sm:text-5xl lg:text-6xl">{{ t('appearance.title') }}</h1>
             <p class="mt-2 font-serif text-base text-muted lg:text-lg">{{ t('appearance.subtitle') }}</p>
+            <p class="mt-3 max-w-3xl font-mono text-[11px] leading-relaxed text-muted">
+                {{ t('appearance.host_priority') }}
+                <a
+                    class="underline decoration-grid underline-offset-4 hover:decoration-ink"
+                    href="https://sveda.dev/docs/appearance"
+                    rel="noreferrer"
+                    target="_blank"
+                >{{ t('appearance.host_priority_docs') }}</a>.
+            </p>
         </div>
 
         <form class="flex flex-col gap-6 border border-ink p-4 lg:p-6" @submit.prevent="save">

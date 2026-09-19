@@ -22,6 +22,8 @@ test('theme.css exposes zero-specificity public sveda tokens without cycling hos
   assert.match(theme, /border:\s*1px dashed hsl\(var\(--sveda-foreground\)\)/);
   assert.match(theme, /--font-serif:\s*Newsreader/);
   assert.match(appearance, /background: '0 0% 100%'/);
+  assert.match(appearance, /export const mergeSvedaAppearance/);
+  assert.match(appearance, /export const isSvedaAppearanceProvided/);
   assert.match(chat, /sveda-chat-frame/);
   assert.match(trigger, /tracking-\[0\.14em\]/);
   assert.match(trigger, /font-mono/);

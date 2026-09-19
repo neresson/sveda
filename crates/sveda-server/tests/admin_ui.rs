@@ -285,6 +285,8 @@ async fn admin_spa_accepts_json() {
     assert_eq!(payload["page"], "mcp");
     assert_eq!(payload["urls"]["appearance"], "/admin/appearance");
     assert_eq!(payload["urls"]["security"], "/admin/security");
+    assert_eq!(payload["chat"]["sessionUrl"], "/admin/session");
+    assert_eq!(payload["chat"]["prefix"], "sveda");
 }
 
 #[tokio::test]
@@ -413,4 +415,48 @@ async fn embed_page_renders_host_driven_iframe_shell() {
     assert!(html.contains(
         "#sveda-embed{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}"
     ));
+}
+
+#[tokio::test]
+async fn admin_session_mints_embed_token_after_login() {
+    let state = admin_state();
+    let cookie = login_cookie(state.clone()).await;
+    let mut headers = HeaderMap::new();
+    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert(header::HOST, "127.0.0.1:8787".parse().unwrap());
+    let (status, _, body) = send(state, "POST", "/admin/session", headers, Body::empty()).await;
+    assert_eq!(status, StatusCode::OK);
+    let payload: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(payload["origin"], "http://127.0.0.1:8787");
+    assert!(payload["token"]
+        .as_str()
+        .unwrap_or_default()
+        .starts_with("sveda_embed_"));
+    assert_eq!(payload["expires_in"], 3600);
+}
+
+#[tokio::test]
+async fn admin_session_requires_cookie() {
+    let (status, _, _) = send(
+        admin_state(),
+        "POST",
+        "/admin/session",
+        HeaderMap::new(),
+        Body::empty(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn admin_session_is_not_found_when_embed_disabled() {
+    let mut config = Config::test();
+    config.admin_api_key = Some("sveda-admin-secret".into());
+    config.embed_enabled = false;
+    let state = AppState::new(config);
+    let cookie = login_cookie(state.clone()).await;
+    let mut headers = HeaderMap::new();
+    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    let (status, _, _) = send(state, "POST", "/admin/session", headers, Body::empty()).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
 }
