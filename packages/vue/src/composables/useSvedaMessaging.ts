@@ -1,4 +1,5 @@
-import { ref, type ComputedRef, type Ref } from 'vue';
+import { inject, ref, type ComputedRef, type Ref } from 'vue';
+import { SvedaBeforeSendKey } from '../plugin';
 import type { SvedaExtractedDocumentItem } from './useSvedaDocuments';
 
 type SendMessageStreaming = (
@@ -23,6 +24,7 @@ export function useSvedaMessaging(deps: {
 }) {
   const inputMessage = ref('');
   const pendingChatFiles = ref<File[]>([]);
+  const beforeSend = inject(SvedaBeforeSendKey, null);
 
   const sendMessage = async () => {
     if (deps.isLoading.value || !deps.currentChat.value) {
@@ -32,6 +34,15 @@ export function useSvedaMessaging(deps: {
     const files = [...(pendingChatFiles.value || [])].filter(file => file instanceof File);
     if (!text && files.length === 0) {
       return;
+    }
+
+    try {
+      deps.setLoading(true);
+      await beforeSend?.();
+    } catch {
+      return;
+    } finally {
+      deps.setLoading(false);
     }
 
     deps.resetAgentCompletedNotice();

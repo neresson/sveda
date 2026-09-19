@@ -27,6 +27,8 @@ export interface SvedaBrand {
   logoUrl?: string;
 }
 
+export type SvedaBeforeSend = () => void | Promise<void>;
+
 export interface SvedaPluginOptions {
   endpoints: {
     stream: string;
@@ -47,6 +49,7 @@ export interface SvedaPluginOptions {
   hostEmbed?: boolean;
   fillHost?: boolean;
   hideLauncher?: boolean;
+  beforeSend?: SvedaBeforeSend;
 }
 
 export interface SvedaConfig {
@@ -74,6 +77,8 @@ export const SvedaHostEmbedKey: InjectionKey<boolean> = Symbol('sveda-host-embed
 export const SvedaFillHostKey: InjectionKey<boolean> = Symbol('sveda-fill-host');
 
 export const SvedaHideLauncherKey: InjectionKey<boolean> = Symbol('sveda-hide-launcher');
+
+export const SvedaBeforeSendKey: InjectionKey<SvedaBeforeSend | null> = Symbol('sveda-before-send');
 
 const DEFAULT_CONFIG: SvedaConfig = {
   brand: { name: 'Sveda', logoUrl: null },
@@ -139,6 +144,7 @@ export function createSveda(options: SvedaPluginOptions): SvedaPlugin {
       app.provide(SvedaHostEmbedKey, Boolean(options.hostEmbed));
       app.provide(SvedaFillHostKey, Boolean(options.fillHost ?? options.hostEmbed));
       app.provide(SvedaHideLauncherKey, Boolean(options.hideLauncher));
+      app.provide(SvedaBeforeSendKey, options.beforeSend ?? null);
       installSvedaI18n(app, i18n);
     },
   };

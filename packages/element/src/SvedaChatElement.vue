@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { applySvedaAppearance, Toaster, useSvedaChat, SvedaChat, SvedaFillHostKey } from '@sveda-ai/vue';
+import {
+  applySvedaAppearance,
+  readPersistedMinimizedPreference,
+  Toaster,
+  useSvedaChat,
+  SvedaChat,
+  SvedaFillHostKey,
+} from '@sveda-ai/vue';
 import { computed, onMounted, provide, ref, watch } from 'vue';
 import type { SvedaSessionPayload } from './session';
 
@@ -47,7 +54,10 @@ onMounted(() => {
     applySvedaAppearance(props.session.appearance);
   }
 
-  if (props.startOpen !== false) {
+  const persistedMinimized = readPersistedMinimizedPreference();
+  if (persistedMinimized === false) {
+    maximizeChat();
+  } else if (persistedMinimized == null && props.startOpen !== false) {
     maximizeChat();
   }
 

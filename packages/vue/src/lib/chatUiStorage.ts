@@ -1,12 +1,12 @@
 export const SVEDA_CHAT_MINIMIZED_STORAGE_KEY = 'sveda.chat-minimized';
 
-export const readPersistedMinimized = (): boolean => {
-  if (typeof window === 'undefined') {
-    return true;
+const readFlag = (storage: Storage | undefined): boolean | null => {
+  if (!storage) {
+    return null;
   }
 
   try {
-    const saved = localStorage.getItem(SVEDA_CHAT_MINIMIZED_STORAGE_KEY);
+    const saved = storage.getItem(SVEDA_CHAT_MINIMIZED_STORAGE_KEY);
     if (saved === 'true') {
       return true;
     }
@@ -14,20 +14,56 @@ export const readPersistedMinimized = (): boolean => {
       return false;
     }
   } catch {
-    return true;
+    return null;
   }
 
-  return true;
+  return null;
 };
 
-export const writePersistedMinimized = (isMinimized: boolean): void => {
+const storageOrNull = (read: () => Storage): Storage | undefined => {
   if (typeof window === 'undefined') {
-    return;
+    return undefined;
   }
 
   try {
-    localStorage.setItem(SVEDA_CHAT_MINIMIZED_STORAGE_KEY, isMinimized ? 'true' : 'false');
+    return read();
   } catch {
-    return;
+    return undefined;
+  }
+};
+
+export const readPersistedMinimizedPreference = (): boolean | null => {
+  const session = readFlag(storageOrNull(() => sessionStorage));
+  if (session !== null) {
+    return session;
+  }
+
+  return readFlag(storageOrNull(() => localStorage));
+};
+
+export const readPersistedMinimized = (): boolean => {
+  return readPersistedMinimizedPreference() ?? true;
+};
+
+export const isPersistedSessionChatOpen = (): boolean => {
+  return readFlag(storageOrNull(() => sessionStorage)) === false;
+};
+
+export const writePersistedMinimized = (isMinimized: boolean): void => {
+  const value = isMinimized ? 'true' : 'false';
+
+  for (const storage of [
+    storageOrNull(() => sessionStorage),
+    storageOrNull(() => localStorage),
+  ]) {
+    if (!storage) {
+      continue;
+    }
+
+    try {
+      storage.setItem(SVEDA_CHAT_MINIMIZED_STORAGE_KEY, value);
+    } catch {
+      continue;
+    }
   }
 };

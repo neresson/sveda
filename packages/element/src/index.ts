@@ -10,7 +10,14 @@ type SvedaChatApi = {
   open: () => void;
   close: () => void;
   toggle: () => void;
+  setToken: (token: string) => void;
 };
+
+type SvedaChatHost = HTMLElement &
+  SvedaChatApi & {
+    ready?: Promise<void>;
+    beforeSend?: () => void | Promise<void>;
+  };
 
 const chatEndpoints = (origin: string, prefix = 'sveda') => {
   const base = origin.replace(/\/$/, '');
@@ -79,23 +86,29 @@ const mountElement = async (element: HTMLElement): Promise<SvedaChatApi | null> 
     return null;
   }
 
+  const sessionState = { origin: session.origin, token: session.token };
   const hideLauncher = element.hasAttribute('hide-launcher');
-  const config = await loadEmbedConfig(session.origin, session.token);
+  const config = sessionState.token
+    ? await loadEmbedConfig(sessionState.origin, sessionState.token)
+    : {};
   const appearance = session.appearance ?? (config as { appearance?: Record<string, unknown> }).appearance ?? null;
   if (appearance) {
     applySvedaAppearance(appearance);
   }
 
   const plugin = createSveda({
-    endpoints: chatEndpoints(session.origin),
+    endpoints: chatEndpoints(sessionState.origin),
     protocolMode: 'sveda',
     credentials: 'omit',
     hostEmbed: true,
     hideLauncher,
     headers: () => ({
       'X-Requested-With': 'XMLHttpRequest',
-      'X-Sveda-Embed-Token': session.token,
+      ...(sessionState.token ? { 'X-Sveda-Embed-Token': sessionState.token } : {}),
     }),
+    beforeSend: async () => {
+      await (element as SvedaChatHost).beforeSend?.();
+    },
     locale: document.documentElement.lang || 'ru',
     brand: { name: (appearance as { brand?: { name?: string } })?.brand?.name || 'Sveda' },
     models: buildModels((config as { models?: unknown }).models),
@@ -119,6 +132,14 @@ const mountElement = async (element: HTMLElement): Promise<SvedaChatApi | null> 
       element.setAttribute('data-sveda-open', 'false');
     },
     toggle: () => instance.toggle(),
+    setToken: (token: string) => {
+      sessionState.token = token.trim();
+      if (sessionState.token) {
+        element.setAttribute('token', sessionState.token);
+      } else {
+        element.removeAttribute('token');
+      }
+    },
   };
   Object.assign(element, api);
   element.dataset.svedaMounted = 'true';

@@ -22,8 +22,8 @@ services:
       retries: 10
 
   sveda-server:
-    image: ghcr.io/neresson/sveda-server:latest
-    pull_policy: always
+    image: ghcr.io/neresson/sveda-server:${SVEDA_IMAGE_TAG:-latest}
+    pull_policy: if_not_present
     depends_on:
       postgres:
         condition: service_healthy

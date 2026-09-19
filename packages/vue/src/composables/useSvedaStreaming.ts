@@ -10,7 +10,7 @@ import type { SvedaContextUsageEvent, SvedaMaxStepsEvent, SvedaToolProgressEvent
 import { computed, inject, nextTick, onUnmounted, ref, watch, type Ref } from 'vue';
 import { useSvedaT } from '../i18n/index';
 import { deriveProvisionalChatTitle, isChatTitlePlaceholder } from '../lib/chatTitle';
-import { SvedaClientKey } from '../plugin';
+import { SvedaBeforeSendKey, SvedaClientKey } from '../plugin';
 
 export interface SvedaStreamingStore {
   currentChat: Ref<{
@@ -53,6 +53,7 @@ export function useSvedaStreaming(
   if (!client) {
     throw new Error('[sveda] useSvedaStreaming requires the Sveda plugin to be installed.');
   }
+  const beforeSend = inject(SvedaBeforeSendKey, null);
 
   const isThinking = ref(false);
   const thinkingMessage = ref('');
@@ -324,6 +325,13 @@ export function useSvedaStreaming(
     }
 
     if (!promptText || !store.currentChat.value) {
+      return;
+    }
+
+    try {
+      await beforeSend?.();
+    } catch (error) {
+      options.onError?.(store.currentChat.value.id, error);
       return;
     }
 

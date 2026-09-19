@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createApp, defineComponent, inject } from 'vue';
-import { createSveda, useSvedaClient, useSvedaConfig, SvedaFillHostKey } from '../src/plugin';
+import { createSveda, useSvedaClient, useSvedaConfig, SvedaFillHostKey, SvedaBeforeSendKey } from '../src/plugin';
 import { useSvedaT } from '../src/i18n/index';
 
 describe('createSveda', () => {
@@ -109,5 +109,24 @@ describe('createSveda', () => {
     app.mount(document.createElement('div'));
 
     expect(fillHost).toBe(true);
+  });
+
+  it('provides a beforeSend hook when configured', () => {
+    const beforeSend = async () => {};
+    const sveda = createSveda({ endpoints: { stream: '/sveda/stream' }, beforeSend });
+    let captured: typeof beforeSend | null | undefined;
+
+    const Probe = defineComponent({
+      setup() {
+        captured = inject(SvedaBeforeSendKey, null) ?? undefined;
+        return () => null;
+      },
+    });
+
+    const app = createApp(Probe);
+    sveda.install(app);
+    app.mount(document.createElement('div'));
+
+    expect(captured).toBe(beforeSend);
   });
 });

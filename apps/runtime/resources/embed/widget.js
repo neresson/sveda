@@ -111,6 +111,29 @@
   container.appendChild(iframe);
   document.body.appendChild(container);
 
+  const MINIMIZED_KEY = 'sveda.chat-minimized';
+
+  const readSessionOpen = function () {
+    try {
+      return sessionStorage.getItem(MINIMIZED_KEY) === 'false';
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const persistMinimized = function (isMinimized) {
+    const value = isMinimized ? 'true' : 'false';
+    try {
+      sessionStorage.setItem(MINIMIZED_KEY, value);
+      localStorage.setItem(MINIMIZED_KEY, value);
+    } catch (error) {}
+  };
+
+  let restoring = readSessionOpen();
+  if (restoring) {
+    applyExpandedLayout(384, 600);
+  }
+
   let opened = false;
   let iframeReady = false;
 
@@ -157,9 +180,15 @@
       return;
     }
     if (data.isMinimized) {
+      if (restoring) {
+        return;
+      }
+      persistMinimized(true);
       applyMinimizedLayout();
       return;
     }
+    restoring = false;
+    persistMinimized(false);
     if (data.immersive) {
       applyFullscreenLayout();
       return;
@@ -181,6 +210,9 @@
     }
     if (data.type === 'sveda:ready') {
       iframeReady = true;
+      if (restoring) {
+        iframe.contentWindow.postMessage({ type: 'sveda:open' }, '*');
+      }
       return;
     }
     applyResizeMessage(data);

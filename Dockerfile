@@ -23,6 +23,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     && cp /src/target/release/sveda-server /tmp/sveda-server
 
 FROM debian:bookworm-slim
+ARG SVEDA_REVISION=dev
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
@@ -31,7 +32,8 @@ COPY --from=rust /tmp/sveda-server /usr/local/bin/sveda-server
 COPY --from=ui /src/apps/runtime/public/build /app/public/build
 USER sveda
 ENV SVEDA_BIND=0.0.0.0:8787 \
-    SVEDA_ADMIN_DIST=/app/public/build
+    SVEDA_ADMIN_DIST=/app/public/build \
+    SVEDA_REVISION=$SVEDA_REVISION
 EXPOSE 8787
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=5 \
     CMD curl -fsS http://127.0.0.1:8787/sveda/ready >/dev/null

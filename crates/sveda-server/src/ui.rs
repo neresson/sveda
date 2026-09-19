@@ -94,18 +94,36 @@ pub async fn not_found(request: Request) -> Response {
 }
 
 pub async fn health() -> Response {
-    axum::Json(json!({ "ok": true, "runtime": "rust" })).into_response()
+    axum::Json(runtime_status(true, None)).into_response()
 }
 
 pub async fn ready(State(state): State<AppState>) -> Response {
     match state.readiness().await {
-        Ok(()) => axum::Json(json!({ "ok": true, "runtime": "rust" })).into_response(),
+        Ok(()) => axum::Json(runtime_status(true, None)).into_response(),
         Err(error) => (
             StatusCode::SERVICE_UNAVAILABLE,
-            axum::Json(json!({ "ok": false, "runtime": "rust", "error": error })),
+            axum::Json(runtime_status(false, Some(error))),
         )
             .into_response(),
     }
+}
+
+fn runtime_status(ok: bool, error: Option<String>) -> Value {
+    let mut body = json!({ "ok": ok, "runtime": "rust" });
+    if let Some(revision) = runtime_revision() {
+        body["revision"] = json!(revision);
+    }
+    if let Some(error) = error {
+        body["error"] = json!(error);
+    }
+    body
+}
+
+fn runtime_revision() -> Option<String> {
+    std::env::var("SVEDA_REVISION")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 pub async fn embed_page(

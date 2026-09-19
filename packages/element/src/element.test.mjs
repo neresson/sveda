@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { describe, it } from 'node:test';
-import { parseSessionAttributes } from './session.ts';
+import { parseSessionAttributes, resolveSvedaSession } from './session.ts';
 import { buildSvedaChatCss, scopeEmbedCssForHost } from './scope-embed-css.mjs';
 
 describe('host stylesheet', () => {
@@ -100,6 +100,7 @@ describe('host stylesheet', () => {
     const element = await readFile(new URL('./SvedaChatElement.vue', import.meta.url), 'utf8');
     const chat = await readFile(new URL('../../vue/src/components/shell/SvedaChat.vue', import.meta.url), 'utf8');
 
+    assert.match(element, /readPersistedMinimizedPreference/);
     assert.match(element, /provide\(SvedaFillHostKey, true\)/);
     assert.match(element, /relative flex h-full min-h-0 w-full flex-col/);
     assert.match(chat, /chat\.fillHost/);
@@ -129,8 +130,13 @@ describe('host stylesheet', () => {
     assert.match(widget, /applyFixedLayout/);
     assert.match(widget, /data\.immersive/);
     assert.match(widget, /data\.fixed/);
+    assert.match(widget, /sveda\.chat-minimized/);
+    assert.match(widget, /sveda:open/);
     assert.match(layout, /historySidebarVisible/);
     assert.match(layout, /data-sveda-immersive/);
+    assert.match(layout, /querySelectorAll\('sveda-chat'\)/);
+    assert.match(layout, /astro:after-swap/);
+    assert.equal(layout.includes('if (hostEmbed) {\n      return;\n    }\n    try {\n      const saved = localStorage.getItem(CHAT_STORAGE_KEY)'), false);
     assert.match(history, /flex h-10 items-center gap-2/);
     assert.equal(history.includes('absolute left-3 top-1/2'), false);
   });
@@ -173,6 +179,25 @@ describe('parseSessionAttributes', () => {
       session: null,
       origin: 'http://127.0.0.1:8787',
       token: 'sveda_embed_test',
+    });
+  });
+});
+
+describe('resolveSvedaSession', () => {
+  it('allows origin without a token so the host can mint on first send', async () => {
+    const element = {
+      getAttribute(name) {
+        if (name === 'origin') {
+          return 'http://127.0.0.1:8787';
+        }
+
+        return null;
+      },
+    };
+
+    assert.deepEqual(await resolveSvedaSession(element), {
+      origin: 'http://127.0.0.1:8787',
+      token: '',
     });
   });
 });

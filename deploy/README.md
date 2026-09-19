@@ -12,27 +12,38 @@ curl -s http://127.0.0.1:8787/sveda/ready
 
 Human-friendly copies (browser): `https://sveda.dev/compose.yaml` — `curl` may get **403** if Cloudflare Bot Fight / challenge is on; use the GitHub raw URLs above for scripts and CI.
 
-Image: `ghcr.io/neresson/sveda-server:latest` (public after the first [Publish image](https://github.com/neresson/sveda/actions/workflows/publish-image.yml) run and GHCR package visibility is **Public**).
+Image: `ghcr.io/neresson/sveda-server` (public after the first [Publish image](https://github.com/neresson/sveda/actions/workflows/publish-image.yml) run and GHCR package visibility is **Public**).
 
-`compose.yaml` sets `pull_policy: always` on `sveda-server`. That pulls a new `:latest` when **you** run `docker compose up -d`. It does not watch the registry by itself.
+## Production pin (runtime.sveda.dev)
 
-## Auto-update after Publish image
+Do **not** rely on the floating `:latest` tag in production. Every push to `main` also tags `sha-<7-char>` on GHCR.
 
-Push to `main` builds `ghcr.io/neresson/sveda-server:latest`. Host pages (including sveda.dev) load `/build/sveda/sveda-chat.js` from the **running** sidecar, not from the GitHub repo. Pick one of:
-
-**Watchtower on the host** (no GitHub secrets):
+On the VPS, set in `.env` next to `compose.yaml`:
 
 ```bash
-docker compose -f compose.yaml -f compose.watchtower.yaml up -d
+SVEDA_IMAGE_TAG=sha-522804e
 ```
 
-Watchtower checks GHCR about once a minute and recreates `sveda-server` when the digest changes.
+`compose.yaml` uses `ghcr.io/neresson/sveda-server:${SVEDA_IMAGE_TAG:-latest}` with `pull_policy: if_not_present`. A new pin triggers `docker compose pull` on the next deploy.
 
-**GitHub Actions SSH** (push → pull → restart): repo secrets `RUNTIME_SSH_HOST`, `RUNTIME_SSH_USER`, `RUNTIME_SSH_KEY`, `RUNTIME_COMPOSE_DIR`. Optional CDN purge: secret `CLOUDFLARE_CACHE_TOKEN` (Cache Purge), `CLOUDFLARE_ZONE_ID`, and repository variable `RUNTIME_EMBED_ORIGIN` (e.g. `https://runtime.sveda.dev`). If those are empty, the rollout job no-ops.
+## Auto-rollout from GitHub Actions
 
-Kubernetes: the chart defaults to `image.pullPolicy=Always` for floating tags. A new `:latest` still needs a rollout (`kubectl rollout restart`) unless a controller restarts pods.
+After [Publish image](https://github.com/neresson/sveda/actions/workflows/publish-image.yml) merges a build on `main`, the `rollout` job (when configured) SSHs to the host, updates `SVEDA_IMAGE_TAG` in `.env`, runs `docker compose pull` + `up -d`, waits for `GET /sveda/ready`, and checks that `GET /sveda/health` reports `revision` equal to the deployed git SHA.
 
-Embed JS/CSS are served with `Cache-Control: max-age=0, must-revalidate` so Cloudflare revalidates after the container rolls. Until that image is running, purge `/build/sveda/*` once.
+Repository secrets (all required for rollout):
+
+| Secret | Purpose |
+|--------|---------|
+| `RUNTIME_SSH_HOST` | VPS hostname |
+| `RUNTIME_SSH_USER` | SSH user |
+| `RUNTIME_SSH_KEY` | Private key |
+| `RUNTIME_COMPOSE_DIR` | Directory containing `compose.yaml` and `.env` |
+
+If secrets are missing, the rollout job is skipped; you deploy manually.
+
+**Rollback:** Actions → Publish image → Run workflow → set `rollout_git_sha` to the full commit SHA you want (skips rebuild, pulls that `sha-*` tag only).
+
+Host pages (sveda.dev) load `/build/sveda/sveda-chat.js` from the running sidecar. The landing worker adds `?v=<revision>` from `/sveda/health` so embed assets are not stuck in CDN cache after a roll.
 
 Contributors building from source: use the repo root `docker compose up --build`.
 

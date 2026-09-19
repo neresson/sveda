@@ -6,7 +6,7 @@ CORS, occupancy, and rate limits can be changed at runtime in **Admin → Securi
 
 ## Production
 
-The chart defaults to `image.pullPolicy=Always` because the documented tag is `latest`. Pin a digest and `--set image.pullPolicy=IfNotPresent` if nodes must not pull on every pod start. `:latest` still needs a rollout after each publish (`kubectl rollout restart`).
+Pin `image.tag` to a `sha-*` or semver tag from GHCR (not a floating `latest`). After each publish, `kubectl rollout restart` when the tag changes.
 
 Point the chart at managed stores:
 

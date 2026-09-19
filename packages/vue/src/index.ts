@@ -10,6 +10,7 @@ export {
   SvedaHostEmbedKey,
   SvedaFillHostKey,
   SvedaHideLauncherKey,
+  SvedaBeforeSendKey,
 } from './plugin';
 export type {
   SvedaPluginOptions,
@@ -18,6 +19,7 @@ export type {
   SvedaBrand,
   SvedaModelOption,
   SvedaQuickPrompt,
+  SvedaBeforeSend,
 } from './plugin';
 
 export {
@@ -132,6 +134,8 @@ export { isChatTitlePlaceholder, deriveProvisionalChatTitle } from './lib/chatTi
 export {
   SVEDA_CHAT_MINIMIZED_STORAGE_KEY,
   readPersistedMinimized,
+  readPersistedMinimizedPreference,
+  isPersistedSessionChatOpen,
   writePersistedMinimized,
 } from './lib/chatUiStorage';
 export { humanizeModelId, getSvedaModelDisplayName } from './lib/modelLabels';

@@ -154,6 +154,29 @@ export const useSvedaChatLayout = (
     return undefined;
   });
 
+  const embedSizeTargets = (): HTMLElement[] => {
+    const targets: HTMLElement[] = [document.documentElement];
+    document.querySelectorAll('sveda-chat').forEach(el => {
+      if (el instanceof HTMLElement) {
+        targets.push(el);
+      }
+    });
+    return targets;
+  };
+
+  const writeEmbedSizeVars = (size: { width: number; height: number } | null) => {
+    // Keep vars on <sveda-chat> too: Astro view transitions replace <html> attributes.
+    for (const el of embedSizeTargets()) {
+      if (size == null) {
+        el.style.removeProperty(EMBED_WIDTH_CSS_VAR);
+        el.style.removeProperty(EMBED_HEIGHT_CSS_VAR);
+        continue;
+      }
+      el.style.setProperty(EMBED_WIDTH_CSS_VAR, `${size.width}px`);
+      el.style.setProperty(EMBED_HEIGHT_CSS_VAR, `${size.height}px`);
+    }
+  };
+
   const syncEmbedHostAttributes = (size: { immersive: boolean; fixed: boolean }) => {
     if (typeof document === 'undefined') {
       return;
@@ -188,8 +211,7 @@ export const useSvedaChatLayout = (
       viewportHeight: typeof window === 'undefined' ? chatHeight.value : window.innerHeight,
     });
 
-    document.documentElement.style.setProperty(EMBED_WIDTH_CSS_VAR, `${size.width}px`);
-    document.documentElement.style.setProperty(EMBED_HEIGHT_CSS_VAR, `${size.height}px`);
+    writeEmbedSizeVars(size);
     syncEmbedHostAttributes(size);
     window.dispatchEvent(
       new CustomEvent('sveda:embed-host-size', {
@@ -203,15 +225,11 @@ export const useSvedaChatLayout = (
       return;
     }
 
-    document.documentElement.style.removeProperty(EMBED_WIDTH_CSS_VAR);
-    document.documentElement.style.removeProperty(EMBED_HEIGHT_CSS_VAR);
+    writeEmbedSizeVars(null);
     syncEmbedHostAttributes({ immersive: false, fixed: false });
   };
 
   const loadChatDimensions = () => {
-    if (hostEmbed) {
-      return;
-    }
     try {
       const saved = localStorage.getItem(CHAT_STORAGE_KEY);
       if (saved) {
@@ -223,21 +241,19 @@ export const useSvedaChatLayout = (
       console.warn('Failed to load chat dimensions:', error);
     }
 
-    if (!hostEmbed) {
-      try {
-        const savedMode = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-        if (
-          savedMode &&
-          (savedMode === 'floating' || savedMode === 'fixed' || savedMode === 'immersive')
-        ) {
-          viewMode.value = savedMode;
-          if (savedMode === 'floating' || savedMode === 'fixed') {
-            lastNonImmersiveViewMode.value = savedMode;
-          }
+    try {
+      const savedMode = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+      if (
+        savedMode &&
+        (savedMode === 'floating' || savedMode === 'fixed' || savedMode === 'immersive')
+      ) {
+        viewMode.value = savedMode;
+        if (savedMode === 'floating' || savedMode === 'fixed') {
+          lastNonImmersiveViewMode.value = savedMode;
         }
-      } catch (error) {
-        console.warn('Failed to load view mode:', error);
       }
+    } catch (error) {
+      console.warn('Failed to load view mode:', error);
     }
 
     try {
@@ -272,10 +288,6 @@ export const useSvedaChatLayout = (
   };
 
   const saveViewMode = () => {
-    if (hostEmbed) {
-      return;
-    }
-
     try {
       localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode.value);
     } catch (error) {
@@ -326,6 +338,11 @@ export const useSvedaChatLayout = (
       clearFixedResizeBodyClass();
       applyChatWidthVar(null);
     }
+  };
+
+  const onHostDocumentSwap = () => {
+    applyEmbedHostSize();
+    updateBodyClass();
   };
 
   const toggleViewMode = () => {
@@ -548,6 +565,7 @@ export const useSvedaChatLayout = (
     loadChatDimensions();
     updateBodyClass();
     applyEmbedHostSize();
+    document.addEventListener('astro:after-swap', onHostDocumentSwap);
   }
 
   onMounted(() => {
@@ -556,6 +574,7 @@ export const useSvedaChatLayout = (
   });
 
   onBeforeUnmount(() => {
+    document.removeEventListener('astro:after-swap', onHostDocumentSwap);
     clearImmersiveFromDragTimer();
     finishImmersiveModeTransition();
     isEnteringImmersiveFromDrag.value = false;

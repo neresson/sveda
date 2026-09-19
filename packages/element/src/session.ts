@@ -63,9 +63,13 @@ export const resolveSvedaSession = async (element: HTMLElement): Promise<SvedaSe
     return { origin, token };
   }
 
-  if (!session) {
-    return null;
+  if (session && !token) {
+    return requestHostSession(session);
   }
 
-  return requestHostSession(session);
+  if (origin) {
+    return { origin, token: token || '' };
+  }
+
+  return null;
 };
