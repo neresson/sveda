@@ -129,9 +129,25 @@ jobs:
           name: compat-${{ matrix.sdk }}
           path: compat-results/matrix.env
 
-  android:
+  android-gate:
     runs-on: ubuntu-latest
-    if: ${{ secrets.SDK_COMPAT_CHECKOUT_TOKEN != '' }}
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          SDK_COMPAT_CHECKOUT_TOKEN: ${{ secrets.SDK_COMPAT_CHECKOUT_TOKEN }}
+        run: |
+          if [ -n "$SDK_COMPAT_CHECKOUT_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  android:
+    needs: android-gate
+    runs-on: ubuntu-latest
+    if: needs.android-gate.outputs.enabled == 'true'
     steps:
       - name: Checkout sveda
         uses: actions/checkout@v4
