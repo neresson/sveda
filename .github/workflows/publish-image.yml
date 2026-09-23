@@ -12,7 +12,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 env:
@@ -21,6 +21,8 @@ env:
 jobs:
   sdk-compat:
     if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
     uses: ./.github/workflows/sdk-compat.yml
 
   build:
