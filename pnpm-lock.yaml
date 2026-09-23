@@ -48,6 +48,9 @@ importers:
       '@sveda-ai/core':
         specifier: workspace:*
         version: link:../core
+      '@sveda-ai/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@sveda-ai/vue':
         specifier: workspace:*
         version: link:../vue

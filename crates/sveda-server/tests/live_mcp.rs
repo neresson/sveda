@@ -152,7 +152,7 @@ async fn public_deepwiki_host_mcp_reaches_the_model() {
         "DeepWiki tools missing from model instructions: {instructions}"
     );
     assert!(
-        instructions.contains("ask_question"),
+        instructions.contains("ask_wiki_question"),
         "DeepWiki tools missing from model instructions: {instructions}"
     );
 }

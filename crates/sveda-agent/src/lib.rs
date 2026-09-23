@@ -497,8 +497,8 @@ pub fn confirming_client_tool_names(client_tools: Option<&Vec<serde_json::Value>
                 .iter()
                 .filter_map(|tool| {
                     let name = tool.get("name").and_then(|name| name.as_str())?;
-                    let required =
-                        tool.get("confirmation").and_then(|value| value.as_str()) == Some("required");
+                    let required = tool.get("confirmation").and_then(|value| value.as_str())
+                        == Some("required");
                     required.then(|| name.to_string())
                 })
                 .collect()

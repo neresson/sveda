@@ -192,9 +192,7 @@ pub async fn run_turn(
     let mut decision_events = Vec::new();
     let mut skip_model = false;
     if !tool_decisions.is_empty() && stored.is_none() {
-        return Err(confirmation_response(
-            "Chat history is unavailable.",
-        ));
+        return Err(confirmation_response("Chat history is unavailable."));
     }
     if let Some(record) = stored.as_ref() {
         let pending = confirming_pending(&runtime, &record.conversation_history);
@@ -496,7 +494,10 @@ fn finalize_turn(
     }
 }
 
-fn confirming_pending(runtime: &ToolRuntime, conversation: &[serde_json::Value]) -> Vec<PendingToolCall> {
+fn confirming_pending(
+    runtime: &ToolRuntime,
+    conversation: &[serde_json::Value],
+) -> Vec<PendingToolCall> {
     pending_tool_calls(conversation)
         .into_iter()
         .filter(|call| runtime.requires_confirmation(&call.name))

@@ -30,8 +30,6 @@ use settings::SettingsStore;
 mod admin;
 #[cfg(test)]
 mod admin_operator_tests;
-#[cfg(test)]
-mod tool_confirmation_tests;
 mod admin_tools;
 mod code_index;
 mod documents;
@@ -40,6 +38,8 @@ mod histories;
 pub mod policy;
 mod settings;
 mod token;
+#[cfg(test)]
+mod tool_confirmation_tests;
 mod turn;
 mod ui;
 mod web;

@@ -67,7 +67,7 @@ async fn deepwiki_public_mcp_lists_documentation_tools() {
         "missing read_wiki_contents in {names:?}"
     );
     assert!(
-        names.contains(&"ask_question"),
-        "missing ask_question in {names:?}"
+        names.contains(&"ask_wiki_question"),
+        "missing ask_wiki_question in {names:?}"
     );
 }

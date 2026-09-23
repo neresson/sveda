@@ -38,7 +38,12 @@ async fn send(state: AppState, token: &str, body: Value) -> (StatusCode, Vec<Str
         .await
         .expect("response");
     let status = response.status();
-    let bytes = response.into_body().collect().await.expect("body").to_bytes();
+    let bytes = response
+        .into_body()
+        .collect()
+        .await
+        .expect("body")
+        .to_bytes();
     let events = String::from_utf8(bytes.to_vec())
         .unwrap()
         .lines()
@@ -161,7 +166,10 @@ async fn approval_executes_stored_arguments_once() {
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    match events.iter().find(|event| event.event_type() == "tool.call") {
+    match events
+        .iter()
+        .find(|event| event.event_type() == "tool.call")
+    {
         Some(StreamEvent::ToolCall {
             confirmation,
             tool_name,
@@ -207,8 +215,7 @@ async fn approval_executes_stored_arguments_once() {
     let recorded = calls.lock().expect("calls");
     assert_eq!(recorded.len(), 1);
     assert_eq!(
-        recorded[0]["params"]["arguments"]["id"],
-        "1",
+        recorded[0]["params"]["arguments"]["id"], "1",
         "approval must use the stored arguments"
     );
     drop(recorded);
@@ -262,7 +269,10 @@ async fn denial_does_not_call_the_host() {
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    match events.iter().find(|event| event.event_type() == "tool.result") {
+    match events
+        .iter()
+        .find(|event| event.event_type() == "tool.result")
+    {
         Some(StreamEvent::ToolResult { output, .. }) => {
             assert_eq!(output["denied"], true);
             assert_eq!(output["success"], false);

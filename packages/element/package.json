@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@sveda-ai/core": "workspace:*",
+    "@sveda-ai/protocol": "workspace:*",
     "@sveda-ai/vue": "workspace:*",
     "@vitejs/plugin-vue": "^5.2.1",
     "happy-dom": "^20.14.5",

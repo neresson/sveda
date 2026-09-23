@@ -307,7 +307,8 @@ fn parse_tool(value: &Value) -> Option<McpTool> {
         .and_then(Value::as_str)
         .unwrap_or("read")
         .to_string();
-    let confirmation_required = meta.get("confirmation").and_then(Value::as_str) == Some("required");
+    let confirmation_required =
+        meta.get("confirmation").and_then(Value::as_str) == Some("required");
     Some(McpTool {
         name,
         description,

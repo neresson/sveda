@@ -413,11 +413,7 @@ fn flush_function_call_batch(
     let ids: Vec<String> = calls.iter().filter_map(call_id_of).collect();
     paired.extend(calls);
     for id in ids {
-        paired.push(take_function_call_output(
-            &id,
-            outputs,
-            outputs_without_id,
-        ));
+        paired.push(take_function_call_output(&id, outputs, outputs_without_id));
     }
 }
 

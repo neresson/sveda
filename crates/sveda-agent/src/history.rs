@@ -250,7 +250,10 @@ pub fn display_messages(
     messages
 }
 
-fn attach_tool_results(messages: &mut [Value], tool_results: &[(String, String, String)]) -> Vec<String> {
+fn attach_tool_results(
+    messages: &mut [Value],
+    tool_results: &[(String, String, String)],
+) -> Vec<String> {
     let mut attached = Vec::new();
     for (id, name, output) in tool_results {
         let already_resolved = messages.iter().any(|message| {

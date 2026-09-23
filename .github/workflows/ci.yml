@@ -137,9 +137,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: pnpm install
       - name: Build admin UI
+        working-directory: apps/runtime
         run: |
-          pnpm install --dir apps/runtime
-          pnpm --dir apps/runtime build
+          npm install -g npm@latest
+          npm ci
+          npm run build
       - run: cargo build -p sveda-server
       - run: pnpm --dir e2e exec playwright install --with-deps chromium
       - run: pnpm --dir e2e run test:e2e:persistent
@@ -161,9 +163,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: pnpm install
       - name: Build admin UI
+        working-directory: apps/runtime
         run: |
-          pnpm install --dir apps/runtime
-          pnpm --dir apps/runtime build
+          npm install -g npm@latest
+          npm ci
+          npm run build
       - run: cargo build -p sveda-server
       - run: pnpm --dir e2e exec playwright install --with-deps chromium
       - run: pnpm test:e2e

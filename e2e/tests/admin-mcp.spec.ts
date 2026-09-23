@@ -92,6 +92,6 @@ test.describe('public DeepWiki MCP', () => {
     const body = await listed.text();
     expect(body).toContain('read_wiki_structure');
     expect(body).toContain('read_wiki_contents');
-    expect(body).toContain('ask_question');
+    expect(body).toContain('ask_wiki_question');
   });
 });
