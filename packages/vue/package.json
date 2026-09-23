@@ -17,7 +17,7 @@
     "url": "git+https://github.com/neresson/sveda.git",
     "directory": "packages/vue"
   },
-  "homepage": "https://sveda.dev/docs/client",
+  "homepage": "https://sveda.dev/docs/chat-ui",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -46,13 +46,15 @@
     "src"
   ],
   "scripts": {
-    "build": "vite build && vue-tsc -p tsconfig.json --emitDeclarationOnly && pnpm build:css",
+    "build": "vite build && vue-tsc -p tsconfig.json --emitDeclarationOnly && pnpm build:css && node scripts/append-scoped-css.mjs",
     "build:css": "tailwindcss -c tailwind.config.ts -i src/styles.css -o dist/styles.css --minify",
+    "append-scoped-css": "node scripts/append-scoped-css.mjs",
     "test": "node --test src/theme.test.mjs && vitest run",
     "typecheck": "vue-tsc -p tsconfig.json --noEmit",
     "lint": "echo 'no lint configured'"
   },
   "dependencies": {
+    "@sveda-ai/chat": "workspace:*",
     "@sveda-ai/core": "workspace:*",
     "@sveda-ai/protocol": "workspace:*",
     "@vueuse/core": "^12.8.2",

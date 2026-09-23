@@ -24,7 +24,7 @@ jobs:
           node-version: 24
       - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @sveda-ai/protocol --filter @sveda-ai/core --filter @sveda-ai/vue run build
+      - run: pnpm --filter @sveda-ai/protocol --filter @sveda-ai/core --filter @sveda-ai/chat --filter @sveda-ai/vue --filter @sveda-ai/react --filter @sveda-ai/svelte --filter @sveda-ai/solid run build
       - name: Build element
         working-directory: apps/runtime
         run: |
@@ -40,7 +40,7 @@ jobs:
           fi
           npm --version
           failed=0
-          for dir in protocol core vue element; do
+          for dir in protocol core chat vue react svelte solid element; do
             name="$(node -p "require('./packages/${dir}/package.json').name")"
             ver="$(node -p "require('./packages/${dir}/package.json').version")"
             if npm view "${name}@${ver}" version >/dev/null 2>&1; then
@@ -48,7 +48,7 @@ jobs:
               continue
             fi
             echo "Publishing ${name}@${ver}"
-            if ! (cd "packages/${dir}" && npm publish --access public); then
+            if ! (cd "packages/${dir}" && pnpm publish --access public --no-git-checks); then
               echo "::error::Failed to publish ${name}@${ver}"
               failed=1
             fi

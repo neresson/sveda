@@ -11,9 +11,7 @@ import {
   type SvedaI18n,
   type SvedaMessages,
 } from './i18n/index';
-import en from './i18n/locales/en';
-import ru from './i18n/locales/ru';
-import { chatComponentI18nKeys } from './lib/chatI18nKeys';
+import { chatComponentI18nKeys, enMessages as en, ruMessages as ru } from '@sveda-ai/chat';
 
 export interface SvedaModelOption {
   id: string;

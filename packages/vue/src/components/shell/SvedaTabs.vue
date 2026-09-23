@@ -1,7 +1,7 @@
 <script setup>
   import { Button } from '../../ui/button';
   import { ScrollArea, ScrollBar } from '../../ui/scroll-area';
-  import { buildChatTabTitleMap } from '../../lib/chatTabs';
+  import { buildChatTabTitleMap } from '@sveda-ai/chat';
   import { Loader2, Plus, X } from 'lucide-vue-next';
   import { computed, unref } from 'vue';
   import { useSvedaT } from '../../i18n/index';

@@ -1,0 +1,96 @@
+.sveda-chat .prose {
+  line-height: 1.55;
+}
+
+.sveda-chat .prose h1,
+.sveda-chat .prose h2,
+.sveda-chat .prose h3,
+.sveda-chat .prose h4 {
+  color: inherit;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.sveda-chat .prose h1 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0.9em 0 0.35em;
+}
+
+.sveda-chat .prose h2 {
+  font-size: 1.08rem;
+  font-weight: 650;
+  margin: 0.85em 0 0.3em;
+}
+
+.sveda-chat .prose h3,
+.sveda-chat .prose h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.75em 0 0.25em;
+}
+
+.sveda-chat .prose h1:first-child,
+.sveda-chat .prose h2:first-child,
+.sveda-chat .prose h3:first-child,
+.sveda-chat .prose h4:first-child {
+  margin-top: 0;
+}
+
+.sveda-chat .prose p {
+  margin: 0.45em 0;
+}
+
+.sveda-chat .prose p:first-child {
+  margin-top: 0;
+}
+
+.sveda-chat .prose p:last-child {
+  margin-bottom: 0;
+}
+
+.sveda-chat .prose ul,
+.sveda-chat .prose ol {
+  margin: 0.4em 0;
+  padding-left: 1.25rem;
+}
+
+.sveda-chat .prose ul {
+  list-style-type: disc;
+}
+
+.sveda-chat .prose ol {
+  list-style-type: decimal;
+}
+
+.sveda-chat .prose li {
+  display: list-item;
+  margin: 0.2em 0;
+}
+
+.sveda-chat .prose li > p {
+  margin: 0.15em 0;
+}
+
+.sveda-chat .prose hr {
+  border: 0;
+  border-top: 1px solid hsl(var(--sveda-border));
+  margin: 0.9em 0;
+}
+
+.sveda-chat .prose a {
+  color: hsl(var(--sveda-brand));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sveda-chat .prose blockquote {
+  margin: 0.5em 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid hsl(var(--sveda-border));
+  color: hsl(var(--sveda-muted-foreground));
+}
+
+.sveda-chat .prose strong {
+  font-weight: 650;
+}

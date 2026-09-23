@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
+      '@sveda-ai/chat': fileURLToPath(new URL('../chat/src', import.meta.url)),
       '@sveda-ai/core': fileURLToPath(new URL('../core/src', import.meta.url)),
       '@sveda-ai/protocol': fileURLToPath(new URL('../protocol/src', import.meta.url)),
     },

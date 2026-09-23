@@ -4,7 +4,7 @@
     getActivityGroupLabel,
     getToolNameFromPart,
     parseToolResultOutput,
-  } from '../../lib/assistantMessage.js';
+  } from '@sveda-ai/chat';
   import { useSvedaT } from '../../i18n/index.js';
   import { CheckCircle, ChevronDown, ChevronRight, CircleStop, ExternalLink, Search, Terminal, XCircle } from 'lucide-vue-next';
   import { computed, ref, watch } from 'vue';

@@ -1,0 +1,35 @@
+.sveda-chat .chat-enter-active,
+.sveda-chat .chat-leave-active {
+  transition: all 0.3s ease;
+}
+
+.sveda-chat .chat-enter-from,
+.sveda-chat .chat-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.sveda-chat .landing-layout-shift-enter-active,
+.sveda-chat .landing-layout-shift-leave-active {
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s ease;
+}
+
+.sveda-chat .landing-layout-shift-enter-from {
+  opacity: 0;
+  transform: translateY(-12px);
+}
+
+.sveda-chat .landing-layout-shift-leave-to {
+  opacity: 0;
+  transform: translateY(26px);
+}
+
+.sveda-chat .quick-prompts-row {
+  scrollbar-color: hsl(var(--foreground) / 0.2) transparent;
+}
+
+.sveda-chat .quick-prompts-row::-webkit-scrollbar-track {
+  background: transparent;
+}

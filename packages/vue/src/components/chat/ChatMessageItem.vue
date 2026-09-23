@@ -1,8 +1,8 @@
 <script setup>
-  import { buildAssistantMessageSegments, collectResourceLinks } from '../../lib/assistantMessage.js';
-  import { renderMarkdown } from '../../lib/markdown.js';
+  import { buildAssistantMessageSegments, collectResourceLinks } from '@sveda-ai/chat';
+  import { renderMarkdown } from '@sveda-ai/chat';
   import { useAnimatedText } from '../../lib/useAnimatedText.js';
-  import { getUserMessageAttachmentNames, getUserMessageText } from '../../lib/userMessage.js';
+  import { getUserMessageAttachmentNames, getUserMessageText } from '@sveda-ai/chat';
   import { useSvedaT } from '../../i18n/index.js';
   import { Paperclip } from 'lucide-vue-next';
   import { computed, nextTick, onUnmounted, ref, watch } from 'vue';

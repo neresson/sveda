@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 const dir = dirname(fileURLToPath(import.meta.url));
 const theme = readFileSync(join(dir, 'theme.css'), 'utf8');
 const chat = readFileSync(join(dir, 'components/shell/SvedaChat.vue'), 'utf8');
-const appearance = readFileSync(join(dir, 'appearance.ts'), 'utf8');
+const appearanceVue = readFileSync(join(dir, 'appearance.ts'), 'utf8');
+const appearance = readFileSync(join(dir, '../../chat/src/appearance.ts'), 'utf8');
 const trigger = readFileSync(join(dir, 'components/shell/SvedaMinimizedTrigger.vue'), 'utf8');
 const selectContent = readFileSync(join(dir, 'ui/select/SelectContent.vue'), 'utf8');
 const tooltipContent = readFileSync(join(dir, 'ui/tooltip/TooltipContent.vue'), 'utf8');
@@ -64,12 +65,12 @@ test('appearance helper injects radius and token declarations onto .sveda-chat',
   assert.match(appearance, /theme === 'dark'/);
   assert.match(appearance, /theme === 'light'/);
   assert.match(appearance, /SVEDA_LAUNCHER_ICON_IDS/);
-  assert.match(appearance, /useSvedaLauncher/);
+  assert.match(appearanceVue, /useSvedaLauncher/);
   assert.match(appearance, /sanitizeSvedaLauncher/);
   assert.match(appearance, /sanitizeSvedaLauncherImage/);
   assert.match(appearance, /sanitizeSvedaChrome/);
-  assert.match(appearance, /useSvedaChrome/);
-  assert.match(appearance, /svedaChrome/);
+  assert.match(appearanceVue, /useSvedaChrome/);
+  assert.match(appearanceVue, /svedaChrome/);
   assert.match(appearance, /SVEDA_LAUNCHER_IMAGE_MAX_BYTES/);
 });
 

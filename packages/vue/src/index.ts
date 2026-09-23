@@ -131,24 +131,27 @@ export { useSvedaReadable } from './composables/useSvedaReadable';
 export { useSvedaTool } from './composables/useSvedaTool';
 export type { UseSvedaToolOptions } from './composables/useSvedaTool';
 
-export { isNewChatPlaceholder, buildChatTabTitleMap } from './lib/chatTabs';
-export type { SvedaTabChat } from './lib/chatTabs';
-export { isChatTitlePlaceholder, deriveProvisionalChatTitle } from './lib/chatTitle';
 export {
+  isNewChatPlaceholder,
+  buildChatTabTitleMap,
+  isChatTitlePlaceholder,
+  deriveProvisionalChatTitle,
   SVEDA_CHAT_MINIMIZED_STORAGE_KEY,
   readPersistedMinimized,
   readPersistedMinimizedPreference,
   isPersistedSessionChatOpen,
   writePersistedMinimized,
-} from './lib/chatUiStorage';
-export { humanizeModelId, getSvedaModelDisplayName } from './lib/modelLabels';
-export { finalizeMessagesForDisplay } from './lib/finalizeMessages';
-export type { SvedaFinalizableMessage } from './lib/finalizeMessages';
-export {
+  humanizeModelId,
+  getSvedaModelDisplayName,
+  finalizeMessagesForDisplay,
   getUserMessageText,
   getUserMessageAttachmentNames,
   userMessageHasVisibleContent,
-} from './lib/userMessage';
-export type { SvedaUserMessageLike } from './lib/userMessage';
+} from '@sveda-ai/chat';
+export type {
+  SvedaTabChat,
+  SvedaFinalizableMessage,
+  SvedaUserMessageLike,
+} from '@sveda-ai/chat';
 
-export const SVEDA_VUE_VERSION = '0.1.0';
+export const SVEDA_VUE_VERSION = '0.3.1';

@@ -13,7 +13,7 @@ import { useSvedaPrompts, type SvedaQuickPromptItem } from './useSvedaPrompts';
 import { useSvedaScroll, type SvedaScrollContainer } from './useSvedaScroll';
 import { useSvedaShell, type SvedaBrandInfo } from './useSvedaShell';
 import { useSvedaStreaming } from './useSvedaStreaming';
-import { hasPendingToolConfirmation } from '../lib/toolConfirmation';
+import { hasPendingToolConfirmation } from '@sveda-ai/chat';
 
 export const svedaErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message.trim()) {

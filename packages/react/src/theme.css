@@ -1,0 +1,137 @@
+:where(.sveda-chat, sveda-chat) {
+  --sveda-background: 0 0% 100%;
+  --sveda-foreground: 0 0% 4%;
+  --sveda-card: 0 0% 100%;
+  --sveda-card-foreground: 0 0% 4%;
+  --sveda-popover: 0 0% 100%;
+  --sveda-popover-foreground: 0 0% 4%;
+  --sveda-primary: 0 0% 4%;
+  --sveda-primary-foreground: 0 0% 100%;
+  --sveda-secondary: 40 20% 90%;
+  --sveda-secondary-foreground: 0 0% 4%;
+  --sveda-muted: 40 22% 90%;
+  --sveda-muted-foreground: 40 6% 41%;
+  --sveda-accent: 40 22% 90%;
+  --sveda-accent-foreground: 0 0% 4%;
+  --sveda-destructive: 0 84.2% 60.2%;
+  --sveda-destructive-foreground: 0 0% 98%;
+  --sveda-border: 42 18% 82%;
+  --sveda-input: 40 22% 92%;
+  --sveda-ring: 0 0% 4%;
+  --sveda-radius: 0;
+  --sveda-brand: 0 0% 4%;
+  --sveda-brand-foreground: 0 0% 100%;
+  --sveda-surface: hsl(var(--sveda-background));
+  --font-sans: Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-serif: Newsreader, ui-serif, Georgia, serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+.sveda-chat,
+sveda-chat {
+  --color-background: hsl(var(--sveda-background));
+  --color-foreground: hsl(var(--sveda-foreground));
+  --color-card: hsl(var(--sveda-card));
+  --color-card-foreground: hsl(var(--sveda-card-foreground));
+  --color-popover: hsl(var(--sveda-popover));
+  --color-popover-foreground: hsl(var(--sveda-popover-foreground));
+  --color-primary: hsl(var(--sveda-primary));
+  --color-primary-foreground: hsl(var(--sveda-primary-foreground));
+  --color-secondary: hsl(var(--sveda-secondary));
+  --color-secondary-foreground: hsl(var(--sveda-secondary-foreground));
+  --color-muted: hsl(var(--sveda-muted));
+  --color-muted-foreground: hsl(var(--sveda-muted-foreground));
+  --color-accent: hsl(var(--sveda-accent));
+  --color-accent-foreground: hsl(var(--sveda-accent-foreground));
+  --color-destructive: hsl(var(--sveda-destructive));
+  --color-destructive-foreground: hsl(var(--sveda-destructive-foreground));
+  --color-border: hsl(var(--sveda-border));
+  --color-input: hsl(var(--sveda-input));
+  --color-ring: hsl(var(--sveda-ring));
+  --color-brand-primary-purple: hsl(var(--sveda-brand));
+  --color-brand-primary-purple-foreground: hsl(var(--sveda-brand-foreground));
+  --radius: var(--sveda-radius);
+  --radius-xs: var(--sveda-radius);
+  --radius-sm: var(--sveda-radius);
+  --radius-md: var(--sveda-radius);
+  --radius-lg: var(--sveda-radius);
+  --radius-xl: var(--sveda-radius);
+  --radius-2xl: var(--sveda-radius);
+  --radius-3xl: var(--sveda-radius);
+  --radius-4xl: var(--sveda-radius);
+  font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);
+}
+
+:where(.sveda-chat.dark, sveda-chat.dark, .dark .sveda-chat, .dark sveda-chat) {
+  --sveda-background: 30 12% 9%;
+  --sveda-foreground: 40 24% 94%;
+  --sveda-card: 30 10% 12%;
+  --sveda-card-foreground: 40 24% 94%;
+  --sveda-popover: 30 10% 12%;
+  --sveda-popover-foreground: 40 24% 94%;
+  --sveda-primary: 40 24% 94%;
+  --sveda-primary-foreground: 30 12% 9%;
+  --sveda-secondary: 30 8% 16%;
+  --sveda-secondary-foreground: 40 24% 94%;
+  --sveda-muted: 30 8% 16%;
+  --sveda-muted-foreground: 36 10% 62%;
+  --sveda-accent: 30 8% 16%;
+  --sveda-accent-foreground: 40 24% 94%;
+  --sveda-destructive: 0 62.8% 30.6%;
+  --sveda-destructive-foreground: 40 24% 94%;
+  --sveda-border: 30 8% 22%;
+  --sveda-input: 30 8% 16%;
+  --sveda-ring: 40 24% 94%;
+  --sveda-brand: 40 24% 94%;
+  --sveda-brand-foreground: 30 12% 9%;
+}
+
+.sveda-chat-surface {
+  background-color: var(--sveda-surface, hsl(var(--sveda-background)));
+}
+
+/* Host pages often style input/textarea unlayered, which beats Tailwind utilities. */
+.sveda-chat input[type='text'],
+.sveda-chat input[type='search'],
+.sveda-chat input:not([type]),
+.sveda-chat textarea {
+  box-sizing: border-box;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: var(--sveda-radius, 0);
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+  box-shadow: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  resize: none;
+  appearance: none;
+}
+
+.sveda-chat .sveda-chat-input-textarea {
+  width: 100%;
+  min-height: 60px;
+  max-height: 250px;
+  padding: 0.75rem;
+}
+
+.sveda-chat-frame,
+.sveda-chat .sveda-chat-frame,
+sveda-chat .sveda-chat-frame {
+  border: 1px dashed hsl(var(--sveda-foreground));
+}
+
+.sveda-chat ::selection,
+sveda-chat ::selection {
+  background: hsl(var(--sveda-foreground));
+  color: hsl(var(--sveda-background));
+}
+
+body.sveda-chat-immersive-mode {
+  overflow: hidden;
+  overscroll-behavior: none;
+}

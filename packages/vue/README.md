@@ -2,7 +2,7 @@
 
 Vue 3 SDK for Sveda — `<SvedaChat>`, composables, and the default UI theme.
 
-Docs: [sveda.dev/docs/client](https://sveda.dev/docs/client)
+Docs: [sveda.dev/docs/chat-ui](https://sveda.dev/docs/chat-ui)
 
 ```bash
 npm install @sveda-ai/vue

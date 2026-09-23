@@ -3,7 +3,7 @@
   import {
     assistantHasActiveTools,
     shouldShowChatPendingIndicator,
-  } from '../../lib/chatMessageVisibility.js';
+  } from '@sveda-ai/chat';
   import { useSvedaT } from '../../i18n/index.js';
   import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
   import ChatMessageItem from './ChatMessageItem.vue';

@@ -1,5 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
-import { userMessageHasVisibleContent, type SvedaUserMessageLike } from '../lib/userMessage';
+import { userMessageHasVisibleContent, type SvedaUserMessageLike } from '@sveda-ai/chat';
 
 export interface SvedaQuickPromptItem {
   label: string;

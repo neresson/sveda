@@ -1,15 +1,13 @@
-import type {
-  SvedaChatSession,
-  SvedaClient,
-  SvedaDisplayMessage,
-  SvedaMessagePart,
-  SvedaSendOptions,
-  SvedaSessionStatus,
-} from '@sveda-ai/core';
-import type { SvedaContextUsageEvent, SvedaMaxStepsEvent, SvedaToolProgressEvent } from '@sveda-ai/protocol';
-import { computed, inject, nextTick, onUnmounted, ref, watch, type Ref } from 'vue';
+import {
+  createSvedaStreaming,
+  type SvedaSendPayload,
+  type SvedaStreamingOptions as HeadlessStreamingOptions,
+  type SvedaStreamingStore as HeadlessStreamingStore,
+} from '@sveda-ai/chat';
+import type { SvedaClient, SvedaDisplayMessage, SvedaSendOptions } from '@sveda-ai/core';
+import type { SvedaContextUsageEvent, SvedaToolProgressEvent } from '@sveda-ai/protocol';
+import { computed, inject, onUnmounted, ref, watch, type Ref } from 'vue';
 import { useSvedaT } from '../i18n/index';
-import { deriveProvisionalChatTitle, isChatTitlePlaceholder } from '../lib/chatTitle';
 import { SvedaBeforeSendKey, SvedaClientKey } from '../plugin';
 
 export interface SvedaStreamingStore {
@@ -35,13 +33,7 @@ export interface SvedaStreamingOptions {
   onDone?: (chatId: string) => void;
 }
 
-export type SvedaSendPayload =
-  | string
-  | {
-      displayText: string;
-      promptText: string;
-      attachmentNames?: string[];
-    };
+export type { SvedaSendPayload };
 
 export function useSvedaStreaming(
   store: SvedaStreamingStore,
@@ -59,381 +51,62 @@ export function useSvedaStreaming(
   const thinkingMessage = ref('');
   const streamingChatIds = ref(new Set<string>());
   const unreadChatIds = ref(new Set<string>());
-  const statusByChatId = ref<Record<string, SvedaSessionStatus>>({});
 
-  const subscriptions = new Map<string, Array<() => void>>();
-  const displayTextOverrides = new Map<string, Map<string, string>>();
-
-  const setChatStreaming = (chatId: string, streaming: boolean) => {
-    const next = new Set(streamingChatIds.value);
-    if (streaming) {
-      next.add(chatId);
-    } else {
-      next.delete(chatId);
-    }
-    streamingChatIds.value = next;
+  const headlessStore: HeadlessStreamingStore = {
+    getCurrentChat: () => store.currentChat.value,
+    setChatMessages: store.setChatMessages,
+    setChatTitle: store.setChatTitle,
+    refreshChatTitleFromServer: store.refreshChatTitleFromServer,
+    incrementChatTokens: store.incrementChatTokens,
+    setChatContextWindowTokens: store.setChatContextWindowTokens,
   };
 
-  const clearChatUnread = (chatId?: string | null) => {
-    if (!chatId) {
-      return;
-    }
-    const next = new Set(unreadChatIds.value);
-    next.delete(chatId);
-    unreadChatIds.value = next;
+  const headlessOptions: HeadlessStreamingOptions = {
+    ...options,
+    translate: t,
+    beforeSend,
   };
 
-  const resolveNewChatLabel = () => {
-    if (typeof options.newChatLabel === 'function') {
-      return options.newChatLabel();
-    }
-    return t('newChat');
+  const controller = createSvedaStreaming(client, headlessStore, scrollToBottom, headlessOptions);
+
+  const sync = () => {
+    const state = controller.getState();
+    isThinking.value = state.isThinking;
+    thinkingMessage.value = state.thinkingMessage;
+    streamingChatIds.value = state.streamingChatIds;
+    unreadChatIds.value = state.unreadChatIds;
   };
 
-  const applyProvisionalChatTitle = (chatId: string, userRequest: string) => {
-    if (!store.currentChat.value || store.currentChat.value.id !== chatId) {
-      return;
-    }
+  const unsubscribe = controller.subscribe(sync);
+  sync();
 
-    const newChatLabel = resolveNewChatLabel();
-    if (!isChatTitlePlaceholder((store.currentChat.value.title || '').trim(), newChatLabel)) {
-      return;
-    }
-
-    const provisionalTitle = deriveProvisionalChatTitle(userRequest);
-    if (provisionalTitle) {
-      store.setChatTitle(chatId, provisionalTitle);
-    }
-  };
-
-  const scheduleChatTitleRefresh = (chatId: string) => {
-    const newChatLabel = resolveNewChatLabel();
-    const delays = [800, 2500, 6000];
-
-    delays.forEach(delay => {
-      setTimeout(async () => {
-        const title = await store.refreshChatTitleFromServer(chatId);
-        if (!title || isChatTitlePlaceholder(title, newChatLabel)) {
-          return;
-        }
-        store.setChatTitle(chatId, title);
-      }, delay);
-    });
-  };
-
-  const setChatStatus = (chatId: string, status: SvedaSessionStatus) => {
-    const previous = statusByChatId.value[chatId];
-    statusByChatId.value = {
-      ...statusByChatId.value,
-      [chatId]: status,
-    };
-
-    const wasStreaming = previous === 'streaming' || previous === 'submitted';
-    const isStreamingNow = status === 'streaming' || status === 'submitted';
-    setChatStreaming(chatId, isStreamingNow);
-
-    if (wasStreaming && !isStreamingNow && store.currentChat.value?.id !== chatId) {
-      const next = new Set(unreadChatIds.value);
-      next.add(chatId);
-      unreadChatIds.value = next;
-    }
-
-    if (isStreamingNow) {
-      clearChatUnread(chatId);
-    }
-  };
-
-  const applyDisplayOverrides = (
-    chatId: string,
-    messages: SvedaDisplayMessage[]
-  ): SvedaDisplayMessage[] => {
-    const overrides = displayTextOverrides.get(chatId);
-    if (!overrides || overrides.size === 0) {
-      return messages;
-    }
-
-    return messages.map(message => {
-      const override = overrides.get(message.id);
-      if (override === undefined || message.role !== 'user') {
-        return message;
-      }
-
-      const fileParts = message.parts.filter(part => part.type === 'file');
-      const parts: SvedaMessagePart[] = [
-        ...(override ? [{ type: 'text', text: override } as SvedaMessagePart] : []),
-        ...fileParts,
-      ];
-
-      return { ...message, parts };
-    });
-  };
-
-  const ensureSession = (chatId: string): SvedaChatSession => {
-    const session = client.session(chatId);
-    if (subscriptions.has(chatId)) {
-      return session;
-    }
-
-    const offMessages = session.on('messages', () => {
-      store.setChatMessages(chatId, applyDisplayOverrides(chatId, session.messages));
-    });
-
-    const offStatus = session.on('status', payload => {
-      setChatStatus(chatId, payload as SvedaSessionStatus);
-    });
-
-    const offTitle = session.on('title', payload => {
-      if (typeof payload === 'string' && payload.trim()) {
-        store.setChatTitle(chatId, payload);
-      }
-    });
-
-    const offMaxSteps = session.on('maxSteps', payload => {
-      const event = payload as SvedaMaxStepsEvent | undefined;
-      options.onMaxStepsReached?.(chatId, {
-        maxSteps: typeof event?.maxSteps === 'number' ? event.maxSteps : 0,
-      });
-    });
-
-    const offContextUsage = session.on('contextUsage', payload => {
-      const event = payload as SvedaContextUsageEvent | undefined;
-      if (event && typeof event.usedTokens === 'number') {
-        store.setChatContextWindowTokens(chatId, event.usedTokens);
-      }
-      if (event) {
-        options.onContextUsage?.(chatId, event);
-      }
-    });
-
-    const offToolProgress = session.on('toolProgress', payload => {
-      options.onToolProgress?.(chatId, payload as SvedaToolProgressEvent);
-    });
-
-    const offFinish = session.on('finish', payload => {
-      const event = payload as
-        | { usage?: { totalTokens?: number; promptTokens?: number } }
-        | undefined;
-      if (event?.usage) {
-        if (typeof event.usage.totalTokens === 'number') {
-          store.incrementChatTokens(chatId, event.usage.totalTokens);
-        }
-        if (typeof event.usage.promptTokens === 'number') {
-          store.setChatContextWindowTokens(chatId, event.usage.promptTokens);
-        }
-      }
-      void nextTick(() => {
-        options.onDone?.(chatId);
-        scheduleChatTitleRefresh(chatId);
-        if (store.currentChat.value?.id === chatId) {
-          scrollToBottom();
-        }
-      });
-    });
-
-    const offError = session.on('error', payload => {
-      options.onError?.(chatId, payload);
-      void nextTick(() => {
-        options.onDone?.(chatId);
-        if (store.currentChat.value?.id === chatId) {
-          scrollToBottom();
-        }
-      });
-    });
-
-    subscriptions.set(chatId, [
-      offMessages,
-      offStatus,
-      offTitle,
-      offMaxSteps,
-      offContextUsage,
-      offToolProgress,
-      offFinish,
-      offError,
-    ]);
-    setChatStatus(chatId, session.status);
-
-    return session;
-  };
-
+  const pollCurrentChat = controller.watchCurrentChatId(() => store.currentChat.value?.id);
   watch(
     () => store.currentChat.value?.id,
-    (newId, oldId) => {
-      if (!newId || newId === oldId || !subscriptions.has(newId)) {
-        return;
-      }
-
-      const session = client.session(newId);
-      if (session.isStreaming) {
-        return;
-      }
-
-      session.setMessages(store.currentChat.value?.messages ?? []);
+    () => {
+      pollCurrentChat();
     }
-  );
-
-  watch(
-    () => statusByChatId.value[store.currentChat.value?.id ?? ''],
-    status => {
-      if (status === 'streaming' || status === 'submitted') {
-        isThinking.value = true;
-        thinkingMessage.value = t('analyzingRequest');
-      } else {
-        isThinking.value = false;
-        thinkingMessage.value = '';
-      }
-    },
-    { immediate: true }
   );
 
   const isStreaming = computed(() =>
-    streamingChatIds.value.has(store.currentChat.value?.id ?? '')
+    controller.isStreamingFor(store.currentChat.value?.id)
   );
 
-  const stopStreaming = (chatId: string | null | undefined = store.currentChat.value?.id) => {
-    if (!chatId || !subscriptions.has(chatId)) {
-      return;
-    }
-    client.session(chatId).stop();
-    setChatStreaming(chatId, false);
-    isThinking.value = false;
-    thinkingMessage.value = '';
-  };
-
-  const resolveSendOptions = (): SvedaSendOptions => ({
-    ...(options.resolveSendOptions?.() ?? {}),
-  });
-
-  const sendMessage = async (
-    userPayload: SvedaSendPayload,
-    pageContext: Record<string, unknown> = {}
-  ) => {
-    let displayText = '';
-    let promptText = '';
-    let attachmentNames: string[] = [];
-
-    if (typeof userPayload === 'string') {
-      displayText = userPayload.trim();
-      promptText = displayText;
-    } else if (userPayload && typeof userPayload === 'object') {
-      displayText = String(userPayload.displayText ?? '').trim();
-      promptText = String(userPayload.promptText ?? '').trim();
-      attachmentNames = Array.isArray(userPayload.attachmentNames)
-        ? userPayload.attachmentNames.map(name => String(name).trim()).filter(Boolean)
-        : [];
-    } else {
-      return;
-    }
-
-    if (!promptText || !store.currentChat.value) {
-      return;
-    }
-
-    try {
-      await beforeSend?.();
-    } catch (error) {
-      options.onError?.(store.currentChat.value.id, error);
-      return;
-    }
-
-    const chatId = store.currentChat.value.id;
-    applyProvisionalChatTitle(chatId, promptText || displayText);
-    const session = ensureSession(chatId);
-    session.setMessages(store.currentChat.value.messages ?? []);
-
-    const sendOptions: SvedaSendOptions = {
-      ...resolveSendOptions(),
-      context: { ...pageContext },
-      ...(attachmentNames.length > 0
-        ? { files: attachmentNames.map(name => ({ name })) }
-        : {}),
-    };
-
-    const sendPromise = session.send(promptText, sendOptions);
-
-    if (displayText !== promptText) {
-      const userMessage = [...session.messages].reverse().find(message => message.role === 'user');
-      if (userMessage) {
-        if (!displayTextOverrides.has(chatId)) {
-          displayTextOverrides.set(chatId, new Map());
-        }
-        displayTextOverrides.get(chatId)!.set(userMessage.id, displayText);
-        store.setChatMessages(chatId, applyDisplayOverrides(chatId, session.messages));
-      }
-    }
-
-    try {
-      await sendPromise;
-    } catch {
-      return;
-    }
-
-    scrollToBottom();
-  };
-
-  const continueAfterMaxSteps = async (pageContext: Record<string, unknown> = {}) => {
-    const chatId = store.currentChat.value?.id;
-    if (!chatId) {
-      return;
-    }
-
-    const session = ensureSession(chatId);
-    if (session.messages.length === 0) {
-      session.setMessages(store.currentChat.value?.messages ?? []);
-    }
-
-    try {
-      await session.continueAfterMaxSteps({
-        ...resolveSendOptions(),
-        context: { ...pageContext },
-      });
-    } catch {
-      return;
-    }
-
-    scrollToBottom();
-  };
-
-  const resolveToolConfirmation = async (
-    toolCallId: string,
-    decision: 'approve' | 'deny',
-    pageContext: Record<string, unknown> = {}
-  ) => {
-    const chatId = store.currentChat.value?.id;
-    if (!chatId || !toolCallId) {
-      return;
-    }
-    const session = ensureSession(chatId);
-    session.setMessages(store.currentChat.value?.messages ?? []);
-    try {
-      await session.resolveToolConfirmation(toolCallId, decision, {
-        ...resolveSendOptions(),
-        context: { ...pageContext },
-      });
-    } catch {
-      return;
-    }
-    scrollToBottom();
-  };
-
   onUnmounted(() => {
-    for (const [chatId, unsubscribes] of subscriptions.entries()) {
-      client.session(chatId).stop();
-      unsubscribes.forEach(off => off());
-    }
-    subscriptions.clear();
-    displayTextOverrides.clear();
+    unsubscribe();
+    controller.dispose();
   });
 
   return {
-    sendMessage,
-    continueAfterMaxSteps,
-    resolveToolConfirmation,
+    sendMessage: controller.sendMessage,
+    continueAfterMaxSteps: controller.continueAfterMaxSteps,
+    resolveToolConfirmation: controller.resolveToolConfirmation,
     isStreaming,
     isThinking,
     thinkingMessage,
-    stopStreaming,
+    stopStreaming: controller.stopStreaming,
     streamingChatIds,
     unreadChatIds,
-    clearChatUnread,
+    clearChatUnread: controller.clearChatUnread,
   };
 }

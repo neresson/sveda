@@ -10,7 +10,7 @@ import {
   SVEDA_CHAT_LAYOUT_MIN_HEIGHT,
   SVEDA_CHAT_LAYOUT_MIN_WIDTH,
   SVEDA_HISTORY_SIDEBAR_WIDTH,
-} from '../lib/chatResize';
+} from '@sveda-ai/chat';
 import { SvedaFillHostKey, SvedaHostEmbedKey } from '../plugin';
 
 const CHAT_STORAGE_KEY = 'sveda.chat-dimensions';
