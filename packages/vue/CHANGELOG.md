@@ -1,5 +1,11 @@
 # @sveda-ai/vue
 
+## 0.3.2
+
+### Patch Changes
+
+- 5963dbc: Share the chat shell with React, Svelte, and Solid through @sveda-ai/chat, and keep the Vue widget on that store.
+
 ## 0.3.0
 
 ### Minor Changes
