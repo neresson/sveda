@@ -11,13 +11,17 @@ import {
   resolveMergedCurrentChat,
   upsertChatHistoryMessages,
 } from '../lib/chatHistoryMerge';
-import { readPersistedMinimized, writePersistedMinimized } from '../lib/chatUiStorage';
+import {
+  readPersistedMinimized,
+  readPersistedMinimizedPreference,
+  writePersistedMinimized,
+} from '../lib/chatUiStorage';
 import {
   finalizeMessagesForDisplay,
   type SvedaFinalizableMessage,
 } from '../lib/finalizeMessages';
 import { getUserMessageAttachmentNames, getUserMessageText } from '../lib/userMessage';
-import { SvedaClientKey, SVEDA_EMBED_AUTH_EVENT } from '../plugin';
+import { SvedaClientKey, SvedaHostEmbedKey, SVEDA_EMBED_AUTH_EVENT } from '../plugin';
 
 export interface SvedaChatHistory {
   id: string;
@@ -458,6 +462,7 @@ const renameChat = (chatId: string, title: string) => {
 
 export const useSvedaChat = () => {
   const client = inject(SvedaClientKey, null);
+  const hostEmbed = inject(SvedaHostEmbedKey, false);
   const t = useSvedaT();
 
   if (client) {
@@ -466,6 +471,11 @@ export const useSvedaChat = () => {
 
   if (!initialized) {
     initialized = true;
+    // The iframe page hides the launcher, so a default-minimized chat has no way to open.
+    if (hostEmbed && readPersistedMinimizedPreference() !== true) {
+      chatState.isMinimized = false;
+      chatState.isOpen = true;
+    }
     if (typeof window !== 'undefined') {
       window.addEventListener(SVEDA_EMBED_AUTH_EVENT, () => {
         if (historiesEndpointConfigured() && embedAuthReady()) {

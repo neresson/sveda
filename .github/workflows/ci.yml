@@ -20,6 +20,12 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm typecheck
+      - name: Build embed stylesheet
+        working-directory: apps/runtime
+        run: |
+          npm install -g npm@latest
+          npm ci
+          npx vite build --config vite.embed.config.js
       - run: pnpm test
 
   rust-fmt-clippy:

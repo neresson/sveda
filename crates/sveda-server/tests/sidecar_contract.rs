@@ -675,8 +675,20 @@ async fn host_mcp_instructions_and_tool_names_reach_the_model() {
     );
 }
 
+fn ensure_embed_module() {
+    let asset = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../apps/runtime/public/build/sveda/sveda-chat.js");
+    if asset.is_file() {
+        return;
+    }
+    std::fs::create_dir_all(asset.parent().expect("embed asset directory"))
+        .expect("embed asset directory");
+    std::fs::write(&asset, "export {};\n").expect("embed asset");
+}
+
 #[tokio::test]
 async fn embed_widget_assets_allow_cross_origin_module_load() {
+    ensure_embed_module();
     let mut config = Config::test();
     config.cors_origins = vec!["http://localhost:8001".into()];
     let mut headers = HeaderMap::new();
