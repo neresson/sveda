@@ -1,0 +1,36 @@
+[package]
+name = "sveda-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+description.workspace = true
+
+[dependencies]
+axum = { workspace = true }
+async-stream = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+hex = { workspace = true }
+hmac = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true }
+futures-util = { workspace = true }
+tower-http = { workspace = true }
+uuid = { workspace = true }
+sveda-agent = { path = "../sveda-agent" }
+sveda-llm = { path = "../sveda-llm" }
+sveda-mcp = { path = "../sveda-mcp" }
+sveda-protocol = { path = "../sveda-protocol" }
+sveda-store = { path = "../sveda-store" }
+sveda-index = { path = "../sveda-index" }
+reqwest = { workspace = true }
+
+[dev-dependencies]
+http-body-util = { workspace = true }
+tower = { workspace = true }
+wiremock = { workspace = true }

@@ -1,0 +1,57 @@
+{
+  "name": "@sveda-ai/core",
+  "version": "0.3.0",
+  "type": "module",
+  "license": "SSPL-1.0",
+  "description": "JS client to embed a Sveda AI agent — session.send, tools, streaming. https://sveda.dev/docs/client",
+  "keywords": [
+    "sveda",
+    "ai",
+    "agent",
+    "copilot",
+    "mcp",
+    "client"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neresson/sveda.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://sveda.dev/docs/client",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo 'no lint configured'"
+  },
+  "dependencies": {
+    "@sveda-ai/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "vitest": "^4.1.4"
+  }
+}

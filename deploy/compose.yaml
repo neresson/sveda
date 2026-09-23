@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sveda
+      POSTGRES_PASSWORD: sveda
+      POSTGRES_DB: sveda
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sveda -d sveda"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - sveda-postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  sveda-server:
+    image: ghcr.io/neresson/sveda-server:${SVEDA_IMAGE_TAG:-latest}
+    pull_policy: if_not_present
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8787:8787"
+    environment:
+      SVEDA_BIND: 0.0.0.0:8787
+      SVEDA_EMBED_ENABLED: "true"
+      SVEDA_DATABASE_URL: postgres://sveda:sveda@postgres:5432/sveda
+      SVEDA_REDIS_URL: redis://redis:6379
+      SVEDA_APP_KEY: ${SVEDA_APP_KEY:-dev-app-key-change-me}
+      SVEDA_ADMIN_API_KEY: ${SVEDA_ADMIN_API_KEY:-dev-admin-key-change-me}
+      SVEDA_EMBED_HOST_API_KEY: ${SVEDA_EMBED_HOST_API_KEY:-dev-host-key-change-me}
+      SVEDA_CORS_ORIGINS: ${SVEDA_CORS_ORIGINS:-*}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+
+volumes:
+  sveda-postgres:

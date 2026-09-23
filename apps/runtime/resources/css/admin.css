@@ -1,0 +1,167 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap');
+@import '../../../../packages/vue/src/theme.css';
+@import '../../../../packages/vue/src/markdown.css';
+@import 'tailwindcss';
+
+@custom-variant main-sm (@media (width >= 40rem));
+@custom-variant main-md (@media (width >= 48rem));
+
+@source '../js/admin/**/*.vue';
+@source '../js/admin/**/*.js';
+@source '../../../../packages/vue/src/**/*.{vue,ts,js}';
+
+@theme {
+    --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Newsreader', ui-serif, Georgia, serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+    --color-canvas: #f4f1ea;
+    --color-ink: #0a0a0a;
+    --color-muted: #6f6b63;
+    --color-grid: #d9d4c8;
+    --radius-xs: 0;
+    --radius-sm: 0;
+    --radius-md: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+    --radius-2xl: 0;
+    --radius-3xl: 0;
+    --radius-4xl: 0;
+    --color-background: hsl(var(--sveda-background, var(--background)));
+    --color-foreground: hsl(var(--sveda-foreground, var(--foreground)));
+    --color-card: hsl(var(--sveda-card, var(--card)));
+    --color-card-foreground: hsl(var(--sveda-card-foreground, var(--card-foreground)));
+    --color-popover: hsl(var(--sveda-popover, var(--popover)));
+    --color-popover-foreground: hsl(var(--sveda-popover-foreground, var(--popover-foreground)));
+    --color-primary: hsl(var(--sveda-primary, var(--primary)));
+    --color-primary-foreground: hsl(var(--sveda-primary-foreground, var(--primary-foreground)));
+    --color-secondary: hsl(var(--sveda-secondary, var(--secondary)));
+    --color-secondary-foreground: hsl(var(--sveda-secondary-foreground, var(--secondary-foreground)));
+    --color-muted-foreground: hsl(var(--sveda-muted-foreground, var(--muted-foreground)));
+    --color-accent: hsl(var(--sveda-accent, var(--accent)));
+    --color-accent-foreground: hsl(var(--sveda-accent-foreground, var(--accent-foreground)));
+    --color-destructive: hsl(var(--sveda-destructive, var(--destructive)));
+    --color-destructive-foreground: hsl(var(--sveda-destructive-foreground, var(--destructive-foreground)));
+    --color-border: hsl(var(--sveda-border, var(--border)));
+    --color-input: hsl(var(--sveda-input, var(--input)));
+    --color-ring: hsl(var(--sveda-ring, var(--ring)));
+    --color-brand-primary-purple: hsl(var(--sveda-brand));
+    --color-brand-primary-purple-foreground: hsl(var(--sveda-brand-foreground));
+}
+
+.sveda-grid {
+    background-image:
+        linear-gradient(to right, var(--color-grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--color-grid) 1px, transparent 1px);
+    background-size: 25% 25%;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-muted) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--color-grid);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-muted);
+}
+
+html {
+    scrollbar-gutter: stable;
+}
+
+.overflow-auto,
+.overflow-y-auto,
+.overflow-y-scroll,
+.overflow-scroll,
+textarea {
+    scrollbar-gutter: stable;
+}
+
+.sveda-hover {
+    transition-property: color, background-color, border-color, opacity;
+    transition-duration: 180ms;
+    transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+.sveda-bar-y {
+    transform: scaleY(0);
+    transform-origin: bottom;
+    animation: sveda-grow-y 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.sveda-bar-x {
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: sveda-grow-x 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sveda-grow-y {
+    from {
+        transform: scaleY(0);
+    }
+
+    to {
+        transform: scaleY(1);
+    }
+}
+
+@keyframes sveda-grow-x {
+    from {
+        transform: scaleX(0);
+    }
+
+    to {
+        transform: scaleX(1);
+    }
+}
+
+.sveda-drawer-enter-active .sveda-drawer-backdrop,
+.sveda-drawer-leave-active .sveda-drawer-backdrop {
+    transition: opacity 200ms ease-out;
+}
+
+.sveda-drawer-enter-from .sveda-drawer-backdrop,
+.sveda-drawer-leave-to .sveda-drawer-backdrop {
+    opacity: 0;
+}
+
+.sveda-drawer-enter-active .sveda-drawer-panel,
+.sveda-drawer-leave-active .sveda-drawer-panel {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sveda-drawer-enter-from .sveda-drawer-panel,
+.sveda-drawer-leave-to .sveda-drawer-panel {
+    transform: translateX(-100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sveda-hover {
+        transition: none;
+    }
+
+    .sveda-bar-y,
+    .sveda-bar-x {
+        animation: none;
+        transform: none;
+    }
+
+    .sveda-drawer-enter-active .sveda-drawer-backdrop,
+    .sveda-drawer-leave-active .sveda-drawer-backdrop,
+    .sveda-drawer-enter-active .sveda-drawer-panel,
+    .sveda-drawer-leave-active .sveda-drawer-panel {
+        transition: none;
+    }
+}

@@ -1,0 +1,18 @@
+export default {
+    document_title: 'Sveda usage',
+    eyebrow: 'Расход',
+    title: 'Usage.',
+    subtitle: 'Модели и запросы без истории чата.',
+    models_chart: 'Токены по моделям',
+    empty_models: 'Пока нет расхода по моделям.',
+    tokens_unit: 'токенов | токен | токена | токенов',
+    requests_unit: 'запросов | запрос | запроса | запросов',
+    table_title: 'Запросы',
+    table_total: '{count} всего',
+    empty_requests: 'Запросов ещё не было.',
+    column_model: 'Модель',
+    column_date: 'Дата',
+    column_tokens: 'Токены',
+    unknown_model: 'Неизвестно',
+    page: '{current} / {last}',
+};

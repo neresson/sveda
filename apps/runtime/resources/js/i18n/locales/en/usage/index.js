@@ -1,0 +1,18 @@
+export default {
+    document_title: 'Sveda usage',
+    eyebrow: 'Usage',
+    title: 'Usage.',
+    subtitle: 'Models and requests without chat history.',
+    models_chart: 'Tokens by model',
+    empty_models: 'No model usage yet.',
+    tokens_unit: 'tokens | token | tokens',
+    requests_unit: 'requests | request | requests',
+    table_title: 'Requests',
+    table_total: '{count} total',
+    empty_requests: 'No requests yet.',
+    column_model: 'Model',
+    column_date: 'Date',
+    column_tokens: 'Tokens',
+    unknown_model: 'Unknown',
+    page: '{current} / {last}',
+};

@@ -1,0 +1,739 @@
+<script setup>
+import { computed, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useDocumentTitle } from './useDocumentTitle';
+
+const props = defineProps({
+    csrf: { type: String, required: true },
+    saveUrl: { type: String, required: true },
+    logoutUrl: { type: String, required: true },
+    urls: { type: Object, default: () => ({}) },
+    settings: { type: Object, default: () => ({}) },
+});
+
+const emptyDraft = () => ({
+    id: '',
+    label: '',
+    protocol: 'responses',
+    api_model: '',
+    url: '',
+    key: '',
+    thinking: false,
+    vision: false,
+    aliases: '',
+    preset: '',
+});
+
+const toDraft = (model) => {
+    const aliases = Array.isArray(model.aliases)
+        ? model.aliases.join(', ')
+        : String(model.aliases ?? '');
+
+    return {
+        id: String(model.id ?? ''),
+        label: String(model.label ?? ''),
+        protocol: model.protocol === 'anthropic' ? 'anthropic' : 'responses',
+        api_model: String(model.api_model ?? model.apiModel ?? ''),
+        url: String(model.url ?? ''),
+        key: '',
+        thinking: Boolean(model.thinking),
+        vision: Boolean(model.vision),
+        aliases,
+        preset: model.preset ?? '',
+    };
+};
+
+const emptyEmbeddingDraft = () => ({
+    id: '',
+    label: '',
+    protocol: 'openai',
+    api_model: 'text-embedding-3-small',
+    url: 'https://api.openai.com/v1',
+    key: '',
+    dimensions: 1536,
+    usd_per_million: 0.02,
+    is_default: true,
+});
+
+const toEmbeddingDraft = (embedding, isDefault) => ({
+    id: String(embedding.id ?? ''),
+    label: String(embedding.label ?? ''),
+    protocol: 'openai',
+    api_model: String(embedding.api_model ?? embedding.apiModel ?? 'text-embedding-3-small'),
+    url: String(embedding.url ?? 'https://api.openai.com/v1'),
+    key: '',
+    dimensions: Number(embedding.dimensions ?? 1536) || 1536,
+    usd_per_million: Number(embedding.usd_per_million ?? embedding.usdPerMillion ?? 0.02) || 0.02,
+    is_default: Boolean(isDefault),
+});
+
+const models = ref(Array.isArray(props.settings.models) ? [...props.settings.models] : []);
+const embeddings = ref(Array.isArray(props.settings.embeddings) ? [...props.settings.embeddings] : []);
+const defaultEmbedding = ref(String(props.settings.default_embedding ?? props.settings.defaultEmbedding ?? ''));
+const draft = reactive(emptyDraft());
+const embeddingDraft = reactive(emptyEmbeddingDraft());
+embeddingDraft.is_default = embeddings.value.length === 0;
+const editingId = ref('');
+const editingEmbeddingId = ref('');
+const saving = ref(false);
+const message = ref('');
+const error = ref('');
+
+const isEditing = computed(() => editingId.value !== '');
+const isEditingEmbedding = computed(() => editingEmbeddingId.value !== '');
+const canSubmit = computed(() => draft.id.trim() !== '' && draft.label.trim() !== '');
+const canSubmitEmbedding = computed(() => embeddingDraft.id.trim() !== '' && embeddingDraft.label.trim() !== '');
+const editingHasKey = computed(() => {
+    if (!isEditing.value) {
+        return false;
+    }
+
+    const model = models.value.find((item) => item.id === editingId.value);
+
+    return Boolean(model?.key);
+});
+const editingEmbeddingHasKey = computed(() => {
+    if (!isEditingEmbedding.value) {
+        return false;
+    }
+
+    const embedding = embeddings.value.find((item) => item.id === editingEmbeddingId.value);
+
+    return Boolean(embedding?.key);
+});
+
+const { t } = useI18n();
+useDocumentTitle('models.document_title');
+
+const modelFlags = (model) =>
+    [model.thinking ? t('models.thinking') : null, model.vision ? t('models.vision') : null].filter(Boolean).join(' · ');
+
+const resetDraft = () => {
+    editingId.value = '';
+    Object.assign(draft, emptyDraft());
+};
+
+const resetEmbeddingDraft = () => {
+    editingEmbeddingId.value = '';
+    Object.assign(embeddingDraft, emptyEmbeddingDraft());
+    embeddingDraft.is_default = embeddings.value.length === 0;
+};
+
+const serialize = (model) => {
+    const aliases = Array.isArray(model.aliases)
+        ? model.aliases
+        : String(model.aliases ?? '')
+            .split(',')
+            .map((alias) => alias.trim())
+            .filter(Boolean);
+
+    return {
+        id: String(model.id ?? '').trim(),
+        label: String(model.label ?? '').trim(),
+        protocol: model.protocol === 'anthropic' ? 'anthropic' : 'responses',
+        api_model: String(model.api_model ?? model.apiModel ?? '').trim(),
+        url: String(model.url ?? '').trim(),
+        key: String(model.key ?? ''),
+        thinking: Boolean(model.thinking),
+        vision: Boolean(model.vision),
+        aliases,
+        preset: model.preset ?? '',
+    };
+};
+
+const serializeEmbedding = (embedding) => ({
+    id: String(embedding.id ?? '').trim(),
+    label: String(embedding.label ?? '').trim(),
+    protocol: 'openai',
+    api_model: String(embedding.api_model ?? embedding.apiModel ?? '').trim(),
+    url: String(embedding.url ?? '').trim(),
+    key: String(embedding.key ?? ''),
+    dimensions: Number(embedding.dimensions ?? 1536) || 1536,
+    usd_per_million: Number(embedding.usd_per_million ?? embedding.usdPerMillion ?? 0.02) || 0.02,
+});
+
+const saveModels = async (next) => {
+    saving.value = true;
+    error.value = '';
+    message.value = '';
+
+    try {
+        const response = await fetch(props.saveUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': props.csrf,
+            },
+            body: JSON.stringify({
+                models: next.map(serialize).filter((model) => model.id !== ''),
+            }),
+        });
+
+        const body = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            error.value = body.message ?? t('common.save_failed');
+            return false;
+        }
+
+        models.value = Array.isArray(body.models) ? body.models : next;
+        if (Array.isArray(body.embeddings)) {
+            embeddings.value = body.embeddings;
+        }
+        if (typeof body.default_embedding === 'string') {
+            defaultEmbedding.value = body.default_embedding;
+        }
+        message.value = t('common.saved');
+        return true;
+    } catch {
+        error.value = t('common.save_failed');
+        return false;
+    } finally {
+        saving.value = false;
+    }
+};
+
+const submit = async () => {
+    if (!canSubmit.value || saving.value) {
+        return;
+    }
+
+    const id = draft.id.trim();
+    const taken = models.value.some((model) => model.id === id && model.id !== editingId.value);
+    if (taken) {
+        error.value = t('models.id_taken');
+        return;
+    }
+
+    const payload = { ...draft };
+    const next = isEditing.value
+        ? models.value.map((model) => (
+            model.id === editingId.value
+                ? { ...payload, preset: payload.preset || model.preset }
+                : model
+        ))
+        : [...models.value, payload];
+
+    const saved = await saveModels(next);
+    if (saved) {
+        resetDraft();
+        message.value = t('common.saved');
+    }
+};
+
+const startEdit = (model) => {
+    if (saving.value) {
+        return;
+    }
+
+    editingId.value = String(model.id);
+    Object.assign(draft, toDraft(model));
+    error.value = '';
+    message.value = '';
+};
+
+const cancelEdit = () => {
+    if (saving.value) {
+        return;
+    }
+
+    resetDraft();
+    error.value = '';
+    message.value = '';
+};
+
+const saveEmbeddings = async (next, nextDefault) => {
+    saving.value = true;
+    error.value = '';
+    message.value = '';
+
+    try {
+        const response = await fetch(props.saveUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': props.csrf,
+            },
+            body: JSON.stringify({
+                embeddings: next.map(serializeEmbedding).filter((item) => item.id !== ''),
+                default_embedding: nextDefault,
+            }),
+        });
+
+        const body = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            error.value = body.message ?? t('common.save_failed');
+            return false;
+        }
+
+        embeddings.value = Array.isArray(body.embeddings) ? body.embeddings : next;
+        if (typeof body.default_embedding === 'string') {
+            defaultEmbedding.value = body.default_embedding;
+        } else {
+            defaultEmbedding.value = nextDefault;
+        }
+        if (Array.isArray(body.models)) {
+            models.value = body.models;
+        }
+        message.value = t('common.saved');
+        return true;
+    } catch {
+        error.value = t('common.save_failed');
+        return false;
+    } finally {
+        saving.value = false;
+    }
+};
+
+const applyEmbeddingPreset = (preset) => {
+    if (preset === 'large') {
+        if (!isEditingEmbedding.value) {
+            embeddingDraft.id = 'openai-text-embedding-3-large';
+        }
+        embeddingDraft.label = 'OpenAI text-embedding-3-large';
+        embeddingDraft.api_model = 'text-embedding-3-large';
+        embeddingDraft.url = 'https://api.openai.com/v1';
+        embeddingDraft.dimensions = 3072;
+        embeddingDraft.usd_per_million = 0.13;
+        return;
+    }
+    if (!isEditingEmbedding.value) {
+        embeddingDraft.id = 'openai-text-embedding-3-small';
+    }
+    embeddingDraft.label = 'OpenAI text-embedding-3-small';
+    embeddingDraft.api_model = 'text-embedding-3-small';
+    embeddingDraft.url = 'https://api.openai.com/v1';
+    embeddingDraft.dimensions = 1536;
+    embeddingDraft.usd_per_million = 0.02;
+};
+
+const submitEmbedding = async () => {
+    if (!canSubmitEmbedding.value || saving.value) {
+        return;
+    }
+
+    const id = embeddingDraft.id.trim();
+    const taken = embeddings.value.some((item) => item.id === id && item.id !== editingEmbeddingId.value);
+    if (taken) {
+        error.value = t('models.id_taken');
+        return;
+    }
+
+    const payload = { ...embeddingDraft };
+    const next = isEditingEmbedding.value
+        ? embeddings.value.map((item) => (item.id === editingEmbeddingId.value ? payload : item))
+        : [...embeddings.value, payload];
+    let nextDefault = defaultEmbedding.value;
+    if (payload.is_default || next.length === 1) {
+        nextDefault = id;
+    } else if (nextDefault === editingEmbeddingId.value && editingEmbeddingId.value !== id) {
+        nextDefault = id;
+    }
+    if (!next.some((item) => item.id === nextDefault)) {
+        nextDefault = next[0]?.id ?? '';
+    }
+
+    const saved = await saveEmbeddings(next, nextDefault);
+    if (saved) {
+        resetEmbeddingDraft();
+        message.value = t('common.saved');
+    }
+};
+
+const startEditEmbedding = (embedding) => {
+    if (saving.value) {
+        return;
+    }
+
+    editingEmbeddingId.value = String(embedding.id);
+    Object.assign(embeddingDraft, toEmbeddingDraft(embedding, embedding.id === defaultEmbedding.value));
+    error.value = '';
+    message.value = '';
+};
+
+const cancelEditEmbedding = () => {
+    if (saving.value) {
+        return;
+    }
+
+    resetEmbeddingDraft();
+    error.value = '';
+    message.value = '';
+};
+
+const removeEmbedding = async (id) => {
+    if (saving.value) {
+        return;
+    }
+
+    const next = embeddings.value.filter((item) => item.id !== id);
+    const nextDefault = defaultEmbedding.value === id ? (next[0]?.id ?? '') : defaultEmbedding.value;
+    const saved = await saveEmbeddings(next, nextDefault);
+    if (saved && editingEmbeddingId.value === id) {
+        resetEmbeddingDraft();
+        message.value = t('common.saved');
+    }
+};
+
+const embeddingFlags = (embedding) => {
+    const dims = embedding.dimensions ?? '—';
+    const mark = embedding.id === defaultEmbedding.value ? t('models.default') : '';
+
+    return mark ? `${dims} · ${mark}` : String(dims);
+};
+</script>
+
+<template>
+    <div class="contents">
+        <div>
+            <p class="font-mono text-[11px] tracking-[0.18em] text-muted">{{ t('models.eyebrow') }}</p>
+            <h1 class="mt-2 text-4xl font-bold tracking-tighter sm:text-5xl lg:text-6xl">{{ t('models.title') }}</h1>
+            <p class="mt-2 font-serif text-base text-muted lg:text-lg">{{ t('models.subtitle') }}</p>
+        </div>
+
+        <form class="flex flex-col gap-4 border border-ink p-4 lg:p-6" @submit.prevent="submit">
+            <p v-if="isEditing" class="font-mono text-[11px] tracking-[0.14em] text-muted">
+                {{ t('models.editing', { id: editingId }) }}
+            </p>
+            <div class="grid gap-4 md:grid-cols-2">
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.id') }}</span>
+                    <input v-model="draft.id" name="model_id" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none" required>
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.label') }}</span>
+                    <input v-model="draft.label" name="model_label" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none" required>
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.protocol') }}</span>
+                    <select v-model="draft.protocol" name="model_protocol" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                        <option value="responses">responses</option>
+                        <option value="anthropic">anthropic</option>
+                    </select>
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.api_model') }}</span>
+                    <input v-model="draft.api_model" name="model_api_model" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                </label>
+                <label class="flex flex-col gap-2 md:col-span-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.url') }}</span>
+                    <input v-model="draft.url" name="model_url" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.api_key') }}</span>
+                    <input v-model="draft.key" name="model_key" type="password" autocomplete="off" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                    <span v-if="editingHasKey" class="font-mono text-[11px] text-muted">{{ t('models.keep_key') }}</span>
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.aliases') }}</span>
+                    <input v-model="draft.aliases" name="model_aliases" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                </label>
+            </div>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div class="flex items-center gap-6">
+                    <label class="flex items-center gap-2 font-mono text-xs">
+                        <input v-model="draft.thinking" type="checkbox" class="size-3.5 border border-ink accent-ink">
+                        {{ t('models.thinking') }}
+                    </label>
+                    <label class="flex items-center gap-2 font-mono text-xs">
+                        <input v-model="draft.vision" type="checkbox" class="size-3.5 border border-ink accent-ink">
+                        {{ t('models.vision') }}
+                    </label>
+                </div>
+                <div class="flex items-center gap-4 sm:ml-auto">
+                    <button
+                        v-if="isEditing"
+                        type="button"
+                        class="sveda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted disabled:hover:text-ink"
+                        :disabled="saving"
+                        @click="cancelEdit"
+                    >
+                        {{ t('common.cancel') }}
+                    </button>
+                    <button
+                        type="submit"
+                        class="sveda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
+                        :disabled="!canSubmit || saving"
+                    >
+                        {{ isEditing ? t('common.save') : t('common.add') }}
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <p v-if="error" class="font-mono text-sm">{{ error }}</p>
+        <p v-else-if="message" class="font-mono text-sm text-muted">{{ message }}</p>
+
+        <div class="border border-ink lg:hidden">
+            <article
+                v-for="model in models"
+                :key="`mobile-${model.id}`"
+                class="flex flex-col gap-3 border-b border-grid px-4 py-4 last:border-b-0"
+                :class="model.id === editingId ? 'bg-grid/50' : ''"
+            >
+                <div class="min-w-0">
+                    <p class="truncate font-mono text-xs">{{ model.id }}</p>
+                    <p class="truncate font-mono text-[11px] text-muted">{{ model.label }}</p>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                    <p class="font-mono text-[11px] text-muted">
+                        {{ model.protocol }}<template v-if="modelFlags(model)"> · {{ modelFlags(model) }}</template>
+                    </p>
+                    <div class="flex items-center gap-4">
+                        <button
+                            type="button"
+                            class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                            :disabled="saving"
+                            @click="startEdit(model)"
+                        >
+                            {{ t('common.edit') }}
+                        </button>
+                        <button
+                            type="button"
+                            class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                            :disabled="saving"
+                            @click="removeModel(model.id)"
+                        >
+                            {{ t('common.remove') }}
+                        </button>
+                    </div>
+                </div>
+            </article>
+            <p v-if="models.length === 0" class="px-4 py-6 font-mono text-xs text-muted">{{ t('models.empty') }}</p>
+        </div>
+
+        <div class="hidden border border-ink lg:block">
+            <div class="flex gap-4 border-b border-ink px-4 py-3 font-mono text-[11px] tracking-[0.14em] text-muted">
+                <span class="flex-1">{{ t('models.model') }}</span>
+                <span class="w-24">{{ t('models.protocol') }}</span>
+                <span class="w-28">{{ t('models.flags') }}</span>
+                <span class="w-32"></span>
+            </div>
+            <div
+                v-for="model in models"
+                :key="model.id"
+                class="flex items-center gap-4 border-b border-grid px-4 py-3.5 last:border-b-0"
+                :class="model.id === editingId ? 'bg-grid/50' : ''"
+            >
+                <div class="min-w-0 flex-1">
+                    <p class="truncate font-mono text-xs">{{ model.id }}</p>
+                    <p class="truncate font-mono text-[11px] text-muted">{{ model.label }}</p>
+                </div>
+                <span class="w-24 font-mono text-[11px] text-muted">{{ model.protocol }}</span>
+                <span class="w-28 font-mono text-[11px]">
+                    {{ modelFlags(model) || '—' }}
+                </span>
+                <div class="flex w-32 shrink-0 justify-end gap-4">
+                    <button
+                        type="button"
+                        class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                        :disabled="saving"
+                        @click="startEdit(model)"
+                    >
+                        {{ t('common.edit') }}
+                    </button>
+                    <button
+                        type="button"
+                        class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                        :disabled="saving"
+                        @click="removeModel(model.id)"
+                    >
+                        {{ t('common.remove') }}
+                    </button>
+                </div>
+            </div>
+            <p v-if="models.length === 0" class="px-4 py-6 font-mono text-xs text-muted">{{ t('models.empty') }}</p>
+        </div>
+
+        <div>
+            <p class="font-mono text-[11px] tracking-[0.18em] text-muted">{{ t('models.embeddings_eyebrow') }}</p>
+            <h2 class="mt-2 text-3xl font-bold tracking-tighter sm:text-4xl">{{ t('models.embeddings_title') }}</h2>
+            <p class="mt-2 font-serif text-base text-muted lg:text-lg">{{ t('models.embeddings_subtitle') }}</p>
+        </div>
+
+        <form class="flex flex-col gap-4 border border-ink p-4 lg:p-6" @submit.prevent="submitEmbedding">
+            <p v-if="isEditingEmbedding" class="font-mono text-[11px] tracking-[0.14em] text-muted">
+                {{ t('models.editing', { id: editingEmbeddingId }) }}
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <button
+                    type="button"
+                    class="border border-ink px-4 py-2 font-mono text-[11px] tracking-[0.12em]"
+                    :disabled="saving"
+                    @click="applyEmbeddingPreset('small')"
+                >
+                    {{ t('models.preset_small') }}
+                </button>
+                <button
+                    type="button"
+                    class="border border-ink px-4 py-2 font-mono text-[11px] tracking-[0.12em]"
+                    :disabled="saving"
+                    @click="applyEmbeddingPreset('large')"
+                >
+                    {{ t('models.preset_large') }}
+                </button>
+            </div>
+            <div class="grid gap-4 md:grid-cols-2">
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.id') }}</span>
+                    <input v-model="embeddingDraft.id" name="embedding_id" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none" required>
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.label') }}</span>
+                    <input v-model="embeddingDraft.label" name="embedding_label" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none" required>
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.protocol') }}</span>
+                    <select v-model="embeddingDraft.protocol" name="embedding_protocol" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                        <option value="openai">{{ t('models.protocol_openai') }}</option>
+                    </select>
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.api_model') }}</span>
+                    <input v-model="embeddingDraft.api_model" name="embedding_api_model" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                </label>
+                <label class="flex flex-col gap-2 md:col-span-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.url') }}</span>
+                    <input v-model="embeddingDraft.url" name="embedding_url" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.api_key') }}</span>
+                    <input v-model="embeddingDraft.key" name="embedding_key" type="password" autocomplete="off" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                    <span v-if="editingEmbeddingHasKey" class="font-mono text-[11px] text-muted">{{ t('models.keep_key') }}</span>
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.dimensions') }}</span>
+                    <input
+                        v-model.number="embeddingDraft.dimensions"
+                        name="embedding_dimensions"
+                        type="number"
+                        min="8"
+                        max="8192"
+                        class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none"
+                    >
+                    <span class="font-mono text-[11px] text-muted">{{ t('models.dimensions_hint') }}</span>
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.usd_per_million') }}</span>
+                    <input
+                        v-model.number="embeddingDraft.usd_per_million"
+                        name="embedding_usd_per_million"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none"
+                    >
+                </label>
+            </div>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <label class="flex items-center gap-2 font-mono text-xs">
+                    <input v-model="embeddingDraft.is_default" type="checkbox" class="size-3.5 border border-ink accent-ink">
+                    {{ t('models.set_default') }}
+                </label>
+                <div class="flex items-center gap-4 sm:ml-auto">
+                    <button
+                        v-if="isEditingEmbedding"
+                        type="button"
+                        class="sveda-hover font-mono text-[11px] tracking-[0.16em] hover:text-muted disabled:hover:text-ink"
+                        :disabled="saving"
+                        @click="cancelEditEmbedding"
+                    >
+                        {{ t('common.cancel') }}
+                    </button>
+                    <button
+                        type="submit"
+                        class="sveda-hover bg-ink px-7 py-3.5 text-sm font-semibold text-canvas hover:bg-ink/80 disabled:opacity-40 disabled:hover:bg-ink"
+                        :disabled="!canSubmitEmbedding || saving"
+                    >
+                        {{ isEditingEmbedding ? t('common.save') : t('common.add') }}
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <p v-if="error" class="font-mono text-sm">{{ error }}</p>
+        <p v-else-if="message" class="font-mono text-sm text-muted">{{ message }}</p>
+
+        <div class="border border-ink lg:hidden">
+            <article
+                v-for="embedding in embeddings"
+                :key="`mobile-embedding-${embedding.id}`"
+                class="flex flex-col gap-3 border-b border-grid px-4 py-4 last:border-b-0"
+                :class="embedding.id === editingEmbeddingId ? 'bg-grid/50' : ''"
+            >
+                <div class="min-w-0">
+                    <p class="truncate font-mono text-xs">{{ embedding.id }}</p>
+                    <p class="truncate font-mono text-[11px] text-muted">{{ embedding.label }}</p>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                    <p class="font-mono text-[11px] text-muted">openai · {{ embeddingFlags(embedding) }}</p>
+                    <div class="flex items-center gap-4">
+                        <button
+                            type="button"
+                            class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                            :disabled="saving"
+                            @click="startEditEmbedding(embedding)"
+                        >
+                            {{ t('common.edit') }}
+                        </button>
+                        <button
+                            type="button"
+                            class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                            :disabled="saving"
+                            @click="removeEmbedding(embedding.id)"
+                        >
+                            {{ t('common.remove') }}
+                        </button>
+                    </div>
+                </div>
+            </article>
+            <p v-if="embeddings.length === 0" class="px-4 py-6 font-mono text-xs text-muted">{{ t('models.empty_embeddings') }}</p>
+        </div>
+
+        <div class="hidden border border-ink lg:block">
+            <div class="flex gap-4 border-b border-ink px-4 py-3 font-mono text-[11px] tracking-[0.14em] text-muted">
+                <span class="flex-1">{{ t('models.embedding') }}</span>
+                <span class="w-24">{{ t('models.protocol') }}</span>
+                <span class="w-36">{{ t('models.dimensions') }}</span>
+                <span class="w-32"></span>
+            </div>
+            <div
+                v-for="embedding in embeddings"
+                :key="embedding.id"
+                class="flex items-center gap-4 border-b border-grid px-4 py-3.5 last:border-b-0"
+                :class="embedding.id === editingEmbeddingId ? 'bg-grid/50' : ''"
+            >
+                <div class="min-w-0 flex-1">
+                    <p class="truncate font-mono text-xs">{{ embedding.id }}</p>
+                    <p class="truncate font-mono text-[11px] text-muted">{{ embedding.label }}</p>
+                </div>
+                <span class="w-24 font-mono text-[11px] text-muted">openai</span>
+                <span class="w-36 font-mono text-[11px]">{{ embeddingFlags(embedding) }}</span>
+                <div class="flex w-32 shrink-0 justify-end gap-4">
+                    <button
+                        type="button"
+                        class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                        :disabled="saving"
+                        @click="startEditEmbedding(embedding)"
+                    >
+                        {{ t('common.edit') }}
+                    </button>
+                    <button
+                        type="button"
+                        class="sveda-hover font-mono text-[11px] tracking-[0.12em] hover:text-muted disabled:hover:text-ink"
+                        :disabled="saving"
+                        @click="removeEmbedding(embedding.id)"
+                    >
+                        {{ t('common.remove') }}
+                    </button>
+                </div>
+            </div>
+            <p v-if="embeddings.length === 0" class="px-4 py-6 font-mono text-xs text-muted">{{ t('models.empty_embeddings') }}</p>
+        </div>
+    </div>
+</template>

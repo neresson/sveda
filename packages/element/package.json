@@ -1,0 +1,60 @@
+{
+  "name": "@sveda-ai/element",
+  "version": "0.3.0",
+  "type": "module",
+  "license": "SSPL-1.0",
+  "description": "Web component <sveda-chat> to embed a Sveda AI agent. https://sveda.dev/docs/hosts/vanilla",
+  "keywords": [
+    "sveda",
+    "ai",
+    "agent",
+    "copilot",
+    "web-component",
+    "chat"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neresson/sveda.git",
+    "directory": "packages/element"
+  },
+  "homepage": "https://sveda.dev/docs/hosts/vanilla",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/sveda-chat.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/sveda-chat.js"
+      },
+      "./sveda-chat.css": "./dist/sveda-chat.css"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && node scripts/write-sveda-chat-css.mjs && node scripts/copy-npm-dist.mjs",
+    "test": "node --test src/element.test.mjs && vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo 'no lint configured'"
+  },
+  "devDependencies": {
+    "@sveda-ai/core": "workspace:*",
+    "@sveda-ai/vue": "workspace:*",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "happy-dom": "^20.14.5",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^4.1.4",
+    "vue": "^3.5.13"
+  }
+}

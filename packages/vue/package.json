@@ -1,0 +1,82 @@
+{
+  "name": "@sveda-ai/vue",
+  "version": "0.3.0",
+  "type": "module",
+  "license": "SSPL-1.0",
+  "description": "Vue 3 chat UI to embed a Sveda AI agent. https://sveda.dev/docs/client",
+  "keywords": [
+    "sveda",
+    "ai",
+    "agent",
+    "copilot",
+    "vue",
+    "chat"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neresson/sveda.git",
+    "directory": "packages/vue"
+  },
+  "homepage": "https://sveda.dev/docs/client",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./theme.css": "./src/theme.css"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./styles.css": "./dist/styles.css",
+      "./theme.css": "./src/theme.css"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "vite build && vue-tsc -p tsconfig.json --emitDeclarationOnly && pnpm build:css",
+    "build:css": "tailwindcss -c tailwind.config.ts -i src/styles.css -o dist/styles.css --minify",
+    "test": "node --test src/theme.test.mjs && vitest run",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
+    "lint": "echo 'no lint configured'"
+  },
+  "dependencies": {
+    "@sveda-ai/core": "workspace:*",
+    "@sveda-ai/protocol": "workspace:*",
+    "@vueuse/core": "^12.8.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dompurify": "^3.3.1",
+    "highlight.js": "^11.11.1",
+    "lucide-vue-next": "^0.468.0",
+    "marked": "^17.0.2",
+    "reka-ui": "^2.8.0",
+    "tailwind-merge": "^2.6.0"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "happy-dom": "^20.14.5",
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^4.1.4",
+    "vue": "^3.5.13",
+    "vue-tsc": "^2.2.4"
+  }
+}

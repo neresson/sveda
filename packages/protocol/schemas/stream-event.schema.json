@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sveda-ai.dev/schemas/v1/stream-event.schema.json",
+  "title": "Sveda Wire Protocol v1 — Stream Event",
+  "description": "Server-to-client SSE event envelope. Every event is a JSON object sent as one SSE `data:` frame.",
+  "oneOf": [
+    { "$ref": "#/$defs/messageStart" },
+    { "$ref": "#/$defs/textDelta" },
+    { "$ref": "#/$defs/reasoningDelta" },
+    { "$ref": "#/$defs/toolCall" },
+    { "$ref": "#/$defs/toolResult" },
+    { "$ref": "#/$defs/toolProgress" },
+    { "$ref": "#/$defs/contextUsage" },
+    { "$ref": "#/$defs/chatTitle" },
+    { "$ref": "#/$defs/maxSteps" },
+    { "$ref": "#/$defs/messageEnd" },
+    { "$ref": "#/$defs/error" }
+  ],
+  "$defs": {
+    "base": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "chatId": { "type": "string" },
+        "messageId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "messageStart": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        { "type": "object", "properties": { "type": { "const": "message.start" } } }
+      ]
+    },
+    "textDelta": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": ["delta"],
+          "properties": { "type": { "const": "text.delta" }, "delta": { "type": "string" } }
+        }
+      ]
+    },
+    "reasoningDelta": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": ["delta"],
+          "properties": { "type": { "const": "reasoning.delta" }, "delta": { "type": "string" } }
+        }
+      ]
+    },
+    "toolCall": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": ["toolCallId", "toolName", "target", "input"],
+          "properties": {
+            "type": { "const": "tool.call" },
+            "toolCallId": { "type": "string" },
+            "toolName": { "type": "string" },
+            "target": { "enum": ["backend", "frontend"] },
+            "input": { "type": "object" },
+            "confirmation": { "const": "required" }
+          }
+        }
+      ]
+    },
+    "toolResult": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": ["toolCallId", "toolName", "output"],
+          "properties": {
+            "type": { "const": "tool.result" },
+            "toolCallId": { "type": "string" },
+            "toolName": { "type": "string" },
+            "output": true,
+            "renderHint": { "enum": ["confirm_dialog", "resource_links", "plain", "custom"] },
+            "renderData": { "type": "object" }
+          }
+        }
+      ]
+    },
+    "toolProgress": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": ["tasks"],
+          "properties": {
+            "type": { "const": "tool.progress" },
+            "phase": { "type": "string" },
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "label", "status"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "label": { "type": "string" },
+                  "status": { "enum": ["pending", "running", "completed", "failed"] },
+                  "detail": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "contextUsage": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": ["usedTokens", "maxTokens", "percent"],
+          "properties": {
+            "type": { "const": "context.usage" },
+            "usedTokens": { "type": "integer", "minimum": 0 },
+            "maxTokens": { "type": "integer", "minimum": 0 },
+            "percent": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        }
+      ]
+    },
+    "chatTitle": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": ["title"],
+          "properties": { "type": { "const": "chat.title" }, "title": { "type": "string" } }
+        }
+      ]
+    },
+    "maxSteps": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": ["maxSteps", "canContinue"],
+          "properties": {
+            "type": { "const": "max_steps" },
+            "maxSteps": { "type": "integer", "minimum": 1 },
+            "canContinue": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "messageEnd": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "message.end" },
+            "finishReason": { "type": "string" },
+            "usage": {
+              "type": "object",
+              "properties": {
+                "promptTokens": { "type": "integer" },
+                "completionTokens": { "type": "integer" },
+                "totalTokens": { "type": "integer" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "error": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "type": { "const": "error" },
+            "code": { "type": "string" },
+            "message": { "type": "string" }
+          }
+        }
+      ]
+    }
+  }
+}

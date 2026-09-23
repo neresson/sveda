@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sveda.dev/schemas/host-manifest.v1.json",
+  "title": "Sveda host manifest",
+  "type": "object",
+  "required": ["schema", "sdk", "subject", "hooks", "tools"],
+  "properties": {
+    "schema": {
+      "const": "sveda.host/v1"
+    },
+    "sdk": {
+      "type": "object",
+      "required": ["language", "version"],
+      "properties": {
+        "language": { "type": "string" },
+        "version": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "subject": {
+      "type": "object",
+      "required": ["authenticated", "policy"],
+      "properties": {
+        "authenticated": { "type": "boolean" },
+        "policy": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "hooks": {
+      "type": "object",
+      "required": [
+        "resolve_tools",
+        "policy",
+        "authorize",
+        "visitor_id",
+        "mint_token"
+      ],
+      "properties": {
+        "resolve_tools": { "type": "boolean" },
+        "policy": { "type": "boolean" },
+        "authorize": { "type": "boolean" },
+        "visitor_id": { "type": "boolean" },
+        "mint_token": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "inputSchema", "_meta"],
+        "properties": {
+          "name": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "inputSchema": { "type": "object" },
+          "annotations": { "type": "object" },
+          "_meta": {
+            "type": "object",
+            "required": ["domain", "mode"],
+            "properties": {
+              "domain": { "type": "string" },
+              "mode": { "type": "string" },
+              "confirmation": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

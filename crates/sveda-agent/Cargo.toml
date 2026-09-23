@@ -1,0 +1,21 @@
+[package]
+name = "sveda-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+description.workspace = true
+
+[dependencies]
+async-stream = { workspace = true }
+chrono = { workspace = true }
+futures-util = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+sveda-llm = { path = "../sveda-llm" }
+sveda-mcp = { path = "../sveda-mcp" }
+sveda-protocol = { path = "../sveda-protocol" }
+sveda-index = { path = "../sveda-index" }

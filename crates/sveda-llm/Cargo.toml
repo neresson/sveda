@@ -1,0 +1,24 @@
+[package]
+name = "sveda-llm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+description.workspace = true
+
+[dependencies]
+async-stream = { workspace = true }
+bytes = { workspace = true }
+eventsource-stream = { workspace = true }
+futures-util = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+sveda-protocol = { path = "../sveda-protocol" }
+
+[dev-dependencies]
+wiremock = { workspace = true }

@@ -1,0 +1,17 @@
+export default {
+    add: 'Добавить',
+    save: 'Сохранить',
+    edit: 'Изменить',
+    cancel: 'Отмена',
+    remove: 'Убрать',
+    close: 'Закрыть',
+    menu: 'Меню',
+    logout: 'Выйти',
+    saved: 'Сохранено.',
+    save_failed: 'Не удалось сохранить.',
+    language: 'Язык',
+    open_menu: 'Открыть меню',
+    close_menu: 'Закрыть меню',
+    prev: 'Назад',
+    next: 'Дальше',
+};

@@ -1,0 +1,6 @@
+[workspace]
+changelog_path = "CHANGELOG.md"
+
+[[package]]
+name = "sveda-server"
+changelog_include = ["crates/sveda-server"]

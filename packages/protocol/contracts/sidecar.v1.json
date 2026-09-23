@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "prefix": "/sveda",
+  "accept": {
+    "svedaStream": "application/vnd.sveda.stream+json",
+    "sse": "text/event-stream"
+  },
+  "headers": {
+    "inbound": [
+      "Accept",
+      "Authorization",
+      "Content-Type",
+      "X-Sveda-Admin-Key",
+      "X-Sveda-Embed-Token",
+      "X-Sveda-Host-Key",
+      "X-Sveda-Protocol"
+    ],
+    "streamResponse": {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "X-Accel-Buffering": "no",
+      "X-Sveda-Protocol-Version": "1.0"
+    },
+    "mcpOutbound": [
+      "X-Sveda-Page-Context",
+      "X-Sveda-Chat-Id"
+    ]
+  },
+  "cors": {
+    "allowedHeaders": [
+      "Accept",
+      "Authorization",
+      "Content-Type",
+      "X-Requested-With",
+      "X-Sveda-Embed-Token",
+      "X-Sveda-Host-Key",
+      "X-Sveda-Admin-Key",
+      "X-Sveda-Protocol"
+    ],
+    "allowedMethods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+  },
+  "routes": [
+    { "method": "POST", "path": "/sveda/stream", "mode": "sse" },
+    { "method": "POST", "path": "/sveda/message", "mode": "json" },
+    { "method": "GET", "path": "/sveda/chat-histories", "mode": "json" },
+    { "method": "GET", "path": "/sveda/chat-histories/{chatId}", "mode": "json" },
+    { "method": "PATCH", "path": "/sveda/chat-histories/{chatId}", "mode": "json" },
+    { "method": "DELETE", "path": "/sveda/chat-histories/{chatId}", "mode": "json" },
+    { "method": "POST", "path": "/sveda/documents/extract", "mode": "json" },
+    { "method": "GET", "path": "/sveda/embed/config", "mode": "json" },
+    { "method": "POST", "path": "/sveda/embed/token", "mode": "json" }
+  ],
+  "streamEvents": [
+    "message.start",
+    "text.delta",
+    "reasoning.delta",
+    "tool.call",
+    "tool.result",
+    "tool.progress",
+    "context.usage",
+    "chat.title",
+    "max_steps",
+    "message.end",
+    "error"
+  ],
+  "sseDoneLine": "data: [DONE]",
+  "embedToken": {
+    "request": ["visitor_id", "host_mcp_url", "host_mcp_token"],
+    "responseRequired": ["token", "visitor_id", "expires_in"],
+    "responseOptional": ["appearance"]
+  },
+  "message": {
+    "responseRequired": ["explanation", "tokens_used", "chat_id"]
+  },
+  "histories": {
+    "listKey": "histories",
+    "detailKey": "history",
+    "summaryRequired": ["id", "chatId", "title", "preview", "tokensUsed", "version", "createdAt", "updatedAt"],
+    "detailRequired": ["id", "chatId", "title", "messages", "conversationHistory", "tokensUsed", "version", "createdAt", "updatedAt"],
+    "patchRequest": ["title"],
+    "mutationResponseRequired": ["success"]
+  },
+  "documentsExtract": {
+    "requestField": "files",
+    "responseKey": "items",
+    "itemRequired": ["filename", "ok"]
+  }
+}

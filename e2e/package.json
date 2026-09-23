@@ -1,0 +1,13 @@
+{
+  "name": "@sveda-ai/e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright install chromium && playwright test",
+    "test:e2e:persistent": "SVEDA_E2E_PERSISTENT=1 playwright install chromium && SVEDA_E2E_PERSISTENT=1 playwright test",
+    "install-browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
