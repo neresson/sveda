@@ -1,6 +1,6 @@
 {
   "name": "@sveda-ai/element",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "license": "SSPL-1.0",
   "description": "Web component <sveda-chat> to embed a Sveda AI agent. https://sveda.dev/docs/hosts/vanilla",

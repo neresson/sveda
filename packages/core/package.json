@@ -1,6 +1,6 @@
 {
   "name": "@sveda-ai/core",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "license": "SSPL-1.0",
   "description": "JS client to embed a Sveda AI agent — session.send, tools, streaming. https://sveda.dev/docs/client",
