@@ -10,6 +10,7 @@ mod history;
 mod kv;
 mod limits;
 mod postgres;
+mod reports;
 mod usage;
 
 pub use error::StoreError;
@@ -21,6 +22,7 @@ pub use limits::{
     RL_PREFIX,
 };
 pub use postgres::{DocumentStore, Postgres};
+pub use reports::{ContentReport, ContentReportStore, NewContentReport};
 pub use usage::{
     DashboardStats, DayBucket, UsageByModel, UsageEvent, UsageList, UsageRow, UsageStore,
     DASHBOARD_PERIOD_DAYS, USAGE_PAGE_SIZE,

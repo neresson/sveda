@@ -2063,7 +2063,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sveda-agent"
-version = "0.2.8"
+version = "0.2.10"
 dependencies = [
  "async-stream",
  "chrono",
@@ -2079,14 +2079,14 @@ dependencies = [
 
 [[package]]
 name = "sveda-index"
-version = "0.2.8"
+version = "0.2.10"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "sveda-llm"
-version = "0.2.8"
+version = "0.2.10"
 dependencies = [
  "async-stream",
  "bytes",
@@ -2103,7 +2103,7 @@ dependencies = [
 
 [[package]]
 name = "sveda-mcp"
-version = "0.2.8"
+version = "0.2.10"
 dependencies = [
  "reqwest",
  "serde",
@@ -2116,7 +2116,7 @@ dependencies = [
 
 [[package]]
 name = "sveda-protocol"
-version = "0.2.8"
+version = "0.2.10"
 dependencies = [
  "chrono",
  "serde",
@@ -2125,7 +2125,7 @@ dependencies = [
 
 [[package]]
 name = "sveda-server"
-version = "0.2.8"
+version = "0.2.10"
 dependencies = [
  "async-stream",
  "axum",
@@ -2154,7 +2154,7 @@ dependencies = [
 
 [[package]]
 name = "sveda-store"
-version = "0.2.8"
+version = "0.2.10"
 dependencies = [
  "chrono",
  "redis",

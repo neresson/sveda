@@ -20,6 +20,7 @@ const items = [
     { id: 'prompts' },
     { id: 'appearance' },
     { id: 'sources' },
+    { id: 'reports' },
 ];
 
 const currentItem = computed(

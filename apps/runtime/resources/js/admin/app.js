@@ -14,6 +14,7 @@ import SecurityApp from './SecurityApp.vue';
 import PoliciesApp from './PoliciesApp.vue';
 import SetupApp from './SetupApp.vue';
 import SourcesApp from './SourcesApp.vue';
+import ReportsApp from './ReportsApp.vue';
 
 const pages = {
     login: LoginApp,
@@ -28,9 +29,10 @@ const pages = {
     prompts: PromptsApp,
     appearance: AppearanceApp,
     sources: SourcesApp,
+    reports: ReportsApp,
 };
 
-const AUTHENTICATED_PAGES = ['dashboard', 'usage', 'runtime', 'security', 'policies', 'models', 'mcp', 'prompts', 'appearance', 'sources'];
+const AUTHENTICATED_PAGES = ['dashboard', 'usage', 'runtime', 'security', 'policies', 'models', 'mcp', 'prompts', 'appearance', 'sources', 'reports'];
 
 const el = document.getElementById('sveda-admin');
 

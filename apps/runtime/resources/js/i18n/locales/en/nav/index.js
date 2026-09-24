@@ -9,6 +9,7 @@ export default {
     prompts: 'Prompts',
     appearance: 'Appearance',
     sources: 'Sources',
+    reports: 'Reports',
     dashboard_index: '01',
     usage_index: '02',
     runtime_index: '03',
@@ -19,4 +20,5 @@ export default {
     prompts_index: '07',
     appearance_index: '08',
     sources_index: '09',
+    reports_index: '10',
 };

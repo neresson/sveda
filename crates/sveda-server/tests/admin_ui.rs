@@ -253,7 +253,7 @@ async fn models_page_renders_after_login() {
 async fn mcp_and_appearance_pages_render_after_login() {
     let state = admin_state();
     let cookie = login_cookie(state.clone()).await;
-    for page in ["mcp", "appearance", "usage", "sources", "security"] {
+    for page in ["mcp", "appearance", "usage", "sources", "security", "reports"] {
         let mut headers = HeaderMap::new();
         headers.insert(header::COOKIE, cookie.parse().unwrap());
         let (status, _, body) = send(
@@ -463,4 +463,47 @@ async fn admin_session_is_not_found_when_embed_disabled() {
     headers.insert(header::COOKIE, cookie.parse().unwrap());
     let (status, _, _) = send(state, "POST", "/admin/session", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn content_report_is_stored_for_admin() {
+    let state = admin_state();
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_TYPE, "application/json".parse().unwrap());
+    let (status, _, body) = send(
+        state.clone(),
+        "POST",
+        "/sveda/embed/token",
+        headers,
+        Body::from(r#"{"visitor_id":"visitor-report"}"#),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let minted: Value = serde_json::from_slice(&body).unwrap();
+    let token = minted["token"].as_str().unwrap();
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_TYPE, "application/json".parse().unwrap());
+    headers.insert("x-sveda-embed-token", token.parse().unwrap());
+    let (status, _, _) = send(
+        state.clone(),
+        "POST",
+        "/sveda/content-reports",
+        headers,
+        Body::from(r#"{"reason":"hate","excerpt":"bad reply"}"#),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+
+    let cookie = login_cookie(state.clone()).await;
+    let mut headers = HeaderMap::new();
+    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert(header::ACCEPT, "application/json".parse().unwrap());
+    let (status, _, body) = send(state, "GET", "/admin/reports", headers, Body::empty()).await;
+    assert_eq!(status, StatusCode::OK);
+    let payload: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(payload["page"], "reports");
+    assert_eq!(payload["reports"][0]["reason"], "hate");
+    assert_eq!(payload["reports"][0]["excerpt"], "bad reply");
+    assert_eq!(payload["reports"][0]["visitor_id"], "visitor-report");
 }

@@ -106,7 +106,7 @@ pub fn tools() -> Vec<McpTool> {
         ),
         tool(
             "admin_open_page",
-            "Open an admin console page for the operator. Pages: dashboard, usage, runtime, security, models, mcp, prompts, appearance, sources.",
+            "Open an admin console page for the operator. Pages: dashboard, usage, runtime, security, policies, models, mcp, prompts, appearance, sources, reports.",
             json!({
                 "type": "object",
                 "properties": {

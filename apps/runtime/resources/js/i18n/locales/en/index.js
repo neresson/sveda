@@ -13,6 +13,7 @@ import policies from './policies';
 import setup from './setup';
 import shell from './shell';
 import sources from './sources';
+import reports from './reports';
 
 export default {
     common,
@@ -28,6 +29,7 @@ export default {
     prompts,
     appearance,
     sources,
+    reports,
     nav,
     shell,
 };

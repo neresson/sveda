@@ -32,6 +32,7 @@ pub(crate) const ADMIN_PAGES: &[&str] = &[
     "prompts",
     "appearance",
     "sources",
+    "reports",
 ];
 
 #[derive(Debug, Deserialize)]
@@ -334,6 +335,22 @@ async fn settings_payload(state: &AppState, page: &str, page_number: u32) -> Val
         Ok(list) => usage_json(state, &list),
         Err(_) => empty_usage(),
     };
+    let reports = match state.reports.list().await {
+        Ok(rows) => Value::Array(
+            rows.into_iter()
+                .map(|row| {
+                    json!({
+                        "id": row.id,
+                        "visitor_id": row.visitor_id,
+                        "reason": row.reason,
+                        "excerpt": row.excerpt,
+                        "created_at": row.created_at.to_rfc3339(),
+                    })
+                })
+                .collect(),
+        ),
+        Err(_) => Value::Array(Vec::new()),
+    };
     let settings = state.settings.document();
     let public = settings.public();
     json!({
@@ -352,6 +369,7 @@ async fn settings_payload(state: &AppState, page: &str, page_number: u32) -> Val
             "prompts": admin_path("prompts"),
             "appearance": admin_path("appearance"),
             "sources": admin_path("sources"),
+            "reports": admin_path("reports"),
         },
         "codeIndex": {
             "sources": admin_path("code-index/sources"),
@@ -372,6 +390,7 @@ async fn settings_payload(state: &AppState, page: &str, page_number: u32) -> Val
         "settings": settings.masked(),
         "stats": stats,
         "usage": usage,
+        "reports": reports,
     })
 }
 

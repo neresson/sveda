@@ -18,8 +18,9 @@ use sveda_protocol::{
     HEADER_PROTOCOL_VERSION, PROTOCOL_VERSION, TOKEN_PREFIX,
 };
 use sveda_store::{
-    mcp_key, parse_laravel_throttle, parse_optional_laravel_throttle, DocumentStore, HistoryStore,
-    KvStore, Occupancy, OccupancyError, Postgres, RateLimiter, RedisClient, UsageStore,
+    mcp_key, parse_laravel_throttle, parse_optional_laravel_throttle, ContentReportStore,
+    DocumentStore, HistoryStore, KvStore, NewContentReport, Occupancy, OccupancyError, Postgres,
+    RateLimiter, RedisClient, UsageStore,
 };
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::services::ServeDir;
@@ -323,6 +324,7 @@ pub struct AppState {
     mcp: KvStore,
     pub(crate) store: HistoryStore,
     pub(crate) usage: UsageStore,
+    pub(crate) reports: ContentReportStore,
     pub(crate) settings: SettingsStore,
     pub(crate) cors_origins: Arc<Mutex<Vec<String>>>,
     pub occupancy: Occupancy,
@@ -459,6 +461,10 @@ impl AppState {
             Some(postgres) => HistoryStore::postgres(postgres),
             None => HistoryStore::memory(),
         };
+        let reports = match postgres.clone() {
+            Some(postgres) => ContentReportStore::postgres(postgres),
+            None => ContentReportStore::memory(),
+        };
         let usage = match postgres {
             Some(postgres) => UsageStore::postgres(postgres),
             None => UsageStore::memory(),
@@ -470,6 +476,7 @@ impl AppState {
             mcp: kv,
             store,
             usage,
+            reports,
             settings,
             cors_origins,
             occupancy,
@@ -607,6 +614,7 @@ pub fn app(state: AppState) -> Router {
         .route("/sveda/embed", get(ui::embed_page))
         .route("/sveda/embed/token", post(issue_embed_token))
         .route("/sveda/embed/config", get(admin::embed_config))
+        .route("/sveda/content-reports", post(create_content_report))
         .route("/sveda/stream", post(stream_chat))
         .route("/sveda/message", post(json_message))
         .route("/sveda/chat-histories", get(histories::list_histories))
@@ -978,6 +986,46 @@ fn throttle_rejected(retry_after: u64) -> Response {
         response.headers_mut().insert(header::RETRY_AFTER, value);
     }
     response
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct ContentReportBody {
+    #[serde(default)]
+    reason: String,
+    #[serde(default)]
+    excerpt: String,
+}
+
+async fn create_content_report(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<ContentReportBody>,
+) -> Response {
+    let visitor_id = match visitor_from(&state, &headers) {
+        Ok(visitor_id) => visitor_id,
+        Err(status) => return status.into_response(),
+    };
+    let reason = body.reason.trim();
+    if reason.is_empty() || reason.chars().count() > 80 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "message": "A report reason is required." })),
+        )
+            .into_response();
+    }
+    let excerpt: String = body.excerpt.trim().chars().take(4000).collect();
+    if let Err(_error) = state
+        .reports
+        .insert(NewContentReport {
+            visitor_id,
+            reason: reason.to_string(),
+            excerpt,
+        })
+        .await
+    {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+    (StatusCode::CREATED, Json(serde_json::json!({ "ok": true }))).into_response()
 }
 
 pub(crate) fn visitor_from(state: &AppState, headers: &HeaderMap) -> Result<String, StatusCode> {

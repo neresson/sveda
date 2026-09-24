@@ -28,6 +28,7 @@ const pageProps = computed(() => {
         settings: payload.settings,
         stats: payload.stats,
         usage: payload.usage,
+        reports: payload.reports,
         codeIndex: payload.codeIndex,
     };
 
