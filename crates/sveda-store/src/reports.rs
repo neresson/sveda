@@ -152,11 +152,16 @@ mod tests {
             reason: "violence".into(),
             excerpt: "second".into(),
         });
-        store.inner.lock().expect("reports").iter_mut().for_each(|row| {
-            if row.id == older.id {
-                row.created_at = Utc::now() - chrono::Duration::seconds(30);
-            }
-        });
+        store
+            .inner
+            .lock()
+            .expect("reports")
+            .iter_mut()
+            .for_each(|row| {
+                if row.id == older.id {
+                    row.created_at = Utc::now() - chrono::Duration::seconds(30);
+                }
+            });
         let listed = store.list();
         assert_eq!(listed[0].id, newer.id);
         assert_eq!(listed[1].reason, "hate");

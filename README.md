@@ -12,10 +12,10 @@ Open-source embeddable AI agent: a JS client, host SDKs, and a self-hosted Rust 
 | `@sveda-ai/protocol` | Sveda Wire Protocol v1 — event schemas, constants, Vercel AI SDK adapter |
 | `@sveda-ai/core` | Framework-agnostic client — streaming, tools, context registries |
 | `@sveda-ai/chat` | Headless chat store, streaming, appearance, and shared helpers |
-| `@sveda-ai/vue` | Vue 3 SDK — `<SvedaChat>`, composables, default UI theme |
-| `@sveda-ai/react` | React SDK — `<SvedaChat>`, hooks, default UI theme |
-| `@sveda-ai/svelte` | Svelte 5 SDK — `<SvedaChat>`, stores, default UI theme |
-| `@sveda-ai/solid` | Solid SDK — `<SvedaChat>`, signals, default UI theme |
+| [`@sveda-ai/vue`](https://sveda.dev/docs/chat-ui/vue) | Vue 3 SDK — `<SvedaChat>`, composables, default UI theme |
+| [`@sveda-ai/react`](https://sveda.dev/docs/chat-ui/react) | React SDK — `<SvedaChat>`, hooks, default UI theme |
+| [`@sveda-ai/svelte`](https://sveda.dev/docs/chat-ui/svelte) | Svelte 5 SDK — `<SvedaChat>`, stores, default UI theme |
+| [`@sveda-ai/solid`](https://sveda.dev/docs/chat-ui/solid) | Solid SDK — `<SvedaChat>`, signals, default UI theme |
 | `@sveda-ai/element` | Web component `<sveda-chat>` for script-tag embedding |
 | [`sveda-ai/php-sdk`](https://github.com/neresson/sveda-php-sdk) | PHP SDK — sidecar HTTP API (embed tokens, streaming, histories) |
 | [`sveda-ai/laravel-sdk`](https://github.com/neresson/sveda-laravel-sdk) | Laravel host SDK — HTTP client + automatic MCP server |

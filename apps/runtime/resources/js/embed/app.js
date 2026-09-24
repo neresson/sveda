@@ -5,6 +5,12 @@ import { buildAdminSvedaModels, createAdminSveda } from '../admin/createAdminSve
 import { installI18n } from '../i18n';
 import EmbedChat from './EmbedChat.vue';
 
+try {
+    sessionStorage.setItem('sveda.chat-minimized', 'false');
+} catch {
+    // The public embed has no launcher, so the panel must start open.
+}
+
 const payload = window.SvedaEmbed ?? null;
 const origin = payload?.origin || (typeof window === 'undefined' ? '' : window.location.origin);
 

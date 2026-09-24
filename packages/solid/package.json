@@ -1,9 +1,9 @@
 {
   "name": "@sveda-ai/solid",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "license": "SSPL-1.0",
-  "description": "SolidJS chat UI to embed a Sveda AI agent. https://sveda.dev/docs/chat-ui",
+  "description": "SolidJS chat UI to embed a Sveda AI agent. https://sveda.dev/docs/chat-ui/solid",
   "keywords": [
     "sveda",
     "ai",
@@ -18,7 +18,7 @@
     "url": "git+https://github.com/neresson/sveda.git",
     "directory": "packages/solid"
   },
-  "homepage": "https://sveda.dev/docs/chat-ui",
+  "homepage": "https://sveda.dev/docs/chat-ui/solid",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {

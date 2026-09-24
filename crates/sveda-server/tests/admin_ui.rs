@@ -253,7 +253,14 @@ async fn models_page_renders_after_login() {
 async fn mcp_and_appearance_pages_render_after_login() {
     let state = admin_state();
     let cookie = login_cookie(state.clone()).await;
-    for page in ["mcp", "appearance", "usage", "sources", "security", "reports"] {
+    for page in [
+        "mcp",
+        "appearance",
+        "usage",
+        "sources",
+        "security",
+        "reports",
+    ] {
         let mut headers = HeaderMap::new();
         headers.insert(header::COOKIE, cookie.parse().unwrap());
         let (status, _, body) = send(

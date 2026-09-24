@@ -2,7 +2,8 @@
 
 Svelte 5 SDK for Sveda — `<SvedaChat>`, hooks, and the default UI theme.
 
-Docs: [sveda.dev/docs/chat-ui](https://sveda.dev/docs/chat-ui)
+- Site: [sveda.dev](https://sveda.dev)
+- Docs: [sveda.dev/docs/chat-ui/svelte](https://sveda.dev/docs/chat-ui/svelte)
 
 ```bash
 npm install @sveda-ai/svelte

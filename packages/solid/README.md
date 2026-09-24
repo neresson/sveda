@@ -2,7 +2,8 @@
 
 SolidJS SDK for Sveda — `<SvedaChat>`, hooks, and the default UI theme.
 
-Docs: [sveda.dev/docs/chat-ui](https://sveda.dev/docs/chat-ui)
+- Site: [sveda.dev](https://sveda.dev)
+- Docs: [sveda.dev/docs/chat-ui/solid](https://sveda.dev/docs/chat-ui/solid)
 
 ```bash
 npm install @sveda-ai/solid

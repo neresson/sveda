@@ -1,5 +1,11 @@
 # @sveda-ai/vue
 
+## 0.3.3
+
+### Patch Changes
+
+- Point the package homepage and README at the Vue chat UI docs.
+
 ## 0.3.2
 
 ### Patch Changes

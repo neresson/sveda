@@ -1,9 +1,9 @@
 {
   "name": "@sveda-ai/vue",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "license": "SSPL-1.0",
-  "description": "Vue 3 chat UI to embed a Sveda AI agent. https://sveda.dev/docs/client",
+  "description": "Vue 3 chat UI to embed a Sveda AI agent. https://sveda.dev/docs/chat-ui/vue",
   "keywords": [
     "sveda",
     "ai",
@@ -17,7 +17,7 @@
     "url": "git+https://github.com/neresson/sveda.git",
     "directory": "packages/vue"
   },
-  "homepage": "https://sveda.dev/docs/chat-ui",
+  "homepage": "https://sveda.dev/docs/chat-ui/vue",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
