@@ -608,6 +608,7 @@ fn embed_shell(payload: &Value) -> String {
 <body>
     <div id="sveda-embed"></div>
     <script>window.SvedaEmbed = {json};</script>
+    <script>try{{sessionStorage.setItem("sveda.chat-minimized","false")}}catch(e){{}}</script>
     <script type="module" src="/build/sveda/embed.js"></script>
 </body>
 </html>"#
