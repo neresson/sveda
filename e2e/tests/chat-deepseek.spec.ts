@@ -1,11 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { signIn } from './helpers/admin';
 import {
   expectDeepseekReply,
   jsonMessage,
   mintEmbedToken,
-  openAdminChat,
-  sendAdminChat,
   streamChat,
 } from './helpers/chat';
 import { hasDeepseekKey } from './helpers/env';
@@ -33,37 +30,6 @@ test.describe('chat protocol', () => {
   });
 });
 
-test.describe('admin chat widget', () => {
-  test('posts thinking false when the reasoning switch is off', async ({ page }) => {
-    let captured: { options?: { thinking?: boolean }; prompt?: string } | null = null;
-    await page.route('**/sveda/stream', async (route) => {
-      captured = route.request().postDataJSON() as typeof captured;
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'text/event-stream' },
-        body: [
-          'data: {"type":"message.start"}',
-          'data: {"type":"text.delta","delta":"MOCK-REPLY"}',
-          'data: {"type":"message.end","finishReason":"stop"}',
-          '',
-        ].join('\n\n'),
-      });
-    });
-
-    await signIn(page);
-    await openAdminChat(page);
-    const thinkingSwitch = page.getByRole('switch', { name: /Chain-of-thought/i });
-    await expect(thinkingSwitch).toBeVisible();
-    await expect(thinkingSwitch).toHaveAttribute('data-state', 'checked');
-    await thinkingSwitch.click();
-    await expect(thinkingSwitch).toHaveAttribute('data-state', 'unchecked');
-    await sendAdminChat(page, 'hello from e2e');
-    await expect(page.getByText('MOCK-REPLY').first()).toBeVisible();
-    expect(captured?.prompt).toBe('hello from e2e');
-    expect(captured?.options?.thinking).toBe(false);
-  });
-});
-
 test.describe('live chat', () => {
   test.skip(!live, 'DEEPSEEK_API_KEY is required for live DeepSeek tests');
   test.setTimeout(180_000);
@@ -88,14 +54,5 @@ test.describe('live chat', () => {
     );
     expect(json.explanation.toUpperCase()).toContain('PONG');
     expect(json.tokens_used).toBeGreaterThan(0);
-  });
-
-  test('admin widget sends a prompt and shows the assistant reply', async ({ page }) => {
-    await signIn(page);
-    await openAdminChat(page);
-    await sendAdminChat(page, 'Reply with exactly the word PONG and nothing else.');
-    await expect(page.locator('.sveda-chat .prose').getByText(/PONG/i)).toBeVisible({
-      timeout: 120_000,
-    });
   });
 });

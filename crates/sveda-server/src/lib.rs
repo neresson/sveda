@@ -395,9 +395,8 @@ impl AppState {
         }
         let seed = state.settings.document();
         let loaded = if let Some(path) = settings::config_path() {
-            let patch = settings::read_config_patch(&path).unwrap_or_else(|error| {
-                panic!("sveda config {}: {error}", path.display())
-            });
+            let patch = settings::read_config_patch(&path)
+                .unwrap_or_else(|error| panic!("sveda config {}: {error}", path.display()));
             let merged = seed.merge(patch);
             state
                 .settings

@@ -79,11 +79,7 @@ pub async fn show_usage(State(state): State<AppState>, headers: HeaderMap) -> Re
         Ok(stats) => crate::ui::stats_json(&stats),
         Err(_) => serde_json::json!({ "requests": 0, "tokens_used": 0 }),
     };
-    let usage = match state
-        .usage
-        .page(1, sveda_store::USAGE_PAGE_SIZE)
-        .await
-    {
+    let usage = match state.usage.page(1, sveda_store::USAGE_PAGE_SIZE).await {
         Ok(list) => crate::ui::usage_json(&state, &list),
         Err(_) => serde_json::json!({}),
     };

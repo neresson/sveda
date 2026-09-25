@@ -870,10 +870,14 @@ cors:
     - https://app.example
 "#;
         let patch: SettingsPatch = serde_yaml::from_str(raw).unwrap();
-        let base = SettingsDocument::from_runtime(&crate::Config::test(), &sveda_llm::Catalog::from_env());
+        let base =
+            SettingsDocument::from_runtime(&crate::Config::test(), &sveda_llm::Catalog::from_env());
         let merged = base.merge(patch);
         assert_eq!(merged.system_prompt, "hello from yaml");
-        assert_eq!(merged.cors.allowed_origins, vec!["https://app.example".to_string()]);
+        assert_eq!(
+            merged.cors.allowed_origins,
+            vec!["https://app.example".to_string()]
+        );
     }
 
     #[test]

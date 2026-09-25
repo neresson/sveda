@@ -148,7 +148,6 @@ pub async fn embed_page(
     Html(embed_shell(&payload)).into_response()
 }
 
-
 pub async fn admin_session(State(state): State<AppState>, headers: HeaderMap) -> Response {
     if let Err(status) = crate::admin::require_admin(&state, &headers) {
         return status.into_response();
@@ -189,7 +188,6 @@ fn request_origin(headers: &HeaderMap) -> String {
             format!("{proto}://{host}")
         })
 }
-
 
 pub(crate) fn stats_json(stats: &sveda_store::DashboardStats) -> Value {
     json!({
@@ -266,14 +264,12 @@ fn model_label(state: &AppState, model_id: &str) -> String {
         .unwrap_or_else(|| model_id.to_string())
 }
 
-
 fn wants_json(headers: &HeaderMap) -> bool {
     headers
         .get(header::ACCEPT)
         .and_then(|value| value.to_str().ok())
         .is_some_and(|value| value.contains("application/json"))
 }
-
 
 fn static_page(
     document_title: &str,
@@ -321,7 +317,6 @@ fn static_page(
     )
 }
 
-
 fn embed_shell(payload: &Value) -> String {
     let json = serde_json::to_string(payload)
         .unwrap_or_else(|_| "{}".into())
@@ -349,7 +344,6 @@ fn embed_shell(payload: &Value) -> String {
 fn vite_style_tags() -> String {
     manifest_assets(false)
 }
-
 
 fn manifest_assets(include_script: bool) -> String {
     let dist = admin_dist();
@@ -402,4 +396,3 @@ pub fn admin_dist() -> PathBuf {
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../apps/runtime/public/build")
         })
 }
-

@@ -54,7 +54,7 @@ test.describe('live web search from chat', () => {
     const search = expectLiveWebSearch(events);
     const text = sseText(events);
 
-    await expect(page.getByText(/Search the web|Поиск в интернете/)).toBeVisible({
+    await expect(page.getByText(/Search the web|Поиск в интернете/).first()).toBeVisible({
       timeout: 180_000,
     });
     await expect(page.locator('.sveda-chat .prose').first()).toBeVisible({ timeout: 180_000 });

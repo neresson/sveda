@@ -1,6 +1,7 @@
 import { expect, type APIRequestContext, type Page } from '@playwright/test';
-import { ADMIN_KEY } from './admin';
 import { parseSse, sseReasoning, sseText, type SseEvent } from './sse';
+
+const ADMIN_KEY = process.env.SVEDA_ADMIN_API_KEY ?? 'sveda-e2e-admin-key';
 
 export async function mintEmbedToken(request: APIRequestContext, visitorId: string) {
   const mint = await request.post('/sveda/embed/token', {
@@ -71,13 +72,6 @@ export async function expectDeepseekReply(events: SseEvent[]) {
   const text = sseText(events).trim();
   expect(text.length).toBeGreaterThan(0);
   return { text, reasoning: sseReasoning(events), types };
-}
-
-export async function openAdminChat(page: Page) {
-  const launcher = page.locator('.sveda-chat.fixed button').first();
-  await expect(launcher).toBeVisible();
-  await launcher.click();
-  await expect(page.locator('.sveda-chat-input-textarea')).toBeVisible();
 }
 
 export async function sendAdminChat(page: Page, prompt: string) {
