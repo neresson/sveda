@@ -5,7 +5,10 @@ Pull the published image — no clone or `cargo build` required.
 ```bash
 curl -fsSL https://raw.githubusercontent.com/neresson/sveda/main/deploy/compose.yaml -o compose.yaml
 curl -fsSL https://raw.githubusercontent.com/neresson/sveda/main/deploy/compose.env -o .env
-# Edit .env: DEEPSEEK_API_KEY, SVEDA_EMBED_HOST_API_KEY, SVEDA_CORS_ORIGINS
+# Edit .env: DEEPSEEK_API_KEY, SVEDA_EMBED_HOST_API_KEY, SVEDA_CORS_ORIGINS, SVEDA_ADMIN_API_KEY
+# Optional settings file: curl the sveda.yaml next to this compose file and set SVEDA_CONFIG.
+# That file is prompts, models, embeddings, mcp.mcpServers, policies, appearance, cors, web, security.
+# Workspace folders for the code index stay on POST /admin/code-index/store (header x-sveda-admin-key).
 docker compose up -d
 curl -s http://127.0.0.1:8787/sveda/ready
 ```

@@ -25,7 +25,7 @@ Open-source embeddable AI agent: a JS client, host SDKs, and a self-hosted Rust 
 | [`sveda-go-sdk`](https://github.com/neresson/sveda-go-sdk) | Go SDK — sidecar HTTP API |
 | [`sveda-java-sdk`](https://github.com/neresson/sveda-java-sdk) | Java SDK — sidecar HTTP API |
 | [`sveda-dotnet-sdk`](https://github.com/neresson/sveda-dotnet-sdk) | .NET SDK — sidecar HTTP API |
-| `sveda-server` | Rust sidecar — agent, providers, embed/admin HTTP, storage |
+| `sveda-server` | Rust sidecar — agent, providers, embed HTTP, storage. Settings come from `sveda.yaml` and env; `/admin/settings` is the machine API |
 
 ## Development
 
@@ -45,9 +45,10 @@ No clone required — pull the published image:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/neresson/sveda/main/deploy/compose.yaml -o compose.yaml
 curl -fsSL https://raw.githubusercontent.com/neresson/sveda/main/deploy/compose.env -o .env
-# Edit .env: DEEPSEEK_API_KEY, SVEDA_EMBED_HOST_API_KEY, SVEDA_CORS_ORIGINS
-# After boot, CORS and rate limits can also be changed in /admin/security.
-# Public embed internet search is on by default (Admin → Runtime).
+# Edit .env: DEEPSEEK_API_KEY, SVEDA_EMBED_HOST_API_KEY, SVEDA_CORS_ORIGINS, SVEDA_ADMIN_API_KEY
+# Optional: mount deploy/sveda.yaml and set SVEDA_CONFIG=/etc/sveda/sveda.yaml
+# That file holds prompts, models, embeddings, mcp.mcpServers, policies, appearance, cors, web, and security.
+# Reload that file with kill -HUP after edits. There is no admin UI in the sidecar.
 docker compose up -d
 curl -s http://127.0.0.1:8787/sveda/ready
 ```
@@ -68,6 +69,6 @@ Kubernetes: `charts/sveda-server` — use `--set image.tag=latest` until a match
 
 ## License
 
-Server Side Public License, v1 (SSPL-1.0). See [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE).
 
-Host SDKs live in sibling repositories and are licensed under AGPL-3.0.
+Host SDKs live in sibling repositories and use the same license. Sveda Cloud is a separate proprietary control plane.

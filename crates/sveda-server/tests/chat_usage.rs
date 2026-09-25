@@ -46,33 +46,6 @@ fn json_headers() -> HeaderMap {
     headers
 }
 
-fn cookie_from(headers: &HeaderMap) -> String {
-    headers
-        .get(header::SET_COOKIE)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.split(';').next())
-        .unwrap_or_default()
-        .to_string()
-}
-
-async fn login_cookie(state: AppState) -> String {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::CONTENT_TYPE,
-        "application/x-www-form-urlencoded".parse().unwrap(),
-    );
-    let (status, response_headers, _) = send(
-        state,
-        "POST",
-        "/admin/login",
-        headers,
-        Body::from("key=sveda-admin-secret"),
-    )
-    .await;
-    assert_eq!(status, StatusCode::SEE_OTHER);
-    cookie_from(&response_headers)
-}
-
 async fn mint_token(state: AppState, visitor: &str) -> String {
     let (status, _, body) = send(
         state,
@@ -158,14 +131,13 @@ async fn stream_defaults_to_thinking_and_records_usage() {
         .collect();
     assert_eq!(text, "Hello from Sveda");
 
-    let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
-    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert("x-sveda-admin-key", "sveda-admin-secret".parse().unwrap());
     headers.insert(header::ACCEPT, "application/json".parse().unwrap());
     let (status, _, body) = send(
         state.clone(),
         "GET",
-        "/admin",
+        "/admin/usage",
         headers.clone(),
         Body::empty(),
     )
@@ -245,11 +217,10 @@ async fn json_message_returns_assistant_text_and_counts_on_dashboard() {
     assert_eq!(payload["explanation"], "Hello from Sveda");
     assert_eq!(payload["chat_id"], "chat-json");
 
-    let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
-    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert("x-sveda-admin-key", "sveda-admin-secret".parse().unwrap());
     headers.insert(header::ACCEPT, "application/json".parse().unwrap());
-    let (status, _, body) = send(state, "GET", "/admin", headers, Body::empty()).await;
+    let (status, _, body) = send(state, "GET", "/admin/usage", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let dashboard: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(dashboard["stats"]["requests"], 1);
@@ -259,9 +230,8 @@ async fn json_message_returns_assistant_text_and_counts_on_dashboard() {
 #[tokio::test]
 async fn admin_mcp_catalog_roundtrip() {
     let state = AppState::new(admin_config());
-    let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
-    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert("x-sveda-admin-key", "sveda-admin-secret".parse().unwrap());
     headers.insert(header::CONTENT_TYPE, "application/json".parse().unwrap());
     let catalog = json!({
         "mcpServers": {
@@ -287,12 +257,11 @@ async fn admin_mcp_catalog_roundtrip() {
 
     headers.remove(header::CONTENT_TYPE);
     headers.insert(header::ACCEPT, "application/json".parse().unwrap());
-    let (status, _, body) = send(state, "GET", "/admin/mcp", headers, Body::empty()).await;
+    let (status, _, body) = send(state, "GET", "/admin/settings", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let page: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(page["page"], "mcp");
     assert_eq!(
-        page["settings"]["mcp"]["mcpServers"]["deepwiki"]["url"],
+        page["mcp"]["mcpServers"]["deepwiki"]["url"],
         "https://mcp.deepwiki.com/mcp"
     );
 }

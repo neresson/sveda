@@ -245,33 +245,10 @@ async fn live_server_stream_answers_with_thinking() {
     }
     skip_or_assert_contains(&text, &errors, "13", false);
 
-    let cookie = {
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            header::CONTENT_TYPE,
-            "application/x-www-form-urlencoded".parse().unwrap(),
-        );
-        let mut builder = Request::builder().method("POST").uri("/admin/login");
-        for (name, value) in headers.iter() {
-            builder = builder.header(name, value);
-        }
-        let request = builder
-            .body(Body::from("key=sveda-admin-secret"))
-            .expect("request");
-        let response = app(state.clone()).oneshot(request).await.expect("response");
-        response
-            .headers()
-            .get(header::SET_COOKIE)
-            .and_then(|value| value.to_str().ok())
-            .and_then(|value| value.split(';').next())
-            .unwrap_or_default()
-            .to_string()
-    };
-
     let mut headers = HeaderMap::new();
-    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert("x-sveda-admin-key", "sveda-admin-secret".parse().unwrap());
     headers.insert(header::ACCEPT, "application/json".parse().unwrap());
-    let (status, body) = send(state, "GET", "/admin", headers, Body::empty()).await;
+    let (status, body) = send(state, "GET", "/admin/usage", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
     let dashboard: Value = serde_json::from_slice(&body).unwrap();
     assert!(

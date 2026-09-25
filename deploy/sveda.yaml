@@ -1,0 +1,94 @@
+# Self-hosted runtime settings. Secrets stay in the environment
+# (DEEPSEEK_API_KEY, OPENAI_API_KEY, SVEDA_EMBED_HOST_API_KEY, SVEDA_ADMIN_API_KEY).
+# Point SVEDA_CONFIG at this file, or place it next to the process as sveda.yaml.
+# Reload with: kill -HUP <pid>
+#
+# Keys you omit stay at their env defaults. Keys you set replace those defaults.
+
+system_prompt: |
+  You are a helpful assistant embedded in the host application.
+welcome_message: ""
+max_steps: 8
+
+# default_model: gpt-4.1-mini
+# failover:
+#   - claude-sonnet
+
+# models:
+#   - id: gpt-4.1-mini
+#     label: ChatGPT
+#     protocol: responses
+#     api_model: gpt-4.1-mini
+#     url: https://api.openai.com/v1
+#     key: ""
+#   - id: claude-sonnet
+#     label: Claude
+#     protocol: anthropic
+#     api_model: claude-sonnet-4-5
+#     url: https://api.anthropic.com
+#     key: ""
+
+# Shared MCP servers for every visitor. Host MCP (the app's own tools)
+# is still passed per token as host_mcp_url + host_mcp_token.
+# mcp:
+#   mcpServers:
+#     docs:
+#       url: https://mcp.example.com/mcp
+#       headers:
+#         Authorization: Bearer token
+
+# Named policies. The host picks one by name when minting an embed token.
+# policies:
+#   reader:
+#     web: false
+#     code: false
+#     mcp:
+#       allow: ["tickets.*"]
+#       domains: ["tickets"]
+#       max_mode: read
+#     client:
+#       allow: []
+#   agent:
+#     web: true
+#     code: false
+#     mcp:
+#       allow: ["*"]
+#       max_mode: delete
+#     client:
+#       allow: ["*"]
+
+# Widget look when the host page does not pass appearance.
+# appearance:
+#   preset: ocean
+#   radius: 8px
+
+# Embeddings for the local code index. OpenAI-compatible only.
+# default_embedding: text-embedding-3-small
+# embeddings:
+#   - id: text-embedding-3-small
+#     protocol: openai
+#     api_model: text-embedding-3-small
+#     url: https://api.openai.com/v1/embeddings
+#     key: ""
+#     dimensions: 1536
+
+cors:
+  allowed_origins:
+    - http://localhost:5173
+web:
+  enabled: true
+  # searxng_url: http://searxng:8080
+compaction:
+  enabled: true
+  min_messages: 12
+  keep_tail_messages: 6
+security:
+  embed_token_throttle_max: 30
+  embed_token_throttle_window_secs: 60
+  stream_throttle_max: 20
+  stream_throttle_window_secs: 60
+  occupancy_global: 32
+  occupancy_per_visitor: 2
+  # client_ip_header: CF-Connecting-IP
+  # ip_throttle_max: 60
+  # ip_throttle_window_secs: 60

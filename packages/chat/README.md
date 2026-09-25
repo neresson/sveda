@@ -13,6 +13,6 @@ Install [`@sveda-ai/vue`](https://sveda.dev/docs/chat-ui/vue), [`@sveda-ai/react
 
 ## License
 
-Server Side Public License, v1 (SSPL-1.0). See [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE).
 
-Host SDKs live in sibling repositories and are licensed under AGPL-3.0.
+Host SDKs live in sibling repositories and use the same license. Sveda Cloud is a separate proprietary control plane.

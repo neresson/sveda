@@ -752,6 +752,26 @@ struct CachedSettings {
     rev: i64,
 }
 
+pub fn config_path() -> Option<std::path::PathBuf> {
+    if let Ok(value) = std::env::var("SVEDA_CONFIG") {
+        let path = std::path::PathBuf::from(value.trim());
+        if !path.as_os_str().is_empty() {
+            return Some(path);
+        }
+    }
+    let local = std::path::PathBuf::from("sveda.yaml");
+    if local.is_file() {
+        Some(local)
+    } else {
+        None
+    }
+}
+
+pub fn read_config_patch(path: &std::path::Path) -> Result<SettingsPatch, String> {
+    let raw = std::fs::read_to_string(path).map_err(|error| error.to_string())?;
+    serde_yaml::from_str(&raw).map_err(|error| error.to_string())
+}
+
 impl SettingsStore {
     #[allow(dead_code)]
     pub fn new(document: SettingsDocument) -> Self {
@@ -840,6 +860,31 @@ impl SettingsStore {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn yaml_patch_overlays_prompt_and_cors() {
+        let raw = r#"
+system_prompt: hello from yaml
+cors:
+  allowed_origins:
+    - https://app.example
+"#;
+        let patch: SettingsPatch = serde_yaml::from_str(raw).unwrap();
+        let base = SettingsDocument::from_runtime(&crate::Config::test(), &sveda_llm::Catalog::from_env());
+        let merged = base.merge(patch);
+        assert_eq!(merged.system_prompt, "hello from yaml");
+        assert_eq!(merged.cors.allowed_origins, vec!["https://app.example".to_string()]);
+    }
+
+    #[test]
+    fn deploy_example_parses() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../deploy/sveda.yaml");
+        let raw = std::fs::read_to_string(path).unwrap();
+        let patch: SettingsPatch = serde_yaml::from_str(&raw).unwrap();
+        assert_eq!(patch.max_steps, Some(8));
+        assert!(patch.mcp.is_none());
+        assert!(patch.policies.is_none());
+    }
 
     #[test]
     fn missing_security_deserializes_as_none() {

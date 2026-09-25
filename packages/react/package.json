@@ -1,8 +1,8 @@
 {
   "name": "@sveda-ai/react",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
-  "license": "SSPL-1.0",
+  "license": "Apache-2.0",
   "description": "React chat UI to embed a Sveda AI agent. https://sveda.dev/docs/chat-ui/react",
   "keywords": [
     "sveda",

@@ -50,37 +50,9 @@ fn json_headers() -> HeaderMap {
     headers
 }
 
-fn cookie_from(headers: &HeaderMap) -> String {
-    headers
-        .get(header::SET_COOKIE)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.split(';').next())
-        .unwrap_or_default()
-        .to_string()
-}
-
-async fn login_cookie(state: AppState) -> String {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::CONTENT_TYPE,
-        "application/x-www-form-urlencoded".parse().unwrap(),
-    );
-    let (status, response_headers, _) = send(
-        state,
-        "POST",
-        "/admin/login",
-        headers,
-        Body::from("key=sveda-admin-secret"),
-    )
-    .await;
-    assert_eq!(status, StatusCode::SEE_OTHER);
-    cookie_from(&response_headers)
-}
-
 async fn admin_session_token(state: AppState) -> String {
-    let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
-    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert("x-sveda-admin-key", "sveda-admin-secret".parse().unwrap());
     headers.insert(header::HOST, "127.0.0.1:8787".parse().unwrap());
     let (status, _, body) = send(state, "POST", "/admin/session", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);

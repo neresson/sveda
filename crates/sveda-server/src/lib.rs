@@ -3,11 +3,11 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use axum::extract::{DefaultBodyLimit, Path, Request, State};
+use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{header, HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::sse::Sse;
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use futures_util::StreamExt;
@@ -394,7 +394,19 @@ impl AppState {
             state.code_index.load_stored().await;
         }
         let seed = state.settings.document();
-        let loaded = state.settings.load_or_seed(seed).await;
+        let loaded = if let Some(path) = settings::config_path() {
+            let patch = settings::read_config_patch(&path).unwrap_or_else(|error| {
+                panic!("sveda config {}: {error}", path.display())
+            });
+            let merged = seed.merge(patch);
+            state
+                .settings
+                .persist(merged)
+                .await
+                .unwrap_or_else(|error| panic!("persist sveda config: {error}"))
+        } else {
+            state.settings.load_or_seed(seed).await
+        };
         admin::apply_runtime(&state, &loaded);
         admin::refresh_workspace_index(&state).await;
         if state.settings.is_shared() {
@@ -510,6 +522,23 @@ impl AppState {
         admin::overlay(&self.config, &self.settings)
     }
 
+    pub async fn reload_config_file(&self) -> Result<(), String> {
+        let Some(path) = settings::config_path() else {
+            return Ok(());
+        };
+        let patch = settings::read_config_patch(&path)?;
+        let seed = settings::SettingsDocument::from_runtime(&self.config, &self.catalog());
+        let merged = seed.merge(patch);
+        let stored = self
+            .settings
+            .persist(merged)
+            .await
+            .map_err(|error| error.to_string())?;
+        admin::apply_runtime(self, &stored);
+        admin::refresh_workspace_index(self).await;
+        Ok(())
+    }
+
     pub async fn refresh_settings(&self) {
         if self.settings.refresh().await {
             admin::apply_runtime(self, &self.settings.document());
@@ -554,18 +583,14 @@ pub fn app(state: AppState) -> Router {
         .max(2 * 1024 * 1024);
     let mut router = Router::new()
         .route("/", get(ui::home))
-        .route("/admin", get(ui::show))
-        .route("/admin/{page}", get(ui::section))
         .route(
             "/admin/settings",
             get(admin::show_settings)
                 .put(admin::update_settings)
                 .post(admin::update_settings),
         )
-        .route("/admin/login", post(ui::login))
         .route("/admin/session", post(ui::admin_session))
-        .route("/admin/setup", post(ui::setup))
-        .route("/admin/logout", post(ui::logout))
+        .route("/admin/usage", get(admin::show_usage))
         .route("/admin/code-index/sources", get(code_index::list_sources))
         .route("/admin/code-index/progress", get(code_index::progress))
         .route("/admin/code-index/store", post(code_index::create_source))
@@ -596,18 +621,6 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/admin/code-index/sources/{id}/estimate-footprint",
             post(code_index::estimate_footprint),
-        )
-        .route(
-            "/sveda/admin",
-            get(|| async { Redirect::permanent(ui::ADMIN_BASE) }),
-        )
-        .route(
-            "/sveda/admin/{page}",
-            get(|Path(page): Path<String>| async move {
-                let location = format!("{}/{page}", ui::ADMIN_BASE);
-                let value = HeaderValue::from_str(&location).expect("redirect location");
-                (StatusCode::MOVED_PERMANENTLY, [(header::LOCATION, value)]).into_response()
-            }),
         )
         .route("/sveda/health", get(ui::health))
         .route("/sveda/ready", get(ui::ready))

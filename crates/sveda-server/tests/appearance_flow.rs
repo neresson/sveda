@@ -37,33 +37,6 @@ async fn send(
     (status, headers, bytes)
 }
 
-fn cookie_from(headers: &HeaderMap) -> String {
-    headers
-        .get(header::SET_COOKIE)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.split(';').next())
-        .unwrap_or_default()
-        .to_string()
-}
-
-async fn login_cookie(state: AppState) -> String {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::CONTENT_TYPE,
-        "application/x-www-form-urlencoded".parse().unwrap(),
-    );
-    let (status, response_headers, _) = send(
-        state,
-        "POST",
-        "/admin/login",
-        headers,
-        Body::from("key=sveda-admin-secret"),
-    )
-    .await;
-    assert_eq!(status, StatusCode::SEE_OTHER);
-    cookie_from(&response_headers)
-}
-
 async fn mint_embed_token(state: AppState) -> String {
     let mut headers = HeaderMap::new();
     headers.insert(header::CONTENT_TYPE, "application/json".parse().unwrap());
@@ -115,9 +88,8 @@ async fn public_embed_config_defaults_to_empty_appearance() {
 #[tokio::test]
 async fn saved_admin_appearance_is_published_on_embed_config() {
     let state = admin_state();
-    let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
-    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert("x-sveda-admin-key", "sveda-admin-secret".parse().unwrap());
     headers.insert(header::CONTENT_TYPE, "application/json".parse().unwrap());
     let (status, _, body) = send(
         state.clone(),
@@ -174,9 +146,8 @@ async fn saved_admin_appearance_is_published_on_embed_config() {
 #[tokio::test]
 async fn admin_session_token_can_read_embed_config() {
     let state = admin_state();
-    let cookie = login_cookie(state.clone()).await;
     let mut headers = HeaderMap::new();
-    headers.insert(header::COOKIE, cookie.parse().unwrap());
+    headers.insert("x-sveda-admin-key", "sveda-admin-secret".parse().unwrap());
     headers.insert(header::HOST, "127.0.0.1:8787".parse().unwrap());
     let (status, _, body) = send(
         state.clone(),
@@ -196,37 +167,4 @@ async fn admin_session_token_can_read_embed_config() {
     headers.insert(HEADER_EMBED_TOKEN, token.parse().unwrap());
     let (status, _, _) = send(state, "GET", "/sveda/embed/config", headers, Body::empty()).await;
     assert_eq!(status, StatusCode::OK);
-}
-
-#[tokio::test]
-async fn authenticated_admin_pages_keep_chat_session_url() {
-    let state = admin_state();
-    let cookie = login_cookie(state.clone()).await;
-    for page in [
-        "dashboard",
-        "appearance",
-        "models",
-        "prompts",
-        "runtime",
-        "security",
-        "mcp",
-        "usage",
-    ] {
-        let mut headers = HeaderMap::new();
-        headers.insert(header::COOKIE, cookie.parse().unwrap());
-        headers.insert(header::ACCEPT, "application/json".parse().unwrap());
-        let (status, _, body) = send(
-            state.clone(),
-            "GET",
-            &format!("/admin/{page}"),
-            headers,
-            Body::empty(),
-        )
-        .await;
-        assert_eq!(status, StatusCode::OK, "{page}");
-        let payload: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(payload["page"], page);
-        assert_eq!(payload["chat"]["sessionUrl"], "/admin/session");
-        assert_eq!(payload["chat"]["prefix"], "sveda");
-    }
 }

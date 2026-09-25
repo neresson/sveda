@@ -36,9 +36,6 @@ pub fn expected_admin_key(state: &AppState) -> Option<String> {
 }
 
 pub fn require_admin(state: &AppState, headers: &HeaderMap) -> Result<(), StatusCode> {
-    if crate::ui::session_ok(state, headers) {
-        return Ok(());
-    }
     let Some(expected) = expected_admin_key(state) else {
         return Err(StatusCode::NOT_FOUND);
     };
@@ -68,6 +65,29 @@ fn header_admin_key(headers: &HeaderMap) -> Option<String> {
         .map(str::trim)
         .filter(|token| !token.is_empty() && !token.starts_with(sveda_protocol::TOKEN_PREFIX))
         .map(ToOwned::to_owned)
+}
+
+pub async fn show_usage(State(state): State<AppState>, headers: HeaderMap) -> Response {
+    if let Err(status) = require_admin(&state, &headers) {
+        return status.into_response();
+    }
+    let stats = match state
+        .usage
+        .dashboard(sveda_store::DASHBOARD_PERIOD_DAYS)
+        .await
+    {
+        Ok(stats) => crate::ui::stats_json(&stats),
+        Err(_) => serde_json::json!({ "requests": 0, "tokens_used": 0 }),
+    };
+    let usage = match state
+        .usage
+        .page(1, sveda_store::USAGE_PAGE_SIZE)
+        .await
+    {
+        Ok(list) => crate::ui::usage_json(&state, &list),
+        Err(_) => serde_json::json!({}),
+    };
+    Json(serde_json::json!({ "stats": stats, "usage": usage })).into_response()
 }
 
 pub async fn show_settings(State(state): State<AppState>, headers: HeaderMap) -> Response {

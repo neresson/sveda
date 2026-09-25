@@ -5,6 +5,24 @@ async fn main() {
     sveda_server::load_runtime_env();
     let bind = std::env::var("SVEDA_BIND").unwrap_or_else(|_| "0.0.0.0:8787".to_string());
     let state = AppState::live(Config::from_env()).await;
+    let reload_state = state.clone();
+    tokio::spawn(async move {
+        #[cfg(unix)]
+        {
+            let mut hangup = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::hangup())
+                .expect("install SIGHUP handler");
+            loop {
+                hangup.recv().await;
+                if let Err(error) = reload_state.reload_config_file().await {
+                    eprintln!("sveda config reload: {error}");
+                }
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = reload_state;
+        }
+    });
     let listener = tokio::net::TcpListener::bind(&bind)
         .await
         .unwrap_or_else(|error| panic!("bind {bind}: {error}"));
