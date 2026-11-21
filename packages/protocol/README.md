@@ -4,6 +4,8 @@ Sveda Wire Protocol — stream event schemas and constants used by the JS client
 
 Docs: [sveda.dev/docs/stream](https://sveda.dev/docs/stream)
 
+Powers the AI assistant in [Sveda LMS](https://www.svedalms.ru), a learning management system for corporate training.
+
 ```bash
 npm install @sveda-ai/protocol
 ```

@@ -5,6 +5,8 @@ SolidJS SDK for Sveda — `<SvedaChat>`, hooks, and the default UI theme.
 - Site: [sveda.dev](https://sveda.dev)
 - Docs: [sveda.dev/docs/chat-ui/solid](https://sveda.dev/docs/chat-ui/solid)
 
+Powers the AI assistant in [Sveda LMS](https://www.svedalms.ru), a learning management system for corporate training.
+
 ```bash
 npm install @sveda-ai/solid
 ```

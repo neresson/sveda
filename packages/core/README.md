@@ -4,6 +4,8 @@ Framework-agnostic Sveda JS client — streaming, tools, and `session.send`.
 
 Docs: [sveda.dev/docs/client](https://sveda.dev/docs/client)
 
+Powers the AI assistant in [Sveda LMS](https://www.svedalms.ru), a learning management system for corporate training.
+
 ```bash
 npm install @sveda-ai/core
 ```

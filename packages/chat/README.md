@@ -5,6 +5,8 @@ Headless chat store, streaming, appearance presets, and shared helpers used by t
 - Site: [sveda.dev](https://sveda.dev)
 - Docs: [sveda.dev/docs/chat-ui](https://sveda.dev/docs/chat-ui)
 
+Powers the AI assistant in [Sveda LMS](https://www.svedalms.ru), a learning management system for corporate training.
+
 ```bash
 npm install @sveda-ai/chat
 ```

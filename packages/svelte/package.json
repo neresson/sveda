@@ -10,14 +10,18 @@
     "agent",
     "copilot",
     "svelte",
-    "chat"
+    "chat",
+    "lms",
+    "svedalms",
+    "sveda-lms",
+    "e-learning"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/neresson/sveda.git",
     "directory": "packages/svelte"
   },
-  "homepage": "https://sveda.dev/docs/chat-ui/svelte",
+  "homepage": "https://www.svedalms.ru",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {

@@ -5,6 +5,8 @@ React SDK for Sveda — `<SvedaChat>`, hooks, and the default UI theme.
 - Site: [sveda.dev](https://sveda.dev)
 - Docs: [sveda.dev/docs/chat-ui/react](https://sveda.dev/docs/chat-ui/react)
 
+Powers the AI assistant in [Sveda LMS](https://www.svedalms.ru), a learning management system for corporate training.
+
 ```bash
 npm install @sveda-ai/react
 ```

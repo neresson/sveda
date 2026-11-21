@@ -4,6 +4,8 @@ Web component `<sveda-chat>` for embedding Sveda without a frontend framework.
 
 Docs: [sveda.dev/docs/hosts/vanilla](https://sveda.dev/docs/hosts/vanilla)
 
+Powers the AI assistant in [Sveda LMS](https://www.svedalms.ru), a learning management system for corporate training.
+
 ```bash
 npm install @sveda-ai/element
 ```
