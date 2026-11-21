@@ -1,6 +1,6 @@
 {
   "name": "@sveda-ai/solid",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "type": "module",
   "license": "Apache-2.0",
   "description": "SolidJS chat UI to embed a Sveda AI agent. https://sveda.dev/docs/chat-ui/solid",

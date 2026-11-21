@@ -1,5 +1,12 @@
 # @sveda-ai/protocol
 
+## 0.3.3
+
+### Patch Changes
+
+- bcea319: Allow eligible tool calls to be approved together or for the current chat, with per-call approval for sensitive actions.
+- adbdda2: Point package homepages to Sveda LMS and add LMS keywords.
+
 ## 0.3.0
 
 ### Minor Changes

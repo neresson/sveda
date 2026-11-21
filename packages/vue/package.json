@@ -1,6 +1,6 @@
 {
   "name": "@sveda-ai/vue",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "type": "module",
   "license": "Apache-2.0",
   "description": "Vue 3 chat UI to embed a Sveda AI agent. https://sveda.dev/docs/chat-ui/vue",

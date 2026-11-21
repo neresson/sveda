@@ -1,5 +1,11 @@
 # @sveda-ai/element
 
+## 0.3.3
+
+### Patch Changes
+
+- adbdda2: Point package homepages to Sveda LMS and add LMS keywords.
+
 ## 0.3.0
 
 ### Minor Changes
