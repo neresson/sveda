@@ -146,7 +146,10 @@ export class SvedaChatSession {
       return;
     }
 
-    if (decision === 'approve_for_chat' && (call.target !== 'backend' || call.confirmationScope !== 'chat')) {
+    if (
+      decision === 'approve_for_chat' &&
+      (call.target !== 'backend' || (call.confirmationScope !== 'chat' && call.confirmationScope !== 'course'))
+    ) {
       return;
     }
 

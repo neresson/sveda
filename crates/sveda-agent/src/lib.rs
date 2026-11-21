@@ -28,8 +28,8 @@ pub use title::{
     derive_provisional_title, generate_title, is_placeholder_title, sanitize_generated_title,
 };
 pub use tools::{
-    normalize_output, resource_links, ApprovalOffer, MemoryBackend, NativeHandler, ToolRuntime,
-    READ_CODE_TOOL_NAME, SEARCH_CODE_TOOL_NAME, SEARCH_TOOL_NAME, SPAWN_TOOL_NAME,
+    normalize_output, resource_links, ApprovalOffer, ApprovalPolicy, MemoryBackend, NativeHandler,
+    ToolRuntime, READ_CODE_TOOL_NAME, SEARCH_CODE_TOOL_NAME, SEARCH_TOOL_NAME, SPAWN_TOOL_NAME,
 };
 
 #[derive(Debug, Clone)]
@@ -267,9 +267,17 @@ fn run_loop(
                     } else {
                         None
                     };
-                    if let Some(ApprovalOffer::Chat(scope)) = &offer {
-                        if can_execute && runtime.has_chat_approval(&name, scope) {
-                            outcome = runtime.execute_guarded(&name, &input, scope, &id).await;
+                    let bypass = match &offer {
+                        Some(ApprovalOffer::Chat(scope))
+                            if runtime.has_chat_approval(Some(&name), scope) => Some((scope, true)),
+                        Some(ApprovalOffer::Course(scope))
+                            if runtime.has_chat_approval(None, scope) => Some((scope, false)),
+                        Some(ApprovalOffer::Auto(scope)) => Some((scope, false)),
+                        _ => None,
+                    };
+                    if let Some((scope, legacy)) = bypass {
+                        if can_execute || (!legacy && !has_frontend) {
+                            outcome = runtime.execute_guarded(&name, &input, scope, &id, legacy).await;
                             confirming = outcome.is_none();
                             offer = None;
                         }
@@ -277,7 +285,7 @@ fn run_loop(
                     yield stamp(tool_call_event(&id, &name, &input, frontend, confirming, offer));
                 }
                 waiting_confirmation |= confirming;
-                if !can_execute || confirming || !runtime.known(&name) {
+                if (!can_execute && outcome.is_none()) || confirming || !runtime.known(&name) {
                     continue;
                 }
                 completed.push(StoredToolCall {
@@ -374,9 +382,9 @@ fn tool_call_event(
         },
         input: input.clone(),
         confirmation: confirming.then(|| "required".to_string()),
-        confirmation_scope: offer.as_ref().map(ApprovalOffer::scope),
+        confirmation_scope: offer.as_ref().and_then(ApprovalOffer::scope),
         approval_scope_key: match offer {
-            Some(ApprovalOffer::Chat(scope)) => Some(scope),
+            Some(ApprovalOffer::Chat(scope) | ApprovalOffer::Course(scope)) => Some(scope),
             _ => None,
         },
         chat_id: None,

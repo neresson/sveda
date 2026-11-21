@@ -24,8 +24,8 @@ Opt in by exact MCP tool name in `sveda.yaml` or in an authenticated
 
 ```yaml
 tool_approvals:
-  update_content: once_per_chat
-  draft_onboarding_program: batch
+  update_content: once_per_course_per_chat
+  draft_onboarding_program: auto
 ```
 
 These settings also require the corresponding LMS host declarations. An empty

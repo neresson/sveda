@@ -74,7 +74,7 @@
     "requestField": "toolDecisions",
     "decisionValues": ["approve", "deny", "approve_batch", "approve_for_chat"],
     "toolCallOptionalField": "confirmationScope",
-    "confirmationScopeValues": ["batch", "chat"],
+    "confirmationScopeValues": ["batch", "chat", "course"],
     "revokeSuccessStatus": 204
   },
   "message": {

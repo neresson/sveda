@@ -51,6 +51,7 @@ pub struct ToolProgressTask {
 pub enum ConfirmationScope {
     Batch,
     Chat,
+    Course,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

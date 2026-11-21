@@ -16,7 +16,7 @@ use sveda_agent::{
 };
 use sveda_llm::{ChatMessage, StoredToolCall};
 use sveda_mcp::{HostMcpClient, McpCallContext, McpCredentials};
-use sveda_protocol::{StreamEvent, StreamRequest, ToolDecision, ToolTarget};
+use sveda_protocol::{ConfirmationScope, StreamEvent, StreamRequest, ToolDecision, ToolTarget};
 use sveda_store::{Checkpoint, HistoryRecord, StoreError, UsageEvent};
 use uuid::Uuid;
 
@@ -438,7 +438,7 @@ fn finalize_turn(
                     if let (Some(scope), Some(host)) = (confirmation_scope, approval_host.as_deref()) {
                         approval_offers.insert(
                             tool_call_id.clone(),
-                            (*scope, fingerprint(&[host, approval_scope_key.as_deref().unwrap_or("")])),
+                            (*scope, approval_fingerprint(host, approval_scope_key.as_deref().unwrap_or(""), *scope)),
                         );
                     }
                     tool_calls.push(StoredToolCall {
@@ -628,10 +628,39 @@ fn confirmation_response(message: &str) -> Box<axum::response::Response> {
     )
 }
 
+fn approval_fingerprint(host: &str, scope: &str, kind: ConfirmationScope) -> String {
+    let key = fingerprint(&[host, scope]);
+    if kind == ConfirmationScope::Course {
+        format!("course:{key}")
+    } else {
+        key
+    }
+}
+
+async fn pending_approval_offer(
+    runtime: &ToolRuntime,
+    call: &PendingToolCall,
+) -> Option<ApprovalOffer> {
+    let offered = call.approval.as_deref()?;
+    let host = runtime.approval_host()?;
+    let offer = runtime.approval_offer(&call.name, &call.arguments).await?;
+    let scope = match &offer {
+        ApprovalOffer::Course(scope) | ApprovalOffer::Chat(scope) => scope.as_str(),
+        ApprovalOffer::Batch => "",
+        ApprovalOffer::Auto(_) => return None,
+    };
+    (offered == approval_fingerprint(host, scope, offer.scope()?)).then_some(offer)
+}
+
 enum ApprovedAction {
     Deny,
     Run,
-    Guarded { scope: String, grant: bool },
+    Guarded {
+        scope: String,
+        legacy: bool,
+        grant: bool,
+    },
+    CoveredCourse(String),
     UnknownOutcome,
 }
 
@@ -659,21 +688,34 @@ async fn resolve_tool_decisions(
                 ApprovedAction::UnknownOutcome
             }
             "deny" => ApprovedAction::Deny,
-            "approve" if runtime.known(&call.name) => ApprovedAction::Run,
+            "approve" if runtime.known(&call.name) => {
+                if let Some(ApprovalOffer::Course(scope)) =
+                    pending_approval_offer(runtime, call).await
+                {
+                    ApprovedAction::Guarded {
+                        scope,
+                        legacy: false,
+                        grant: false,
+                    }
+                } else {
+                    ApprovedAction::Run
+                }
+            }
             "approve_batch" | "approve_for_chat" => {
-                let Some((host, offered)) = host.zip(call.approval.as_deref()) else {
-                    continue;
-                };
-                match runtime.approval_offer(&call.name, &call.arguments).await {
-                    Some(ApprovalOffer::Batch)
-                        if normalized == "approve_batch" && offered == fingerprint(&[host, ""]) =>
-                    {
+                match pending_approval_offer(runtime, call).await {
+                    Some(ApprovalOffer::Batch) if normalized == "approve_batch" => {
                         ApprovedAction::Run
                     }
-                    Some(ApprovalOffer::Chat(scope)) if offered == fingerprint(&[host, &scope]) => {
+                    Some(ApprovalOffer::Chat(scope)) => ApprovedAction::Guarded {
+                        scope,
+                        legacy: true,
+                        grant: normalized == "approve_for_chat",
+                    },
+                    Some(ApprovalOffer::Course(scope)) if normalized == "approve_for_chat" => {
                         ApprovedAction::Guarded {
                             scope,
-                            grant: normalized == "approve_for_chat",
+                            legacy: false,
+                            grant: true,
                         }
                     }
                     _ => continue,
@@ -687,13 +729,46 @@ async fn resolve_tool_decisions(
         return Ok((record, Vec::new()));
     }
 
+    // Calls proposed together can already be pending when a course is approved.
+    // Honor explicit decisions first, then recheck any pending sibling's scope.
+    let course_grants: HashSet<_> = actions
+        .iter()
+        .filter_map(|(_, action)| match action {
+            ApprovedAction::Guarded {
+                scope,
+                legacy: false,
+                grant: true,
+            } => Some(scope.clone()),
+            _ => None,
+        })
+        .collect();
+    for call in pending.iter().filter(|call| {
+        !seen.contains(call.id.as_str())
+            && !call.approval_started
+            && call
+                .approval
+                .as_deref()
+                .is_some_and(|offered| offered.starts_with("course:"))
+    }) {
+        if let Some(ApprovalOffer::Course(scope)) = pending_approval_offer(runtime, call).await {
+            if course_grants.contains(&scope) || runtime.has_chat_approval(None, &scope) {
+                actions.push((call, ApprovedAction::CoveredCourse(scope)));
+            }
+        }
+    }
+
     // Reserve writes in durable history before calling the host. A crash or a
     // lost response can leave the outcome unknown, but a retry cannot repeat it.
     let writes: HashSet<_> = actions
         .iter()
         .filter_map(|(call, action)| {
-            matches!(action, ApprovedAction::Run | ApprovedAction::Guarded { .. })
-                .then_some(call.id.as_str())
+            matches!(
+                action,
+                ApprovedAction::Run
+                    | ApprovedAction::Guarded { .. }
+                    | ApprovedAction::CoveredCourse(_)
+            )
+            .then_some(call.id.as_str())
         })
         .collect();
     if !writes.is_empty() {
@@ -717,19 +792,45 @@ async fn resolve_tool_decisions(
                 events.extend(outcome.events);
                 normalize_output(outcome.output)
             }
-            ApprovedAction::Guarded { scope, grant } => {
-                let Some(outcome) = runtime
-                    .execute_guarded(&call.name, &call.arguments, &scope, &call.id)
+            ApprovedAction::Guarded {
+                scope,
+                legacy,
+                grant,
+            } => {
+                let outcome = match runtime
+                    .execute_guarded(&call.name, &call.arguments, &scope, &call.id, legacy)
                     .await
-                else {
-                    // A definite host rejection leaves the call pending for an individual decision.
-                    continue;
+                {
+                    Some(outcome) => outcome,
+                    None if !legacy && !grant => {
+                        // The user explicitly approved this call and the host did not write.
+                        runtime
+                            .execute_call(&call.name, call.arguments.clone(), Some(&call.id))
+                            .await
+                    }
+                    None => continue,
                 };
                 let output = normalize_output(outcome.output);
                 if grant && output["success"] == true {
-                    new_grants.push((&call.name, scope));
+                    new_grants.push((legacy.then_some(call.name.as_str()), scope));
                 }
                 output
+            }
+            ApprovedAction::CoveredCourse(scope) => {
+                if !runtime.has_chat_approval(None, &scope)
+                    && !new_grants
+                        .iter()
+                        .any(|(tool, granted)| tool.is_none() && *granted == scope)
+                {
+                    continue;
+                }
+                let Some(outcome) = runtime
+                    .execute_guarded(&call.name, &call.arguments, &scope, &call.id, false)
+                    .await
+                else {
+                    continue;
+                };
+                normalize_output(outcome.output)
             }
         };
         let links = resource_links(&output);

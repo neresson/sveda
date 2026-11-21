@@ -46,6 +46,8 @@ pub enum McpApproval {
     Always,
     Batch,
     Guarded,
+    Course,
+    Auto,
 }
 
 #[derive(Debug, Clone)]
@@ -250,9 +252,11 @@ impl HostMcpClient {
         arguments: &Value,
         scope: &str,
         call_id: &str,
+        legacy: bool,
     ) -> Result<Option<Value>, McpError> {
-        // A rejected guarded call may later be approved through tools/call.
-        let key = self.idempotency_key("sveda-approval", call_id);
+        // Keep legacy keys stable. New policies share a key with tools/call
+        // so changing eligibility cannot make a retry repeat a write.
+        let key = self.idempotency_key(if legacy { "sveda-approval" } else { "sveda" }, call_id);
         let payload = self
             .rpc(
                 "sveda/approval/call",
@@ -479,13 +483,22 @@ fn parse_tool(value: &Value) -> Option<McpTool> {
         .to_string();
     let annotations = value.get("annotations").unwrap_or(&Value::Null);
     let is_read = annotations.get("readOnlyHint").and_then(Value::as_bool) == Some(true);
-    let unsafe_effects = mode == "delete"
-        || annotations.get("destructiveHint").and_then(Value::as_bool) == Some(true)
-        || (!is_read && annotations.get("openWorldHint").and_then(Value::as_bool) == Some(true));
-    let approval = match (unsafe_effects, meta.get("confirm").and_then(Value::as_str)) {
+    let destructive = mode == "delete"
+        || annotations.get("destructiveHint").and_then(Value::as_bool) == Some(true);
+    let open_world =
+        !is_read && annotations.get("openWorldHint").and_then(Value::as_bool) == Some(true);
+    let approval = match (
+        open_world || destructive,
+        meta.get("confirm").and_then(Value::as_str),
+    ) {
+        _ if open_world => McpApproval::Always,
+        // A resource-scoped write still requires confirmation and host revalidation,
+        // including eligible destructive operations such as deleting a draft.
+        (_, Some("once_per_course_per_chat")) => McpApproval::Course,
         (true, _) | (_, Some("always")) => McpApproval::Always,
         (_, Some("batch")) => McpApproval::Batch,
         (_, Some("once_per_chat")) => McpApproval::Guarded,
+        (_, Some("auto_if_host_allows")) => McpApproval::Auto,
         _ => McpApproval::Unspecified,
     };
     let confirmation_required = approval != McpApproval::Unspecified

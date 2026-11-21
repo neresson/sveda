@@ -269,13 +269,19 @@ describe('SvedaChatSession', () => {
     expect(toolResult.output).toMatchObject({ success: false, denied: true });
   });
 
-  it('sends backend confirmation decisions without client arguments', async () => {
+  it.each([
+    { scope: undefined, decision: 'approve' as const },
+    { scope: 'course', decision: 'approve_for_chat' as const },
+  ])('sends backend confirmation for $scope without client arguments', async ({ scope, decision }) => {
     const bodies: string[] = [];
     const fetchFn = vi.fn(async (_url: string, init: RequestInit) => {
       bodies.push(String(init.body));
       if (bodies.length === 1) {
         return sseResponse([
-          'data: {"type":"tool.call","toolCallId":"tc1","toolName":"delete_post","target":"backend","input":{"id":"1"},"confirmation":"required"}',
+          `data: ${JSON.stringify({
+            type: 'tool.call', toolCallId: 'tc1', toolName: 'delete_post', target: 'backend',
+            input: { id: '1' }, confirmation: 'required', confirmationScope: scope,
+          })}`,
           'data: {"type":"message.end","finishReason":"tool_calls"}',
         ]);
       }
@@ -292,11 +298,11 @@ describe('SvedaChatSession', () => {
     await session.send('delete it');
     expect(bodies).toHaveLength(1);
 
-    await session.resolveToolConfirmation('tc1', 'approve');
+    await session.resolveToolConfirmation('tc1', decision);
 
     const secondBody = JSON.parse(bodies[1]);
     expect(secondBody.prompt).toBe('');
-    expect(secondBody.toolDecisions).toEqual([{ toolCallId: 'tc1', decision: 'approve' }]);
+    expect(secondBody.toolDecisions).toEqual([{ toolCallId: 'tc1', decision }]);
     const original = session.messages.find(message =>
       message.parts.some(part => part.type === 'tool-call' && part.toolCallId === 'tc1')
     );

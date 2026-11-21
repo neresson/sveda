@@ -55,14 +55,18 @@ impl RedisClient {
     }
 
     pub fn set_ex(&self, key: &str, value: &str, ttl_secs: u64) -> Result<(), String> {
+        self.set(key, value, Some(ttl_secs))
+    }
+
+    fn set(&self, key: &str, value: &str, ttl_secs: Option<u64>) -> Result<(), String> {
         let mut connection = self.connection()?;
-        redis::cmd("SET")
-            .arg(key)
-            .arg(value)
-            .arg("EX")
-            .arg(ttl_secs.max(1))
-            .query::<String>(&mut connection)
-            .map(|_| ())
+        let mut command = redis::cmd("SET");
+        command.arg(key).arg(value);
+        if let Some(ttl) = ttl_secs {
+            command.arg("EX").arg(ttl.max(1));
+        }
+        command
+            .query::<()>(&mut connection)
             .map_err(|error| error.to_string())
     }
 
@@ -154,12 +158,9 @@ impl KvStore {
                 store.set(key, encoded, ttl);
                 Ok(())
             }
-            Self::Redis(client) => {
-                let ttl_secs = ttl.map(|value| value.as_secs().max(1)).unwrap_or(3600);
-                client
-                    .set_ex(key, &encoded, ttl_secs)
-                    .map_err(StoreError::Redis)
-            }
+            Self::Redis(client) => client
+                .set(key, &encoded, ttl.map(|value| value.as_secs()))
+                .map_err(StoreError::Redis),
         }
     }
 

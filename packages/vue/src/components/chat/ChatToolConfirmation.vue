@@ -23,13 +23,13 @@
         {{ t('toolConfirm') }}
       </button>
       <button
-        v-if="step.confirmationScope === 'chat'"
+        v-if="step.confirmationScope === 'chat' || step.confirmationScope === 'course'"
         type="button"
         class="border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
         :disabled="disabled"
         @click.stop="emit('confirm-tool', step.toolCallId, 'approve_for_chat')"
       >
-        {{ t('toolApproveForChat') }}
+        {{ t(step.confirmationScope === 'course' ? 'toolApproveForCourse' : 'toolApproveForChat') }}
       </button>
       <button
         type="button"
@@ -40,8 +40,8 @@
         {{ t('toolDeny') }}
       </button>
     </div>
-    <p v-if="step.confirmationScope === 'chat'" class="mt-1.5 text-xs text-muted-foreground">
-      {{ t('toolChatApprovalScope') }}
+    <p v-if="step.confirmationScope === 'chat' || step.confirmationScope === 'course'" class="mt-1.5 text-xs text-muted-foreground">
+      {{ t(step.confirmationScope === 'course' ? 'toolCourseApprovalScope' : 'toolChatApprovalScope') }}
     </p>
   </div>
 </template>

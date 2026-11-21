@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sveda_agent::ApprovalPolicy;
 use sveda_mcp::{McpApproval, McpTool};
-use sveda_protocol::ConfirmationScope;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -11,23 +11,27 @@ pub enum ToolApprovalPolicy {
     Always,
     Batch,
     OncePerChat,
+    OncePerCoursePerChat,
+    Auto,
 }
 
 pub fn apply_tool_approval_policy(
     tool: &mut McpTool,
     policy: Option<ToolApprovalPolicy>,
-) -> Option<ConfirmationScope> {
+) -> Option<ApprovalPolicy> {
     if policy == Some(ToolApprovalPolicy::Always) {
         tool.confirmation_required = true;
         tool.approval = McpApproval::Always;
     }
     match (policy, tool.approval) {
         (Some(ToolApprovalPolicy::Batch | ToolApprovalPolicy::OncePerChat), McpApproval::Batch) => {
-            Some(ConfirmationScope::Batch)
+            Some(ApprovalPolicy::Batch)
         }
-        (Some(ToolApprovalPolicy::OncePerChat), McpApproval::Guarded) => {
-            Some(ConfirmationScope::Chat)
+        (Some(ToolApprovalPolicy::OncePerChat), McpApproval::Guarded) => Some(ApprovalPolicy::Chat),
+        (Some(ToolApprovalPolicy::OncePerCoursePerChat), McpApproval::Course) => {
+            Some(ApprovalPolicy::Course)
         }
+        (Some(ToolApprovalPolicy::Auto), McpApproval::Auto) => Some(ApprovalPolicy::Auto),
         _ => None,
     }
 }

@@ -49,28 +49,39 @@ enum CallTarget {
     Mcp(Arc<HostMcpClient>),
 }
 
+pub enum ApprovalPolicy {
+    Batch,
+    Chat,
+    Course,
+    Auto,
+}
+
 pub enum ApprovalOffer {
     Batch,
     Chat(String),
+    Course(String),
+    Auto(String),
 }
 
 impl ApprovalOffer {
-    pub fn scope(&self) -> ConfirmationScope {
+    pub fn scope(&self) -> Option<ConfirmationScope> {
         match self {
-            Self::Batch => ConfirmationScope::Batch,
-            Self::Chat(_) => ConfirmationScope::Chat,
+            Self::Batch => Some(ConfirmationScope::Batch),
+            Self::Chat(_) => Some(ConfirmationScope::Chat),
+            Self::Course(_) => Some(ConfirmationScope::Course),
+            Self::Auto(_) => None,
         }
     }
 }
 
-pub type HasChatApproval = Arc<dyn Fn(&str, &str, &str) -> bool + Send + Sync>;
+pub type HasChatApproval = Arc<dyn Fn(&str, Option<&str>, &str) -> bool + Send + Sync>;
 
 pub struct ToolRuntime {
     target: CallTarget,
     mcp_tools: Vec<McpTool>,
     native_tools: Vec<McpTool>,
     native_handler: Option<NativeHandler>,
-    approval_options: BTreeMap<String, ConfirmationScope>,
+    approval_options: BTreeMap<String, ApprovalPolicy>,
     has_chat_approval: Option<HasChatApproval>,
     activated: Mutex<Vec<String>>,
     defer_enabled: bool,
@@ -126,7 +137,7 @@ impl ToolRuntime {
 
     pub fn with_approvals(
         mut self,
-        options: BTreeMap<String, ConfirmationScope>,
+        options: BTreeMap<String, ApprovalPolicy>,
         has_chat_approval: HasChatApproval,
     ) -> Self {
         self.approval_options = options;
@@ -147,16 +158,25 @@ impl ToolRuntime {
 
     pub async fn approval_offer(&self, name: &str, input: &Value) -> Option<ApprovalOffer> {
         match (self.approval_options.get(name)?, &self.target) {
-            (ConfirmationScope::Batch, CallTarget::Mcp(_)) => Some(ApprovalOffer::Batch),
-            (ConfirmationScope::Chat, CallTarget::Mcp(client)) => client
-                .approval_scope(name, input)
-                .await
-                .map(ApprovalOffer::Chat),
+            (ApprovalPolicy::Batch, CallTarget::Mcp(_)) => Some(ApprovalOffer::Batch),
+            (policy, CallTarget::Mcp(client)) => {
+                let scope = client.approval_scope(name, input).await?;
+                match policy {
+                    ApprovalPolicy::Chat => Some(ApprovalOffer::Chat(scope)),
+                    ApprovalPolicy::Course if scope.starts_with("course:") => {
+                        Some(ApprovalOffer::Course(scope))
+                    }
+                    ApprovalPolicy::Auto if scope.starts_with("auto:") => {
+                        Some(ApprovalOffer::Auto(scope))
+                    }
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }
 
-    pub fn has_chat_approval(&self, name: &str, scope: &str) -> bool {
+    pub fn has_chat_approval(&self, name: Option<&str>, scope: &str) -> bool {
         self.approval_host()
             .zip(self.has_chat_approval.as_ref())
             .is_some_and(|(host, has_approval)| has_approval(host, name, scope))
@@ -168,11 +188,15 @@ impl ToolRuntime {
         input: &Value,
         scope: &str,
         call_id: &str,
+        legacy: bool,
     ) -> Option<ToolOutcome> {
         let CallTarget::Mcp(client) = &self.target else {
             return None;
         };
-        match client.call_with_approval(name, input, scope, call_id).await {
+        match client
+            .call_with_approval(name, input, scope, call_id, legacy)
+            .await
+        {
             Ok(output) => output.map(|output| ToolOutcome {
                 output,
                 events: Vec::new(),

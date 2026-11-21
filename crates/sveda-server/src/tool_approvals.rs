@@ -45,31 +45,44 @@ impl ChatApprovals {
             .unwrap_or_default())
     }
 
-    pub fn permits(&self, host: &str, tool: &str, scope: &str) -> bool {
-        let grant = fingerprint(&[&self.generation, host, tool, scope]);
+    fn grant_key(&self, host: &str, tool: Option<&str>, scope: &str) -> String {
+        match tool {
+            Some(tool) => fingerprint(&[&self.generation, host, tool, scope]),
+            None => fingerprint(&[&self.generation, host, scope]),
+        }
+    }
+
+    pub fn permits(&self, host: &str, tool: Option<&str>, scope: &str) -> bool {
+        let grant = self.grant_key(host, tool, scope);
         self.read()
             .ok()
             .and_then(|entries| entries.get(&grant).copied())
             .is_some_and(|expires| expires > Utc::now().timestamp())
     }
 
-    pub fn grant(&self, host: &str, tool: &str, scope: &str) -> Result<(), StoreError> {
+    pub fn grant(&self, host: &str, tool: Option<&str>, scope: &str) -> Result<(), StoreError> {
         let now = Utc::now().timestamp();
         let mut entries = self.read()?;
         entries.retain(|_, expires| *expires > now);
-        if entries.len() >= MAX_GRANTS {
-            if let Some(oldest) = entries
-                .iter()
-                .min_by_key(|(_, expires)| *expires)
-                .map(|(key, _)| key.clone())
-            {
-                entries.remove(&oldest);
+        let grant = self.grant_key(host, tool, scope);
+        if tool.is_some() {
+            let mut legacy = entries.iter().filter(|(_, expires)| **expires != i64::MAX);
+            if legacy.clone().count() >= MAX_GRANTS && !entries.contains_key(&grant) {
+                if let Some(oldest) = legacy
+                    .by_ref()
+                    .min_by_key(|(_, expires)| *expires)
+                    .map(|(key, _)| key.clone())
+                {
+                    entries.remove(&oldest);
+                }
             }
+            entries.insert(grant, now + TTL.as_secs() as i64);
+        } else {
+            entries.insert(grant, i64::MAX);
         }
-        let grant = fingerprint(&[&self.generation, host, tool, scope]);
-        entries.insert(grant, now + TTL.as_secs() as i64);
+        let ttl = (!entries.values().any(|expires| *expires == i64::MAX)).then_some(TTL);
         self.kv
-            .set_json(&self.key, &serde_json::json!(entries), Some(TTL))
+            .set_json(&self.key, &serde_json::json!(entries), ttl)
     }
 
     pub fn revoke(kv: &KvStore, visitor: &str, chat: &str) -> Result<(), StoreError> {
@@ -89,11 +102,11 @@ mod tests {
     fn scoped_chat_approvals_are_isolated_and_revocable() {
         let kv = KvStore::memory();
         let grants = ChatApprovals::new(kv.clone(), "visitor", "chat", 1);
-        grants.grant("host", "edit", "org/lesson").unwrap();
-        assert!(grants.permits("host", "edit", "org/lesson"));
-        assert!(!grants.permits("host", "edit", "other-org/lesson"));
-        assert!(!grants.permits("host", "publish", "org/lesson"));
-        assert!(!grants.permits("other-host", "edit", "org/lesson"));
+        grants.grant("host", Some("edit"), "org/lesson").unwrap();
+        assert!(grants.permits("host", Some("edit"), "org/lesson"));
+        assert!(!grants.permits("host", Some("edit"), "other-org/lesson"));
+        assert!(!grants.permits("host", Some("publish"), "org/lesson"));
+        assert!(!grants.permits("other-host", Some("edit"), "org/lesson"));
         for (visitor, chat, generation) in [
             ("other", "chat", 1),
             ("visitor", "other", 1),
@@ -102,7 +115,7 @@ mod tests {
             assert!(
                 !ChatApprovals::new(kv.clone(), visitor, chat, generation).permits(
                     "host",
-                    "edit",
+                    Some("edit"),
                     "org/lesson"
                 )
             );
@@ -115,10 +128,10 @@ mod tests {
         )
         .unwrap();
         assert!(grants.read().unwrap().contains_key(&key));
-        assert!(!grants.permits("host", "edit", "org/lesson"));
+        assert!(!grants.permits("host", Some("edit"), "org/lesson"));
 
-        grants.grant("host", "edit", "org/lesson").unwrap();
+        grants.grant("host", Some("edit"), "org/lesson").unwrap();
         ChatApprovals::revoke(&kv, "visitor", "chat").unwrap();
-        assert!(!grants.permits("host", "edit", "org/lesson"));
+        assert!(!grants.permits("host", Some("edit"), "org/lesson"));
     }
 }

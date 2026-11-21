@@ -80,7 +80,7 @@ export function vercelDataPartToSvedaEvent(part: VercelDataPart): SvedaStreamEve
         target: part.target === 'frontend' ? 'frontend' : 'backend',
         input: (part.args as Record<string, unknown>) ?? {},
         ...(part.confirmation === 'required' ? { confirmation: 'required' as const } : {}),
-        ...(part.confirmationScope === 'batch' || part.confirmationScope === 'chat'
+        ...(part.confirmationScope === 'batch' || part.confirmationScope === 'chat' || part.confirmationScope === 'course'
           ? { confirmationScope: part.confirmationScope }
           : {}),
       };

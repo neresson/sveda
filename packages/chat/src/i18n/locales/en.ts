@@ -61,6 +61,8 @@ const en: SvedaMessages = {
   toolApproveForChat: 'Approve for this chat',
   toolApproveBatch: 'Approve all eligible actions ({count})',
   toolChatApprovalScope: 'Applies to eligible edits on this target for 30 minutes.',
+  toolApproveForCourse: 'Approve edits to this course in this chat',
+  toolCourseApprovalScope: 'Applies to eligible changes to this course for the rest of this chat.',
   toolDeny: 'Deny',
 };
 

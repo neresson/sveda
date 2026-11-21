@@ -45,7 +45,7 @@ export interface SvedaReasoningDeltaEvent extends SvedaStreamEventBase {
   delta: string;
 }
 
-export type SvedaConfirmationScope = 'batch' | 'chat';
+export type SvedaConfirmationScope = 'batch' | 'chat' | 'course';
 
 export interface SvedaToolCallEvent extends SvedaStreamEventBase {
   type: 'tool.call';

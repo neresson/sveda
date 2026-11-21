@@ -22,10 +22,11 @@ Host SDKs live in sibling repositories and use the same license. Sveda Cloud is 
 ### Tool approvals
 
 Keep the individual approval and denial controls for every pending tool call.
-If the sidecar emits `confirmationScope: "chat"`, call
-`resolveToolConfirmation(toolCallId, "approve_for_chat")` to approve the call
-and grant eligible changes to that target in the chat for 30 minutes. Call
-`approveToolBatch(toolCallIds)` with the visible, eligible tool call IDs from
+Call `resolveToolConfirmation(toolCallId, "approve_for_chat")` to grant
+eligible changes. With `confirmationScope: "chat"`, the grant applies to that
+tool and target for 30 minutes. With `confirmationScope: "course"`, it applies
+to the course across tools until the chat is deleted or the grant is revoked.
+Call `approveToolBatch(toolCallIds)` with the visible, eligible tool call IDs from
 the same assistant step to approve them together. Both `"batch"` and `"chat"`
 offers qualify for a batch. To revoke existing grants, call
 `client.revokeToolApprovals(chatId)`.

@@ -62,6 +62,8 @@ const ru: SvedaMessages = {
   toolApproveForChat: 'Разрешить для этого чата',
   toolApproveBatch: 'Подтвердить все доступные действия ({count})',
   toolChatApprovalScope: 'Действует 30 минут для допустимых изменений этого объекта.',
+  toolApproveForCourse: 'Разрешить изменения этого курса в чате',
+  toolCourseApprovalScope: 'Распространяется на допустимые изменения этого курса до конца чата.',
   toolDeny: 'Отказать',
 };
 
