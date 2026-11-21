@@ -589,7 +589,8 @@ async fn host_mcp_instructions_and_tool_names_reach_the_model() {
             let payload: Value = serde_json::from_slice(&request.body).unwrap_or(json!({}));
             let id = payload.get("id").cloned().unwrap_or(json!(1));
             match payload.get("method").and_then(Value::as_str).unwrap_or("") {
-                "initialize" => ResponseTemplate::new(200).set_body_json(json!({
+                "server/discover" => ResponseTemplate::new(400).set_body_json(json!({"jsonrpc":"2.0","id":id,"error":{"code":-32601,"message":"Method not found"}})),
+        "initialize" => ResponseTemplate::new(200).set_body_json(json!({
                     "jsonrpc": "2.0",
                     "id": id,
                     "result": {
@@ -648,7 +649,7 @@ async fn host_mcp_instructions_and_tool_names_reach_the_model() {
         "/sveda/stream",
         auth_accept_headers(&token),
         json_body(&json!({
-            "messages": [{ "id": "m1", "role": "user", "content": "создай тестовый пост" }],
+            "messages": [{ "id": "m1", "role": "user", "content": "СЃРѕР·РґР°Р№ С‚РµСЃС‚РѕРІС‹Р№ РїРѕСЃС‚" }],
             "chatId": "chat-mcp-instructions"
         })),
     )

@@ -75,7 +75,6 @@ pub struct ToolRuntime {
     activated: Mutex<Vec<String>>,
     defer_enabled: bool,
     min_pool: usize,
-    always_loaded: Vec<String>,
     max_parallel: usize,
     max_per_turn: usize,
     index: Option<Arc<WorkspaceIndex>>,
@@ -99,7 +98,6 @@ impl Default for ToolRuntime {
             activated: Mutex::new(Vec::new()),
             defer_enabled: true,
             min_pool: 14,
-            always_loaded: vec![SPAWN_TOOL_NAME.to_string()],
             max_parallel: 4,
             max_per_turn: 6,
             index: None,
@@ -169,11 +167,12 @@ impl ToolRuntime {
         name: &str,
         input: &Value,
         scope: &str,
+        call_id: &str,
     ) -> Option<ToolOutcome> {
         let CallTarget::Mcp(client) = &self.target else {
             return None;
         };
-        match client.call_with_approval(name, input, scope).await {
+        match client.call_with_approval(name, input, scope, call_id).await {
             Ok(output) => output.map(|output| ToolOutcome {
                 output,
                 events: Vec::new(),
@@ -239,9 +238,7 @@ impl ToolRuntime {
             specs.push(search_spec());
             let activated = self.activated.lock().expect("activated").clone();
             for tool in &self.mcp_tools {
-                if self.always_loaded.iter().any(|name| name == &tool.name)
-                    || activated.iter().any(|name| name == &tool.name)
-                {
+                if tool.always_loaded || activated.iter().any(|name| name == &tool.name) {
                     specs.push(mcp_spec(tool));
                 }
             }
@@ -270,8 +267,17 @@ impl ToolRuntime {
     }
 
     pub async fn execute(&self, name: &str, input: Value) -> ToolOutcome {
+        self.execute_call(name, input, None).await
+    }
+
+    pub async fn execute_call(
+        &self,
+        name: &str,
+        input: Value,
+        call_id: Option<&str>,
+    ) -> ToolOutcome {
         if name == SPAWN_TOOL_NAME {
-            return self.spawn_tasks(input).await;
+            return self.spawn_tasks(input, call_id).await;
         }
         if name == SEARCH_TOOL_NAME {
             return self.search_tools(input);
@@ -282,14 +288,14 @@ impl ToolRuntime {
         if name == READ_CODE_TOOL_NAME {
             return self.read_code(input);
         }
-        let output = self.call_backend(name, input).await;
+        let output = self.call_backend(name, input, call_id).await;
         ToolOutcome {
             output,
             events: Vec::new(),
         }
     }
 
-    async fn spawn_tasks(&self, input: Value) -> ToolOutcome {
+    async fn spawn_tasks(&self, input: Value, call_id: Option<&str>) -> ToolOutcome {
         let Some(tasks) = input.get("tasks").and_then(Value::as_array) else {
             return ToolOutcome::error("At least one task is required.");
         };
@@ -336,7 +342,7 @@ impl ToolRuntime {
         events.push(progress_event(&states));
 
         let mut results = Vec::new();
-        for chunk in parsed.chunks(self.max_parallel.max(1)) {
+        for (batch, chunk) in parsed.chunks(self.max_parallel.max(1)).enumerate() {
             for item in chunk {
                 if let Some(state) = states.iter_mut().find(|state| state.id == item.0) {
                     state.status = "running".into();
@@ -344,7 +350,8 @@ impl ToolRuntime {
             }
             events.push(progress_event(&states));
 
-            let futs = chunk.iter().map(|(id, kind, input, label)| {
+            let futs = chunk.iter().enumerate().map(|(index, (id, kind, input, label))| {
+                let child_call = call_id.map(|id| format!("{id}:{}", batch * self.max_parallel.max(1) + index));
                 let kind = kind.clone();
                 let input = input.clone();
                 let id = id.clone();
@@ -355,10 +362,8 @@ impl ToolRuntime {
                             "success": false,
                             "error": "This tool requires user confirmation and cannot run inside spawn_tasks."
                         })
-                    } else if self.mcp_tools.iter().chain(self.native_tools.iter()).any(|tool| tool.name == kind) {
-                        self.call_backend(&kind, input).await
                     } else {
-                        json!({ "success": false, "error": format!("Unknown tool {kind}.") })
+                        self.call_backend(&kind, input, child_call.as_deref()).await
                     };
                     (id, label, output)
                 }
@@ -444,16 +449,12 @@ impl ToolRuntime {
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then_with(|| left.1.name.cmp(&right.1.name))
         });
-        let filtered: Vec<&McpTool> = scored
-            .iter()
-            .filter(|(score, _)| *score >= 0.12)
-            .map(|(_, tool)| *tool)
+        let chosen: Vec<&McpTool> = scored
+            .into_iter()
+            .filter(|(score, _)| *score > 0.0)
+            .take(limit)
+            .map(|(_, tool)| tool)
             .collect();
-        let chosen: Vec<&McpTool> = if filtered.is_empty() {
-            scored.iter().take(limit).map(|(_, tool)| *tool).collect()
-        } else {
-            filtered.into_iter().take(limit).collect()
-        };
 
         let activated: Vec<String> = chosen.iter().map(|tool| tool.name.clone()).collect();
         {
@@ -486,7 +487,7 @@ impl ToolRuntime {
                     "activated_tools": activated,
                     "backend": "keyword",
                     "hint": if activated.is_empty() {
-                        "No matching tools found. Rephrase the query or answer from your own knowledge."
+                        "No matching tools found. Try a shorter action or entity name in the tool catalog language."
                     } else {
                         "These tools are now available in your next step. Call them directly by name."
                     }
@@ -613,11 +614,14 @@ impl ToolRuntime {
         }
     }
 
-    async fn call_backend(&self, name: &str, input: Value) -> Value {
+    async fn call_backend(&self, name: &str, input: Value, call_id: Option<&str>) -> Value {
         if self.native_tools.iter().any(|tool| tool.name == name) {
             if let Some(handler) = &self.native_handler {
                 return handler(name.to_string(), input).await;
             }
+        }
+        if !self.mcp_tools.iter().any(|tool| tool.name == name) {
+            return json!({ "success": false, "error": format!("Unknown tool {name}.") });
         }
         match &self.target {
             CallTarget::None => {
@@ -625,7 +629,7 @@ impl ToolRuntime {
             }
             CallTarget::Memory(backend) => backend.call(name, input).await,
             CallTarget::Mcp(client) => client
-                .call_tool(name, input)
+                .call_tool_with_id(name, input, call_id)
                 .await
                 .unwrap_or_else(|error| json!({ "success": false, "error": error.to_string() })),
         }
@@ -715,7 +719,7 @@ fn read_code_spec() -> ToolSpec {
 fn search_spec() -> ToolSpec {
     ToolSpec {
         name: SEARCH_TOOL_NAME.into(),
-        description: "Semantic search over the agent tool catalog. Call this before using business tools that are not already available in the current request. Matching tools become available immediately.".into(),
+        description: "Keyword search across names, descriptions and domains of available tools. Use short terms in the catalog language (e.g. create survey). Call this before using business tools that are not already available in the current request. Matching tools become available immediately.".into(),
         parameters: json!({
             "type": "object",
             "properties": {
@@ -737,6 +741,9 @@ fn mcp_spec(tool: &McpTool) -> ToolSpec {
 }
 
 fn keyword_score(query: &str, tool: &McpTool) -> f64 {
+    if tool.name.eq_ignore_ascii_case(query.trim()) {
+        return 2.0;
+    }
     let haystack = format!("{} {} {}", tool.name, tool.domain, tool.description).to_lowercase();
     let tokens: Vec<String> = query
         .to_lowercase()
@@ -900,6 +907,7 @@ mod tests {
             input_schema: json!({ "type": "object", "properties": {} }),
             domain: "admin".into(),
             mode: "read".into(),
+            always_loaded: false,
             confirmation_required: false,
             approval: Default::default(),
         }];
@@ -931,6 +939,7 @@ mod tests {
             input_schema: json!({ "type": "object", "properties": {} }),
             domain: "admin".into(),
             mode: "read".into(),
+            always_loaded: false,
             confirmation_required: false,
             approval: Default::default(),
         }];
@@ -974,6 +983,7 @@ mod tests {
                 input_schema: json!({ "type": "object" }),
                 domain: "host".into(),
                 mode: "read".into(),
+                always_loaded: index == 0,
                 confirmation_required: false,
                 approval: Default::default(),
             })
@@ -986,6 +996,7 @@ mod tests {
                     input_schema: json!({ "type": "object", "properties": {} }),
                     domain: "admin".into(),
                     mode: "read".into(),
+                    always_loaded: false,
                     confirmation_required: false,
                     approval: Default::default(),
                 }],
@@ -1000,6 +1011,7 @@ mod tests {
             .collect();
         assert!(advertised.contains(&"admin_dashboard".to_string()));
         assert!(advertised.contains(&SEARCH_TOOL_NAME.to_string()));
+        assert!(advertised.contains(&"host_tool_0".to_string()));
         assert!(!advertised.contains(&"host_tool_3".to_string()));
 
         let search = runtime
@@ -1016,5 +1028,7 @@ mod tests {
             .filter_map(Value::as_str)
             .collect::<Vec<_>>();
         assert!(activated.contains(&"admin_dashboard"));
+        let missing = runtime.search_tools(json!({"query": "xyzzy"}));
+        assert_eq!(missing.output["data"]["activated_tools"], json!([]));
     }
 }

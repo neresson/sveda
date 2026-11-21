@@ -16,6 +16,7 @@ fn mcp_reply(request: &Request) -> ResponseTemplate {
     let method = payload.get("method").and_then(Value::as_str).unwrap_or("");
     let id = payload.get("id").cloned().unwrap_or(json!(1));
     match method {
+        "server/discover" => ResponseTemplate::new(400).set_body_json(json!({"jsonrpc":"2.0","id":id,"error":{"code":-32601,"message":"Method not found"}})),
         "initialize" => ResponseTemplate::new(200)
             .insert_header("content-type", "application/json")
             .insert_header("mcp-session-id", "sess-test")
@@ -165,4 +166,84 @@ async fn public_mcp_omits_authorization_when_token_is_empty() {
     assert!(requests
         .iter()
         .all(|request| request.headers.get("authorization").is_none()));
+}
+
+fn test_client(server: &MockServer) -> HostMcpClient {
+    HostMcpClient::from_timeout(
+        5,
+        McpCredentials {
+            url: server.uri(),
+            token: "test".into(),
+        },
+        McpCallContext {
+            page_context: None,
+            chat_id: Some("chat".into()),
+        },
+    )
+}
+
+#[tokio::test]
+async fn stateless_discovery_and_retried_calls_preserve_wire_contract() {
+    use sveda_mcp::MCP_PROTOCOL_VERSION;
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(|request: &Request| {
+            let body: Value = serde_json::from_slice(&request.body).unwrap();
+            let result = match body["method"].as_str().unwrap() {
+                "server/discover" => {
+                    json!({"supportedVersions":[MCP_PROTOCOL_VERSION],"instructions":"host rules"})
+                }
+                "tools/list" => {
+                    json!({"tools":[{"name":"read","_meta":{"ai.sveda/alwaysLoaded":true}}]})
+                }
+                "tools/call" => json!({"structuredContent":{"value":"data: test"}}),
+                other => panic!("unexpected method {other}"),
+            };
+            ResponseTemplate::new(200)
+                .set_body_json(json!({"jsonrpc":"2.0","id":body["id"],"result":result}))
+        })
+        .mount(&server)
+        .await;
+    let client = test_client(&server);
+    assert!(client.list_tools().await.unwrap()[0].always_loaded);
+    assert_eq!(client.instructions().as_deref(), Some("host rules"));
+    for id in ["one", "one", "two"] {
+        let result = client
+            .call_tool_with_id("read", json!({}), Some(id))
+            .await
+            .unwrap();
+        assert_eq!(result["value"], "data: test");
+    }
+    let requests = server.received_requests().await.unwrap();
+    assert_eq!(requests.len(), 5);
+    let mut keys = Vec::new();
+    for req in &requests {
+        let body: Value = serde_json::from_slice(&req.body).unwrap();
+        let meta = &body["params"]["_meta"];
+        assert_eq!(req.headers["mcp-protocol-version"], MCP_PROTOCOL_VERSION);
+        assert_eq!(req.headers["mcp-method"], body["method"].as_str().unwrap());
+        assert_eq!(
+            meta["io.modelcontextprotocol/protocolVersion"],
+            MCP_PROTOCOL_VERSION
+        );
+        assert_eq!(meta["io.modelcontextprotocol/clientInfo"]["name"], "sveda");
+        if body["method"] == "tools/call" {
+            assert_eq!(req.headers["mcp-name"], "read");
+            keys.push(req.headers["idempotency-key"].clone());
+        }
+    }
+    assert_eq!(keys[0], keys[1]);
+    assert_ne!(keys[0], keys[2]);
+}
+
+#[tokio::test]
+async fn refused_discovery_does_not_retry_with_legacy_credentials() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(401))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let error = test_client(&server).list_tools().await.unwrap_err();
+    assert!(error.to_string().contains("401"));
 }

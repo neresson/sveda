@@ -144,8 +144,14 @@ pub async fn run_turn(
                     chat_id: Some(chat_id.clone()),
                 },
             );
-            if let Ok(tools) = client.list_tools().await {
-                let mut tools = filter_mcp_tools(tools, &capabilities.mcp, restricted);
+            let tools = client.list_tools().await.map_err(|error| {
+                eprintln!("host MCP discovery failed: {error}");
+                Box::new((
+                    axum::http::StatusCode::BAD_GATEWAY,
+                    axum::Json(serde_json::json!({"code":"host_tools_unavailable","message":"Unable to load tools from the host application. Try again after the connection is restored."})),
+                ).into_response())
+            })?;
+            let mut tools = filter_mcp_tools(tools, &capabilities.mcp, restricted);
                 let options = tools
                     .iter_mut()
                     .filter_map(|tool| {
@@ -155,12 +161,7 @@ pub async fn run_turn(
                     })
                     .collect();
                 let chat_grants = grants.clone();
-                let tool_names: Vec<String> = tools.iter().map(|tool| tool.name.clone()).collect();
-                let host_instructions = sveda_agent::host_tools_instruction(
-                    client.instructions().as_deref(),
-                    &tool_names,
-                );
-                instructions = sveda_agent::append_instruction(instructions, &host_instructions);
+            let server_instructions = client.instructions();
                 runtime = ToolRuntime::mcp(std::sync::Arc::new(client), tools)
                     .with_defer(runtime_config.defer_enabled, runtime_config.defer_min_pool)
                     .with_approvals(
@@ -171,7 +172,21 @@ pub async fn run_turn(
                                 .is_some_and(|grants| grants.permits(host, tool, scope))
                         }),
                     );
+            let names = runtime
+                .advertised()
+                .into_iter()
+                .map(|tool| tool.name)
+                .filter(|name| name != sveda_agent::SPAWN_TOOL_NAME)
+                .collect::<Vec<_>>();
+            let mut host_instructions =
+                sveda_agent::host_tools_instruction(server_instructions.as_deref(), &names);
+            if names
+                .iter()
+                .any(|name| name == sveda_agent::SEARCH_TOOL_NAME)
+            {
+                host_instructions.push_str(" Discover further host tools by calling search_agent_tools directly with short keywords before choosing a tool.");
             }
+            instructions = sveda_agent::append_instruction(instructions, &host_instructions);
         }
         if !restricted || capabilities.code {
             let workspace = state.index.lock().expect("index").clone();
@@ -697,13 +712,15 @@ async fn resolve_tool_decisions(
                 "error": "An earlier approval may have executed this action. Verify its outcome before retrying."
             }),
             ApprovedAction::Run => {
-                let outcome = runtime.execute(&call.name, call.arguments.clone()).await;
+                let outcome = runtime
+                    .execute_call(&call.name, call.arguments.clone(), Some(&call.id))
+                    .await;
                 events.extend(outcome.events);
                 normalize_output(outcome.output)
             }
             ApprovedAction::Guarded { scope, grant } => {
                 let Some(outcome) = runtime
-                    .execute_guarded(&call.name, &call.arguments, &scope)
+                    .execute_guarded(&call.name, &call.arguments, &scope, &call.id)
                     .await
                 else {
                     // A definite host rejection leaves the call pending for an individual decision.

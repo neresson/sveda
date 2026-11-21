@@ -269,7 +269,7 @@ fn run_loop(
                     };
                     if let Some(ApprovalOffer::Chat(scope)) = &offer {
                         if can_execute && runtime.has_chat_approval(&name, scope) {
-                            outcome = runtime.execute_guarded(&name, &input, scope).await;
+                            outcome = runtime.execute_guarded(&name, &input, scope, &id).await;
                             confirming = outcome.is_none();
                             offer = None;
                         }
@@ -287,7 +287,7 @@ fn run_loop(
                 });
                 let outcome = match outcome {
                     Some(outcome) => outcome,
-                    None => runtime.execute(&name, input).await,
+                    None => runtime.execute_call(&name, input, Some(&id)).await,
                 };
                 for event in outcome.events {
                     yield stamp(event);
@@ -800,6 +800,7 @@ mod tests {
                     input_schema: json!({ "type": "object", "properties": {} }),
                     domain: "posts".into(),
                     mode: "read".into(),
+                    always_loaded: false,
                     confirmation_required: false,
                     approval: Default::default(),
                 },
@@ -809,6 +810,7 @@ mod tests {
                     input_schema: json!({ "type": "object", "properties": {} }),
                     domain: "posts".into(),
                     mode: "delete".into(),
+                    always_loaded: false,
                     confirmation_required: true,
                     approval: Default::default(),
                 },
@@ -975,6 +977,7 @@ mod tests {
             input_schema: json!({ "type": "object", "properties": {} }),
             domain: "calendar".into(),
             mode: "read".into(),
+            always_loaded: false,
             confirmation_required: false,
             approval: Default::default(),
         }
@@ -1261,6 +1264,7 @@ mod tests {
                 input_schema: json!({ "type": "object" }),
                 domain: "billing".into(),
                 mode: "read".into(),
+                always_loaded: false,
                 confirmation_required: false,
                 approval: Default::default(),
             })

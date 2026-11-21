@@ -64,7 +64,8 @@ async fn host(calls: Arc<Mutex<Vec<Value>>>) -> MockServer {
                 calls.lock().expect("calls").push(payload.clone());
             }
             match method {
-                "initialize" => ResponseTemplate::new(200).set_body_json(json!({
+                "server/discover" => ResponseTemplate::new(400).set_body_json(json!({"jsonrpc":"2.0","id":id,"error":{"code":-32601,"message":"Method not found"}})),
+        "initialize" => ResponseTemplate::new(200).set_body_json(json!({
                     "jsonrpc": "2.0",
                     "id": id,
                     "result": {

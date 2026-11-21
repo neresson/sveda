@@ -359,6 +359,7 @@ mod tests {
             input_schema: json!({ "type": "object" }),
             domain: domain.into(),
             mode: mode.into(),
+            always_loaded: false,
             confirmation_required: false,
             approval: Default::default(),
         }

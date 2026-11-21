@@ -120,6 +120,7 @@ fn tool(name: &str, description: &str, input_schema: Value) -> McpTool {
         input_schema,
         domain: "web".into(),
         mode: "read".into(),
+        always_loaded: false,
         confirmation_required: false,
         approval: Default::default(),
     }

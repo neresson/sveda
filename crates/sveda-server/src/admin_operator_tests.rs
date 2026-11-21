@@ -116,7 +116,8 @@ async fn mock_host_mcp() -> MockServer {
             let payload: Value = serde_json::from_slice(&request.body).unwrap_or(json!({}));
             let id = payload.get("id").cloned().unwrap_or(json!(1));
             match payload.get("method").and_then(Value::as_str).unwrap_or("") {
-                "initialize" => ResponseTemplate::new(200).set_body_json(json!({
+                "server/discover" => ResponseTemplate::new(400).set_body_json(json!({"jsonrpc":"2.0","id":id,"error":{"code":-32601,"message":"Method not found"}})),
+        "initialize" => ResponseTemplate::new(200).set_body_json(json!({
                     "jsonrpc": "2.0",
                     "id": id,
                     "result": {
@@ -207,4 +208,33 @@ async fn public_visitor_still_loads_host_mcp() {
     assert!(tools.contains(&"get_calendar_events".to_string()));
     assert!(!tools.iter().any(|name| name.starts_with("admin_")));
     assert!(!server.received_requests().await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn unavailable_host_returns_an_explicit_error_before_model_generation() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(503))
+        .mount(&server)
+        .await;
+    let llm = Arc::new(hello_world());
+    let state = AppState::with_llm(admin_config(), llm.clone() as Arc<dyn LlmClient>);
+    state.inject_host_mcp("visitor-down", &server.uri(), "test");
+    let token = token::issue(&state.config.hmac_key, "visitor-down", 120);
+    let mut headers = json_headers();
+    headers.insert(HEADER_EMBED_TOKEN, token.parse().unwrap());
+    let (status, _, body) = send(
+        state,
+        "POST",
+        "/sveda/stream",
+        headers,
+        Body::from(json!({"prompt":"Search courses", "chatId":"host-down"}).to_string()),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_GATEWAY);
+    assert_eq!(
+        serde_json::from_slice::<Value>(&body).unwrap()["code"],
+        "host_tools_unavailable"
+    );
+    assert!(llm.last_tools.lock().unwrap().is_empty());
 }

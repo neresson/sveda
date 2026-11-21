@@ -1,16 +1,22 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
+use sha2::{Digest, Sha256};
+use tokio::sync::OnceCell;
+
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
 use serde_json::{json, Value};
 use sveda_protocol::{HEADER_CHAT_ID, HEADER_PAGE_CONTEXT};
 
 pub const PAGE_CONTEXT_MAX_BYTES: usize = 24000;
-pub const MCP_PROTOCOL_VERSION: &str = "2025-11-25";
+pub const MCP_PROTOCOL_VERSION: &str = "2026-07-28";
+const LEGACY_VERSION: &str = "2025-11-25";
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum McpError {
+    #[error("server requires legacy MCP initialization")]
+    LegacyDiscovery,
     #[error("{0}")]
     Other(String),
 }
@@ -29,6 +35,7 @@ pub struct McpTool {
     pub domain: String,
     pub mode: String,
     pub confirmation_required: bool,
+    pub always_loaded: bool,
     pub approval: McpApproval,
 }
 
@@ -51,6 +58,7 @@ pub struct HostMcpClient {
     http: Client,
     url: String,
     token: String,
+    version: OnceCell<&'static str>,
     session_id: Mutex<Option<String>>,
     next_id: AtomicU64,
     context: McpCallContext,
@@ -63,6 +71,7 @@ impl HostMcpClient {
             http,
             url: creds.url.trim_end_matches('/').to_string(),
             token: creds.token,
+            version: OnceCell::new(),
             session_id: Mutex::new(None),
             next_id: AtomicU64::new(1),
             context,
@@ -79,21 +88,69 @@ impl HostMcpClient {
     }
 
     pub async fn initialize(&self) -> Result<(), McpError> {
+        self.version.get_or_try_init(|| self.discover()).await?;
+        Ok(())
+    }
+
+    async fn discover(&self) -> Result<&'static str, McpError> {
+        match self
+            .send_rpc("server/discover", json!({}), MCP_PROTOCOL_VERSION, None)
+            .await
+        {
+            Ok(response) => {
+                let versions = response
+                    .body
+                    .pointer("/result/supportedVersions")
+                    .and_then(Value::as_array)
+                    .ok_or_else(|| McpError::Other("invalid MCP discovery response".into()))?;
+                if versions.iter().any(|v| v == MCP_PROTOCOL_VERSION) {
+                    self.store_instructions(&response.body);
+                    return Ok(MCP_PROTOCOL_VERSION);
+                }
+                if !versions.iter().any(|v| v == LEGACY_VERSION) {
+                    return Err(McpError::Other("incompatible MCP server version".into()));
+                }
+            }
+            Err(McpError::LegacyDiscovery) => {}
+            Err(error) => return Err(error),
+        }
         let response = self
-            .rpc(
+            .send_rpc(
                 "initialize",
                 json!({
-                    "protocolVersion": MCP_PROTOCOL_VERSION,
+                    "protocolVersion": LEGACY_VERSION,
                     "capabilities": {},
                     "clientInfo": { "name": "sveda", "version": "0.1.0" }
                 }),
+                LEGACY_VERSION,
+                None,
             )
             .await?;
+        if response
+            .body
+            .pointer("/result/protocolVersion")
+            .and_then(Value::as_str)
+            != Some(LEGACY_VERSION)
+        {
+            return Err(McpError::Other(
+                "incompatible legacy MCP server version".into(),
+            ));
+        }
         if let Some(session) = response.session_id {
             *self.session_id.lock().expect("session") = Some(session);
         }
-        if let Some(text) = response
-            .body
+        self.store_instructions(&response.body);
+        self.post(
+            json!({"jsonrpc":"2.0","method":"notifications/initialized"}),
+            LEGACY_VERSION,
+            None,
+        )
+        .await?;
+        Ok(LEGACY_VERSION)
+    }
+
+    fn store_instructions(&self, body: &Value) {
+        if let Some(text) = body
             .pointer("/result/instructions")
             .and_then(Value::as_str)
             .map(str::trim)
@@ -101,10 +158,6 @@ impl HostMcpClient {
         {
             *self.instructions.lock().expect("instructions") = Some(text.to_string());
         }
-        let _ = self
-            .rpc_notification("notifications/initialized", json!({}))
-            .await;
-        Ok(())
     }
 
     pub fn instructions(&self) -> Option<String> {
@@ -123,13 +176,14 @@ impl HostMcpClient {
             if let Some(value) = &cursor {
                 params["cursor"] = json!(value);
             }
-            let payload = self.rpc("tools/list", params).await?;
+            let payload = self
+                .send_rpc("tools/list", params, self.version.get().unwrap(), None)
+                .await?;
             let page = payload
                 .body
                 .pointer("/result/tools")
                 .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default();
+                .ok_or_else(|| McpError::Other("invalid MCP tools/list response".into()))?;
             tools.extend(page.iter().filter_map(parse_tool));
             cursor = payload
                 .body
@@ -139,16 +193,25 @@ impl HostMcpClient {
                 .filter(|value| !value.is_empty())
                 .map(ToOwned::to_owned);
             if cursor.is_none() {
-                break;
+                return Ok(tools);
             }
         }
-        Ok(tools)
+        Err(McpError::Other(
+            "MCP tool catalog exceeded the pagination limit".into(),
+        ))
     }
 
     pub async fn call_tool(&self, name: &str, arguments: Value) -> Result<Value, McpError> {
-        if self.session_id.lock().expect("session").is_none() {
-            self.initialize().await?;
-        }
+        self.call_tool_with_id(name, arguments, None).await
+    }
+
+    pub async fn call_tool_with_id(
+        &self,
+        name: &str,
+        arguments: Value,
+        call_id: Option<&str>,
+    ) -> Result<Value, McpError> {
+        let key = call_id.map(|id| self.idempotency_key("sveda", id));
         let payload = self
             .rpc(
                 "tools/call",
@@ -156,9 +219,10 @@ impl HostMcpClient {
                     "name": name,
                     "arguments": arguments,
                 }),
+                key.as_deref(),
             )
             .await?;
-        Ok(map_call_result(&payload.body))
+        tool_result(&payload.body)
     }
 
     pub async fn approval_scope(&self, name: &str, arguments: &Value) -> Option<String> {
@@ -166,6 +230,7 @@ impl HostMcpClient {
             .rpc(
                 "sveda/approval/check",
                 json!({ "name": name, "arguments": arguments }),
+                None,
             )
             .await
             .ok()?;
@@ -184,11 +249,15 @@ impl HostMcpClient {
         name: &str,
         arguments: &Value,
         scope: &str,
+        call_id: &str,
     ) -> Result<Option<Value>, McpError> {
+        // A rejected guarded call may later be approved through tools/call.
+        let key = self.idempotency_key("sveda-approval", call_id);
         let payload = self
             .rpc(
                 "sveda/approval/call",
                 json!({ "name": name, "arguments": arguments, "scope": scope }),
+                Some(&key),
             )
             .await?;
         if payload.body.pointer("/result/allowed") == Some(&Value::Bool(false))
@@ -196,14 +265,43 @@ impl HostMcpClient {
         {
             return Ok(None);
         }
-        Ok(Some(map_call_result(&payload.body)))
+        tool_result(&payload.body).map(Some)
     }
 
     pub fn approval_host(&self) -> &str {
         &self.url
     }
 
-    async fn rpc(&self, method: &str, params: Value) -> Result<RpcResponse, McpError> {
+    fn idempotency_key(&self, prefix: &str, id: &str) -> String {
+        let chat = self.context.chat_id.as_deref().unwrap_or_default();
+        let digest = Sha256::digest(format!("{}:{chat}{id}", chat.len()).as_bytes());
+        format!("{prefix}-{digest:x}")
+    }
+
+    async fn rpc(
+        &self,
+        method: &str,
+        params: Value,
+        key: Option<&str>,
+    ) -> Result<RpcResponse, McpError> {
+        let version = self.version.get_or_try_init(|| self.discover()).await?;
+        self.send_rpc(method, params, version, key).await
+    }
+
+    async fn send_rpc(
+        &self,
+        method: &str,
+        mut params: Value,
+        version: &str,
+        key: Option<&str>,
+    ) -> Result<RpcResponse, McpError> {
+        if version == MCP_PROTOCOL_VERSION {
+            params["_meta"] = json!({
+                "io.modelcontextprotocol/protocolVersion": MCP_PROTOCOL_VERSION,
+                "io.modelcontextprotocol/clientCapabilities": {},
+                "io.modelcontextprotocol/clientInfo": {"name":"sveda","version":env!("CARGO_PKG_VERSION")}
+            });
+        }
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let body = json!({
             "jsonrpc": "2.0",
@@ -211,32 +309,38 @@ impl HostMcpClient {
             "method": method,
             "params": params,
         });
-        self.post(body).await
+        self.post(body, version, key).await
     }
 
-    async fn rpc_notification(&self, method: &str, params: Value) -> Result<(), McpError> {
-        let body = json!({
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params,
-        });
-        let _ = self.post(body).await;
-        Ok(())
-    }
-
-    async fn post(&self, body: Value) -> Result<RpcResponse, McpError> {
+    async fn post(
+        &self,
+        body: Value,
+        version: &str,
+        key: Option<&str>,
+    ) -> Result<RpcResponse, McpError> {
+        let method = body["method"].as_str().unwrap_or_default();
         let mut request = self
             .http
             .post(&self.url)
             .headers(self.headers()?)
+            .header("MCP-Protocol-Version", version)
             .json(&body);
+        if version == MCP_PROTOCOL_VERSION {
+            request = request.header("Mcp-Method", method);
+            if let Some(name) = body.pointer("/params/name").and_then(Value::as_str) {
+                request = request.header("Mcp-Name", name);
+            }
+        }
+        if let Some(key) = key {
+            request = request.header("Idempotency-Key", key);
+        }
         if let Some(session) = self.session_id.lock().expect("session").clone() {
             request = request.header("mcp-session-id", session);
         }
         let response = request
             .send()
             .await
-            .map_err(|error| McpError::Other(error.to_string()))?;
+            .map_err(|error| McpError::Other(error.without_url().to_string()))?;
         let session_id = response
             .headers()
             .get("mcp-session-id")
@@ -252,12 +356,30 @@ impl HostMcpClient {
         let bytes = response
             .bytes()
             .await
-            .map_err(|error| McpError::Other(error.to_string()))?;
-        if !status.is_success() && status.as_u16() != 202 {
+            .map_err(|error| McpError::Other(error.without_url().to_string()))?;
+        if method == "server/discover" && (status.is_success() || status.as_u16() == 400) {
+            let parsed = parse_rpc_body(&bytes, &content_type).ok();
+            let code = parsed
+                .as_ref()
+                .and_then(|v| v.pointer("/error/code"))
+                .and_then(Value::as_i64);
+            let unsupported = code == Some(-32022)
+                && parsed
+                    .as_ref()
+                    .and_then(|v| v.pointer("/error/data/supported"))
+                    .and_then(Value::as_array)
+                    .is_some_and(|versions| versions.iter().any(|v| v == LEGACY_VERSION));
+            if matches!(code, Some(-32601 | -32600))
+                || unsupported
+                || (status.as_u16() == 400 && !matches!(code, Some(-32022 | -32020 | -32021)))
+            {
+                return Err(McpError::LegacyDiscovery);
+            }
+        }
+        if !status.is_success() {
             return Err(McpError::Other(format!(
-                "mcp http {}: {}",
-                status.as_u16(),
-                String::from_utf8_lossy(&bytes)
+                "MCP {method} returned HTTP {}",
+                status.as_u16()
             )));
         }
         if bytes.is_empty() {
@@ -280,10 +402,6 @@ impl HostMcpClient {
             HeaderValue::from_static("application/json, text/event-stream"),
         );
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-        headers.insert(
-            "mcp-protocol-version",
-            HeaderValue::from_static(MCP_PROTOCOL_VERSION),
-        );
         let token = self.token.trim();
         if !token.is_empty() {
             let auth = format!("Bearer {token}");
@@ -323,7 +441,7 @@ struct RpcResponse {
 
 fn parse_rpc_body(bytes: &[u8], content_type: &str) -> Result<Value, McpError> {
     let text = String::from_utf8_lossy(bytes);
-    if content_type.contains("text/event-stream") || text.contains("data:") {
+    if content_type.contains("text/event-stream") || text.trim_start().starts_with("data:") {
         let mut data = Vec::new();
         for line in text.lines() {
             if let Some(payload) = line.strip_prefix("data:") {
@@ -379,8 +497,16 @@ fn parse_tool(value: &Value) -> Option<McpTool> {
         domain,
         mode,
         confirmation_required,
+        always_loaded: meta.get("ai.sveda/alwaysLoaded").and_then(Value::as_bool) == Some(true),
         approval,
     })
+}
+
+fn tool_result(body: &Value) -> Result<Value, McpError> {
+    if !body["result"].is_object() && !body["error"].is_object() {
+        return Err(McpError::Other("missing MCP tool result".into()));
+    }
+    Ok(map_call_result(body))
 }
 
 fn map_call_result(body: &Value) -> Value {
