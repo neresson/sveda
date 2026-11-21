@@ -286,6 +286,7 @@ async fn denial_does_not_call_the_host() {
 #[tokio::test]
 async fn grouped_approvals_scope_grants_and_keep_sensitive_calls_explicit() {
     use crate::settings::SettingsPatch;
+    use sveda_mcp::MCP_PROTOCOL_VERSION;
     use sveda_protocol::ConfirmationScope;
 
     let calls = Arc::new(Mutex::new(Vec::new()));
@@ -297,19 +298,38 @@ async fn grouped_approvals_scope_grants_and_keep_sensitive_calls_explicit() {
             let body: Value = serde_json::from_slice(&request.body).unwrap();
             let id = &body["id"];
             let params = &body["params"];
-            let result = match body["method"].as_str() {
-                Some("initialize") => json!({}),
-                Some("tools/list") => json!({ "tools": [
+            let method = body["method"].as_str().unwrap();
+            assert_eq!(
+                request.headers["mcp-protocol-version"],
+                MCP_PROTOCOL_VERSION
+            );
+            assert_eq!(request.headers["mcp-method"], method);
+            let result = match method {
+                "server/discover" => json!({ "supportedVersions": [MCP_PROTOCOL_VERSION] }),
+                "tools/list" => json!({ "tools": [
                     { "name": "edit", "_meta": { "mode": "write", "confirm": "once_per_chat" } },
                     { "name": "draft", "_meta": { "mode": "write", "confirm": "batch" } },
                     { "name": "publish", "_meta": { "mode": "write", "confirm": "batch" },
                         "annotations": { "openWorldHint": true } },
                 ] }),
-                Some("sveda/approval/check") => json!({
-                    "scope": format!("org:user:{}", params["arguments"]["id"])
-                }),
-                Some("sveda/approval/call" | "tools/call") => {
-                    writes.lock().unwrap().push(params.clone());
+                "sveda/approval/check" => {
+                    assert_eq!(
+                        request.headers["mcp-name"],
+                        params["name"].as_str().unwrap()
+                    );
+                    assert!(!request.headers.contains_key("idempotency-key"));
+                    json!({ "scope": format!("org:user:{}", params["arguments"]["id"]) })
+                }
+                "sveda/approval/call" | "tools/call" => {
+                    assert_eq!(
+                        request.headers["mcp-name"],
+                        params["name"].as_str().unwrap()
+                    );
+                    let key = request.headers["idempotency-key"].to_str().unwrap();
+                    writes
+                        .lock()
+                        .unwrap()
+                        .push((method.to_owned(), key.to_owned()));
                     json!({ "structuredContent": { "success": true } })
                 }
                 _ => return ResponseTemplate::new(202),
@@ -433,5 +453,17 @@ async fn grouped_approvals_scope_grants_and_keep_sensitive_calls_explicit() {
     assert!(events
         .iter()
         .any(|event| matches!(event, StreamEvent::TextDelta { delta, .. } if delta == "Done.")));
-    assert_eq!(calls.lock().unwrap().len(), 4);
+    let calls = calls.lock().unwrap();
+    let methods: Vec<_> = calls.iter().map(|(method, _)| method.as_str()).collect();
+    assert_eq!(
+        methods,
+        [
+            "sveda/approval/call",
+            "sveda/approval/call",
+            "tools/call",
+            "tools/call"
+        ]
+    );
+    let keys: std::collections::HashSet<_> = calls.iter().map(|(_, key)| key).collect();
+    assert_eq!(keys.len(), calls.len());
 }
