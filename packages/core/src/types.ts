@@ -1,4 +1,4 @@
-import type { SvedaRenderHint, SvedaToolTarget } from '@sveda-ai/protocol';
+import type { SvedaConfirmationScope, SvedaRenderHint, SvedaToolTarget } from '@sveda-ai/protocol';
 
 export type SvedaMessageRole = 'user' | 'assistant' | 'system' | 'tool';
 
@@ -12,6 +12,7 @@ export type SvedaMessagePart =
       target: SvedaToolTarget;
       input: Record<string, unknown>;
       confirmation?: 'required';
+      confirmationScope?: SvedaConfirmationScope;
     }
   | {
       type: 'tool-result';

@@ -2,7 +2,35 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sveda_mcp::McpTool;
+use sveda_mcp::{McpApproval, McpTool};
+use sveda_protocol::ConfirmationScope;
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolApprovalPolicy {
+    Always,
+    Batch,
+    OncePerChat,
+}
+
+pub fn apply_tool_approval_policy(
+    tool: &mut McpTool,
+    policy: Option<ToolApprovalPolicy>,
+) -> Option<ConfirmationScope> {
+    if policy == Some(ToolApprovalPolicy::Always) {
+        tool.confirmation_required = true;
+        tool.approval = McpApproval::Always;
+    }
+    match (policy, tool.approval) {
+        (Some(ToolApprovalPolicy::Batch | ToolApprovalPolicy::OncePerChat), McpApproval::Batch) => {
+            Some(ConfirmationScope::Batch)
+        }
+        (Some(ToolApprovalPolicy::OncePerChat), McpApproval::Guarded) => {
+            Some(ConfirmationScope::Chat)
+        }
+        _ => None,
+    }
+}
 
 pub const MAX_POLICY_NAME_LEN: usize = 64;
 
@@ -332,6 +360,7 @@ mod tests {
             domain: domain.into(),
             mode: mode.into(),
             confirmation_required: false,
+            approval: Default::default(),
         }
     }
 

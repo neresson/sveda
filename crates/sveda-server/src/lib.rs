@@ -39,6 +39,7 @@ mod histories;
 pub mod policy;
 mod settings;
 mod token;
+mod tool_approvals;
 #[cfg(test)]
 mod tool_confirmation_tests;
 mod turn;
@@ -322,6 +323,7 @@ pub struct AppState {
     pub(crate) catalog: Arc<Mutex<Catalog>>,
     pub(crate) llm: Arc<dyn LlmClient>,
     mcp: KvStore,
+    approval_turns: Occupancy,
     pub(crate) store: HistoryStore,
     pub(crate) usage: UsageStore,
     pub(crate) reports: ContentReportStore,
@@ -485,6 +487,7 @@ impl AppState {
             llm,
             config,
             mcp: kv,
+            approval_turns: Occupancy::connect(redis.as_ref(), 0, 1),
             store,
             usage,
             reports,
@@ -630,6 +633,10 @@ pub fn app(state: AppState) -> Router {
         .route("/sveda/stream", post(stream_chat))
         .route("/sveda/message", post(json_message))
         .route("/sveda/chat-histories", get(histories::list_histories))
+        .route(
+            "/sveda/chat-histories/{chat_id}/tool-approvals",
+            axum::routing::delete(histories::revoke_tool_approvals),
+        )
         .route(
             "/sveda/chat-histories/{chat_id}",
             get(histories::show_history)

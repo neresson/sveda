@@ -281,3 +281,156 @@ async fn denial_does_not_call_the_host() {
     }
     assert!(calls.lock().expect("calls").is_empty());
 }
+
+#[tokio::test]
+async fn grouped_approvals_scope_grants_and_keep_sensitive_calls_explicit() {
+    use crate::settings::SettingsPatch;
+    use sveda_protocol::ConfirmationScope;
+
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let writes = calls.clone();
+    let host = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/mcp/sveda"))
+        .respond_with(move |request: &wiremock::Request| {
+            let body: Value = serde_json::from_slice(&request.body).unwrap();
+            let id = &body["id"];
+            let params = &body["params"];
+            let result = match body["method"].as_str() {
+                Some("initialize") => json!({}),
+                Some("tools/list") => json!({ "tools": [
+                    { "name": "edit", "_meta": { "mode": "write", "confirm": "once_per_chat" } },
+                    { "name": "draft", "_meta": { "mode": "write", "confirm": "batch" } },
+                    { "name": "publish", "_meta": { "mode": "write", "confirm": "batch" },
+                        "annotations": { "openWorldHint": true } },
+                ] }),
+                Some("sveda/approval/check") => json!({
+                    "scope": format!("org:user:{}", params["arguments"]["id"])
+                }),
+                Some("sveda/approval/call" | "tools/call") => {
+                    writes.lock().unwrap().push(params.clone());
+                    json!({ "structuredContent": { "success": true } })
+                }
+                _ => return ResponseTemplate::new(202),
+            };
+            ResponseTemplate::new(200).set_body_json(json!({
+                "jsonrpc": "2.0", "id": id, "result": result
+            }))
+        })
+        .mount(&host)
+        .await;
+    let call = |id: &str, name: &str, target: i64| {
+        Ok(LlmChunk::ToolCall {
+            id: id.into(),
+            name: name.into(),
+            input: json!({ "id": target }),
+        })
+    };
+    let end = || {
+        Ok(LlmChunk::End {
+            finish_reason: "tool_calls".into(),
+        })
+    };
+    let llm = Arc::new(ScriptedClient::queue(vec![
+        vec![call("edit-1", "edit", 1), end()],
+        vec![
+            call("edit-2", "edit", 1),
+            call("other", "edit", 2),
+            call("draft-1", "draft", 3),
+            call("draft-2", "draft", 4),
+            call("publish", "publish", 5),
+            end(),
+        ],
+        text_turn("Done."),
+    ]));
+    let state = AppState::with_llm(config(), llm);
+    let patch: SettingsPatch = serde_json::from_value(json!({
+        "tool_approvals": { "edit": "once_per_chat", "draft": "batch", "publish": "batch" }
+    }))
+    .unwrap();
+    crate::admin::persist_patch(&state, patch).await.unwrap();
+    state.inject_host_mcp("visitor", &format!("{}/mcp/sveda", host.uri()), "");
+    let token = token::issue(&state.config.hmac_key, "visitor", 120);
+    let (status, events) = send(
+        state.clone(),
+        &token,
+        json!({
+            "chatId": "chat", "prompt": "Edit the draft"
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(events
+        .iter()
+        .any(|event| matches!(event, StreamEvent::ToolCall {
+        tool_call_id, confirmation_scope: Some(ConfirmationScope::Chat), ..
+    } if tool_call_id == "edit-1")));
+    assert!(calls.lock().unwrap().is_empty());
+    let history = state.store.get("visitor", "chat").await.unwrap().unwrap();
+    assert!(history.messages.iter().any(|message| message["parts"]
+        .as_array()
+        .is_some_and(|parts| parts.iter().any(|part| part["confirmationScope"] == "chat"))));
+
+    let (status, events) = send(state.clone(), &token, json!({
+        "chatId": "chat", "toolDecisions": [{ "toolCallId": "edit-1", "decision": "approve_for_chat" }]
+    })).await;
+    assert_eq!(status, StatusCode::OK);
+    let offers: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            StreamEvent::ToolCall {
+                tool_call_id,
+                confirmation,
+                confirmation_scope,
+                ..
+            } => Some((
+                tool_call_id.as_str(),
+                confirmation.as_deref(),
+                *confirmation_scope,
+            )),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        offers,
+        vec![
+            ("edit-2", None, None),
+            ("other", Some("required"), Some(ConfirmationScope::Chat)),
+            ("draft-1", Some("required"), Some(ConfirmationScope::Batch)),
+            ("draft-2", Some("required"), Some(ConfirmationScope::Batch)),
+            ("publish", Some("required"), None),
+        ]
+    );
+    assert_eq!(calls.lock().unwrap().len(), 2);
+
+    let (status, _) = send(
+        state.clone(),
+        &token,
+        json!({
+            "chatId": "chat", "toolDecisions": [
+                { "toolCallId": "draft-1", "decision": "approve_batch" },
+                { "toolCallId": "draft-2", "decision": "approve_batch" },
+                { "toolCallId": "publish", "decision": "approve_batch" }
+            ]
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(calls.lock().unwrap().len(), 4);
+    let (status, events) = send(
+        state,
+        &token,
+        json!({
+            "chatId": "chat", "toolDecisions": [
+                { "toolCallId": "publish", "decision": "deny" },
+                { "toolCallId": "other", "decision": "deny" }
+            ]
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(events
+        .iter()
+        .any(|event| matches!(event, StreamEvent::TextDelta { delta, .. } if delta == "Done.")));
+    assert_eq!(calls.lock().unwrap().len(), 4);
+}

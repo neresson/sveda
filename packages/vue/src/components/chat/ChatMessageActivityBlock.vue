@@ -9,12 +9,14 @@
   import { CheckCircle, ChevronDown, ChevronRight, CircleStop, ExternalLink, Search, Terminal, XCircle } from 'lucide-vue-next';
   import { computed, ref, watch } from 'vue';
   import AnimatedStreamBlock from './AnimatedStreamBlock.vue';
+  import ChatToolConfirmation from './ChatToolConfirmation.vue';
 
   const props = defineProps({
     invocations: {
       type: Array,
       default: () => [],
     },
+    approvalDisabled: Boolean,
     legacyActivity: {
       type: Object,
       default: null,
@@ -25,7 +27,7 @@
     },
   });
 
-  const emit = defineEmits(['activity-link-click', 'confirm-tool', 'deny-tool']);
+  const emit = defineEmits(['activity-link-click', 'confirm-tool', 'deny-tool', 'approve-tool-batch']);
 
   const t = useSvedaT();
 
@@ -92,7 +94,7 @@
             detail = String(inv.output !== undefined ? inv.output : (inv.result ?? ''));
           }
         } else {
-          detail = JSON.stringify(inv.args !== undefined ? inv.args : inv.input, null, 2);
+          detail = JSON.stringify(inv.args !== undefined ? inv.args : inv.input, null, 2) ?? '';
         }
 
         if (detail.length > 2000) {
@@ -122,6 +124,7 @@
           status,
           detail,
           needsConfirmation: needsConfirmation(inv),
+          confirmationScope: inv.confirmationScope,
           toolCallId: inv.toolCallId || '',
           display: display && typeof display === 'object' ? display : undefined,
           ...groupPayload,
@@ -132,6 +135,11 @@
     const steps = props.legacyActivity?.steps ?? [];
     return steps.filter(step => step.kind === 'tool' || step.kind === 'error' || step.kind === 'subagent');
   });
+
+  const batchIds = computed(() => toolSteps.value.filter(step =>
+    step.needsConfirmation && step.toolCallId &&
+    (step.confirmationScope === 'batch' || step.confirmationScope === 'chat')
+  ).map(step => step.toolCallId));
 
   const expandedSteps = ref({});
   const expandedGroups = ref({});
@@ -383,29 +391,13 @@
                 {{ step.detail }}
               </div>
             </div>
-            <div
+            <ChatToolConfirmation
               v-if="step.needsConfirmation"
-              class="mt-1 border border-border bg-card px-2.5 py-2"
-            >
-              <p class="text-xs leading-snug text-foreground">{{ t('toolConfirmationPrompt') }}</p>
-              <pre v-if="step.detail" class="mt-1.5 max-h-24 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-snug text-muted-foreground">{{ step.detail }}</pre>
-              <div class="mt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  class="bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
-                  @click.stop="emit('confirm-tool', step.toolCallId)"
-                >
-                  {{ t('toolConfirm') }}
-                </button>
-                <button
-                  type="button"
-                  class="border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground"
-                  @click.stop="emit('deny-tool', step.toolCallId)"
-                >
-                  {{ t('toolDeny') }}
-                </button>
-              </div>
-            </div>
+              :step="step"
+              :disabled="approvalDisabled"
+              @confirm-tool="(id, decision) => emit('confirm-tool', id, decision)"
+              @deny-tool="emit('deny-tool', $event)"
+            />
           </div>
         </div>
       </div>
@@ -475,30 +467,23 @@
             {{ item.step.detail }}
           </div>
         </div>
-        <div
+        <ChatToolConfirmation
           v-if="item.step.needsConfirmation"
-          class="mt-1 border border-border bg-card px-2.5 py-2"
-        >
-          <p class="text-xs leading-snug text-foreground">{{ t('toolConfirmationPrompt') }}</p>
-          <pre v-if="item.step.detail" class="mt-1.5 max-h-24 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-snug text-muted-foreground">{{ item.step.detail }}</pre>
-          <div class="mt-2 flex items-center gap-2">
-            <button
-              type="button"
-              class="bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
-              @click.stop="emit('confirm-tool', item.step.toolCallId)"
-            >
-              {{ t('toolConfirm') }}
-            </button>
-            <button
-              type="button"
-              class="border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground"
-              @click.stop="emit('deny-tool', item.step.toolCallId)"
-            >
-              {{ t('toolDeny') }}
-            </button>
-          </div>
-        </div>
+          :step="item.step"
+          :disabled="approvalDisabled"
+          @confirm-tool="(id, decision) => emit('confirm-tool', id, decision)"
+          @deny-tool="emit('deny-tool', $event)"
+        />
       </div>
     </template>
+    <button
+      v-if="batchIds.length > 1"
+      type="button"
+      class="mt-2 border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+      :disabled="approvalDisabled"
+      @click="emit('approve-tool-batch', batchIds)"
+    >
+      {{ t('toolApproveBatch', { count: batchIds.length }) }}
+    </button>
   </div>
 </template>

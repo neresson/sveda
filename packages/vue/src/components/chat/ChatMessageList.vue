@@ -44,7 +44,7 @@
     },
   });
 
-  const emit = defineEmits(['near-bottom-change', 'scroll-to-bottom', 'stop-generation', 'activity-link-click']);
+  const emit = defineEmits(['confirm-tool', 'deny-tool', 'approve-tool-batch', 'near-bottom-change', 'scroll-to-bottom', 'stop-generation', 'activity-link-click']);
 
   const t = useSvedaT();
   const showPendingIndicator = computed(() => shouldShowChatPendingIndicator(props.isThinking && props.contentAnimationsEnabled, props.messages));
@@ -188,11 +188,13 @@
         >
           <ChatMessageItem
             :message="message"
+            :approval-disabled="isLoading"
             :content-animations-enabled="contentAnimationsEnabled"
             :follow-workflow-stream="contentAnimationsEnabled && message.role === 'assistant' && index === messages.length - 1"
             :on-resource-link-click="onResourceLinkClick"
             @activity-link-click="$emit('activity-link-click', $event)"
-            @confirm-tool="$emit('confirm-tool', $event)"
+            @confirm-tool="(id, decision) => $emit('confirm-tool', id, decision)"
+            @approve-tool-batch="$emit('approve-tool-batch', $event)"
             @deny-tool="$emit('deny-tool', $event)"
             @stop-generation="$emit('stop-generation', $event)"
           />

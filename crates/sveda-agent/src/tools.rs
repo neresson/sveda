@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use sveda_index::WorkspaceIndex;
 use sveda_llm::ToolSpec;
 use sveda_mcp::{HostMcpClient, McpTool};
-use sveda_protocol::{StreamEvent, ToolProgressTask};
+use sveda_protocol::{ConfirmationScope, StreamEvent, ToolProgressTask};
 use uuid::Uuid;
 
 pub const SEARCH_TOOL_NAME: &str = "search_agent_tools";
@@ -49,11 +49,29 @@ enum CallTarget {
     Mcp(Arc<HostMcpClient>),
 }
 
+pub enum ApprovalOffer {
+    Batch,
+    Chat(String),
+}
+
+impl ApprovalOffer {
+    pub fn scope(&self) -> ConfirmationScope {
+        match self {
+            Self::Batch => ConfirmationScope::Batch,
+            Self::Chat(_) => ConfirmationScope::Chat,
+        }
+    }
+}
+
+pub type HasChatApproval = Arc<dyn Fn(&str, &str, &str) -> bool + Send + Sync>;
+
 pub struct ToolRuntime {
     target: CallTarget,
     mcp_tools: Vec<McpTool>,
     native_tools: Vec<McpTool>,
     native_handler: Option<NativeHandler>,
+    approval_options: BTreeMap<String, ConfirmationScope>,
+    has_chat_approval: Option<HasChatApproval>,
     activated: Mutex<Vec<String>>,
     defer_enabled: bool,
     min_pool: usize,
@@ -76,6 +94,8 @@ impl Default for ToolRuntime {
             mcp_tools: Vec::new(),
             native_tools: Vec::new(),
             native_handler: None,
+            approval_options: BTreeMap::new(),
+            has_chat_approval: None,
             activated: Mutex::new(Vec::new()),
             defer_enabled: true,
             min_pool: 14,
@@ -103,6 +123,64 @@ impl ToolRuntime {
             mcp_tools: tools,
             target: CallTarget::Mcp(client),
             ..Self::default()
+        }
+    }
+
+    pub fn with_approvals(
+        mut self,
+        options: BTreeMap<String, ConfirmationScope>,
+        has_chat_approval: HasChatApproval,
+    ) -> Self {
+        self.approval_options = options;
+        self.has_chat_approval = Some(has_chat_approval);
+        self
+    }
+
+    pub fn approval_host(&self) -> Option<&str> {
+        match &self.target {
+            CallTarget::Mcp(client) => Some(client.approval_host()),
+            _ => None,
+        }
+    }
+
+    pub fn offers_approval(&self, name: &str) -> bool {
+        self.approval_options.contains_key(name)
+    }
+
+    pub async fn approval_offer(&self, name: &str, input: &Value) -> Option<ApprovalOffer> {
+        match (self.approval_options.get(name)?, &self.target) {
+            (ConfirmationScope::Batch, CallTarget::Mcp(_)) => Some(ApprovalOffer::Batch),
+            (ConfirmationScope::Chat, CallTarget::Mcp(client)) => client
+                .approval_scope(name, input)
+                .await
+                .map(ApprovalOffer::Chat),
+            _ => None,
+        }
+    }
+
+    pub fn has_chat_approval(&self, name: &str, scope: &str) -> bool {
+        self.approval_host()
+            .zip(self.has_chat_approval.as_ref())
+            .is_some_and(|(host, has_approval)| has_approval(host, name, scope))
+    }
+
+    pub async fn execute_guarded(
+        &self,
+        name: &str,
+        input: &Value,
+        scope: &str,
+    ) -> Option<ToolOutcome> {
+        let CallTarget::Mcp(client) = &self.target else {
+            return None;
+        };
+        match client.call_with_approval(name, input, scope).await {
+            Ok(output) => output.map(|output| ToolOutcome {
+                output,
+                events: Vec::new(),
+            }),
+            Err(_) => Some(ToolOutcome::error(
+                "The host did not confirm the result of the write.",
+            )),
         }
     }
 
@@ -277,8 +355,10 @@ impl ToolRuntime {
                             "success": false,
                             "error": "This tool requires user confirmation and cannot run inside spawn_tasks."
                         })
-                    } else {
+                    } else if self.mcp_tools.iter().chain(self.native_tools.iter()).any(|tool| tool.name == kind) {
                         self.call_backend(&kind, input).await
+                    } else {
+                        json!({ "success": false, "error": format!("Unknown tool {kind}.") })
                     };
                     (id, label, output)
                 }
@@ -821,6 +901,7 @@ mod tests {
             domain: "admin".into(),
             mode: "read".into(),
             confirmation_required: false,
+            approval: Default::default(),
         }];
         let runtime = ToolRuntime::default().with_native(
             tools,
@@ -851,6 +932,7 @@ mod tests {
             domain: "admin".into(),
             mode: "read".into(),
             confirmation_required: false,
+            approval: Default::default(),
         }];
         ToolRuntime::default().with_native(
             tools,
@@ -893,6 +975,7 @@ mod tests {
                 domain: "host".into(),
                 mode: "read".into(),
                 confirmation_required: false,
+                approval: Default::default(),
             })
             .collect();
         let runtime = ToolRuntime::memory(MemoryBackend::new(Default::default()), mcp_tools)
@@ -904,6 +987,7 @@ mod tests {
                     domain: "admin".into(),
                     mode: "read".into(),
                     confirmation_required: false,
+                    approval: Default::default(),
                 }],
                 Arc::new(|name, _input| {
                     Box::pin(async move { json!({ "success": true, "data": { "tool": name } }) })

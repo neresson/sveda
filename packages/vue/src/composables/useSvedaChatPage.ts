@@ -14,6 +14,7 @@ import { useSvedaScroll, type SvedaScrollContainer } from './useSvedaScroll';
 import { useSvedaShell, type SvedaBrandInfo } from './useSvedaShell';
 import { useSvedaStreaming } from './useSvedaStreaming';
 import { hasPendingToolConfirmation } from '@sveda-ai/chat';
+import type { SvedaToolConfirmationDecision } from '@sveda-ai/core';
 
 export const svedaErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message.trim()) {
@@ -108,6 +109,7 @@ export function useSvedaChatPage(options: SvedaChatPageOptions, elementRefs: Sve
     sendMessage: sendMessageStreaming,
     continueAfterMaxSteps: continueStreamingAfterMaxSteps,
     resolveToolConfirmation: resolveStreamingToolConfirmation,
+    approveToolBatch: approveStreamingToolBatch,
     isStreaming,
     isThinking,
     thinkingMessage,
@@ -163,8 +165,10 @@ export function useSvedaChatPage(options: SvedaChatPageOptions, elementRefs: Sve
 
   const pageContext = options.pageContext ?? computed(() => ({}));
   const confirmationPending = computed(() => hasPendingToolConfirmation(currentChat.value?.messages));
-  const resolveToolConfirmation = (toolCallId: string, decision: 'approve' | 'deny') =>
+  const resolveToolConfirmation = (toolCallId: string, decision: SvedaToolConfirmationDecision = 'approve') =>
     resolveStreamingToolConfirmation(toolCallId, decision, pageContext.value);
+  const approveToolBatch = (toolCallIds: string[]) =>
+    approveStreamingToolBatch(toolCallIds, pageContext.value);
 
   const messaging = useSvedaMessaging({
     isLoading,
@@ -329,6 +333,7 @@ export function useSvedaChatPage(options: SvedaChatPageOptions, elementRefs: Sve
     continueAfterMaxSteps,
     confirmationPending,
     resolveToolConfirmation,
+    approveToolBatch,
     isImmersiveLandingLayout,
     agentTasks,
     hasActiveAgentTasks,

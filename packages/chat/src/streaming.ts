@@ -5,6 +5,7 @@ import type {
   SvedaMessagePart,
   SvedaSendOptions,
   SvedaSessionStatus,
+  SvedaToolConfirmationDecision,
 } from '@sveda-ai/core';
 import type { SvedaContextUsageEvent, SvedaMaxStepsEvent, SvedaToolProgressEvent } from '@sveda-ai/protocol';
 import { deriveProvisionalChatTitle, isChatTitlePlaceholder } from './lib/chatTitle.js';
@@ -61,9 +62,10 @@ export interface SvedaStreamingController {
   continueAfterMaxSteps(pageContext?: Record<string, unknown>): Promise<void>;
   resolveToolConfirmation(
     toolCallId: string,
-    decision: 'approve' | 'deny',
+    decision: SvedaToolConfirmationDecision,
     pageContext?: Record<string, unknown>
   ): Promise<void>;
+  approveToolBatch(toolCallIds: readonly string[], pageContext?: Record<string, unknown>): Promise<void>;
   stopStreaming(chatId?: string | null): void;
   clearChatUnread(chatId?: string | null): void;
   isStreamingFor(chatId: string | null | undefined): boolean;
@@ -467,19 +469,18 @@ export function createSvedaStreaming(
     scrollToBottom();
   };
 
-  const resolveToolConfirmation = async (
-    toolCallId: string,
-    decision: 'approve' | 'deny',
-    pageContext: Record<string, unknown> = {}
+  const submitToolDecision = async (
+    submit: (session: SvedaChatSession, options: SvedaSendOptions) => Promise<void>,
+    pageContext: Record<string, unknown>
   ) => {
     const chatId = store.getCurrentChat()?.id;
-    if (!chatId || !toolCallId) {
+    if (!chatId) {
       return;
     }
     const session = ensureSession(chatId);
     session.setMessages(store.getCurrentChat()?.messages ?? []);
     try {
-      await session.resolveToolConfirmation(toolCallId, decision, {
+      await submit(session, {
         ...resolveSendOptions(),
         context: { ...pageContext },
       });
@@ -488,6 +489,23 @@ export function createSvedaStreaming(
     }
     scrollToBottom();
   };
+
+  const resolveToolConfirmation = (
+    toolCallId: string,
+    decision: SvedaToolConfirmationDecision,
+    pageContext: Record<string, unknown> = {}
+  ) => submitToolDecision(
+    (session, options) => session.resolveToolConfirmation(toolCallId, decision, options),
+    pageContext
+  );
+
+  const approveToolBatch = (
+    toolCallIds: readonly string[],
+    pageContext: Record<string, unknown> = {}
+  ) => submitToolDecision(
+    (session, options) => session.approveToolBatch(toolCallIds, options),
+    pageContext
+  );
 
   const dispose = () => {
     for (const [chatId, unsubscribes] of subscriptions.entries()) {
@@ -505,6 +523,7 @@ export function createSvedaStreaming(
     sendMessage,
     continueAfterMaxSteps,
     resolveToolConfirmation,
+    approveToolBatch,
     stopStreaming,
     clearChatUnread,
     isStreamingFor,

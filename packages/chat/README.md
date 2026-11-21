@@ -16,3 +16,16 @@ Install [`@sveda-ai/vue`](https://sveda.dev/docs/chat-ui/vue), [`@sveda-ai/react
 Apache License 2.0. See [LICENSE](LICENSE).
 
 Host SDKs live in sibling repositories and use the same license. Sveda Cloud is a separate proprietary control plane.
+
+### Tool approvals
+
+Keep the individual approval and denial controls for every pending tool call.
+If the sidecar emits `confirmationScope: "chat"`, call
+`resolveToolConfirmation(toolCallId, "approve_for_chat")` to approve the call
+and grant eligible changes to that target in the chat for 30 minutes. Call
+`approveToolBatch(toolCallIds)` with the visible, eligible tool call IDs from
+the same assistant step to approve them together. Both `"batch"` and `"chat"`
+offers qualify for a batch. To revoke existing grants, call
+`client.revokeToolApprovals(chatId)`.
+
+[Sidecar settings and approval contract](../../docs/tool-approvals.md)

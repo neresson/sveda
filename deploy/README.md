@@ -17,6 +17,21 @@ Human-friendly copies (browser): `https://sveda.dev/compose.yaml` — `curl` may
 
 Image: `ghcr.io/neresson/sveda-server` (public after the first [Publish image](https://github.com/neresson/sveda/actions/workflows/publish-image.yml) run and GHCR package visibility is **Public**).
 
+## Tool approvals
+
+Opt in by exact MCP tool name in `sveda.yaml` or in an authenticated
+`POST /admin/settings` patch. Sending `tool_approvals` replaces the map.
+
+```yaml
+tool_approvals:
+  update_content: once_per_chat
+  draft_onboarding_program: batch
+```
+
+These settings also require the corresponding LMS host declarations. An empty
+map disables the new choices. See [Tool approvals](../docs/tool-approvals.md)
+for the client and MCP contracts.
+
 ## CORS origins
 
 Set `SVEDA_CORS_ORIGINS` to a comma-separated list such as

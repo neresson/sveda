@@ -46,6 +46,13 @@ pub struct ToolProgressTask {
     pub detail: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConfirmationScope {
+    Batch,
+    Chat,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum StreamEvent {
@@ -88,6 +95,10 @@ pub enum StreamEvent {
         input: serde_json::Value,
         #[serde(skip_serializing_if = "Option::is_none")]
         confirmation: Option<String>,
+        #[serde(rename = "confirmationScope", skip_serializing_if = "Option::is_none")]
+        confirmation_scope: Option<ConfirmationScope>,
+        #[serde(skip)]
+        approval_scope_key: Option<String>,
         #[serde(rename = "chatId", skip_serializing_if = "Option::is_none")]
         chat_id: Option<String>,
         #[serde(rename = "messageId", skip_serializing_if = "Option::is_none")]
@@ -526,6 +537,8 @@ mod tests {
                 target: ToolTarget::Frontend,
                 input: serde_json::json!({"title": "Math"}),
                 confirmation: Some("required".into()),
+                confirmation_scope: None,
+                approval_scope_key: None,
                 chat_id: None,
                 message_id: None,
                 timestamp: None,

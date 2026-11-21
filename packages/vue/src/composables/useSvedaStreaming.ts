@@ -101,6 +101,7 @@ export function useSvedaStreaming(
     sendMessage: controller.sendMessage,
     continueAfterMaxSteps: controller.continueAfterMaxSteps,
     resolveToolConfirmation: controller.resolveToolConfirmation,
+    approveToolBatch: controller.approveToolBatch,
     isStreaming,
     isThinking,
     thinkingMessage,

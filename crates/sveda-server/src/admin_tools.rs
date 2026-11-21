@@ -167,6 +167,7 @@ fn tool(name: &str, description: &str, input_schema: Value, mode: &str) -> McpTo
         domain: "admin".into(),
         mode: mode.into(),
         confirmation_required: false,
+        approval: Default::default(),
     }
 }
 

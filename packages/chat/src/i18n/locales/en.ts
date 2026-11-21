@@ -58,6 +58,9 @@ const en: SvedaMessages = {
   'tools.web_fetch': 'Read page',
   toolConfirmationPrompt: 'This action needs your confirmation before it runs.',
   toolConfirm: 'Confirm',
+  toolApproveForChat: 'Approve for this chat',
+  toolApproveBatch: 'Approve all eligible actions ({count})',
+  toolChatApprovalScope: 'Applies to eligible edits on this target for 30 minutes.',
   toolDeny: 'Deny',
 };
 

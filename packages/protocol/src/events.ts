@@ -45,6 +45,8 @@ export interface SvedaReasoningDeltaEvent extends SvedaStreamEventBase {
   delta: string;
 }
 
+export type SvedaConfirmationScope = 'batch' | 'chat';
+
 export interface SvedaToolCallEvent extends SvedaStreamEventBase {
   type: 'tool.call';
   toolCallId: string;
@@ -52,6 +54,7 @@ export interface SvedaToolCallEvent extends SvedaStreamEventBase {
   target: SvedaToolTarget;
   input: Record<string, unknown>;
   confirmation?: 'required';
+  confirmationScope?: SvedaConfirmationScope;
 }
 
 export interface SvedaToolResultEvent extends SvedaStreamEventBase {
@@ -132,7 +135,7 @@ export interface SvedaClientToolDefinition {
 
 export interface SvedaToolDecision {
   toolCallId: string;
-  decision: 'approve' | 'deny';
+  decision: 'approve' | 'deny' | 'approve_batch' | 'approve_for_chat';
 }
 
 export interface SvedaChatMessage {

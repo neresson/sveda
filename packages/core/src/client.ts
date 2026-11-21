@@ -1,4 +1,4 @@
-import type { SvedaRenderHint, SvedaStreamEvent, SvedaStreamRequest } from '@sveda-ai/protocol';
+import type { SvedaRenderHint, SvedaStreamEvent, SvedaStreamRequest, SvedaToolDecision } from '@sveda-ai/protocol';
 import { SvedaContextRegistry } from './context.js';
 import { iterateSvedaStream, type SvedaStreamProtocolMode } from './streaming.js';
 import { SvedaToolRegistry } from './tools.js';
@@ -30,6 +30,8 @@ export interface SvedaClientOptions {
   autoSubmitFrontendToolResults?: boolean;
   fetchFn?: typeof fetch;
 }
+
+export type SvedaToolConfirmationDecision = Exclude<SvedaToolDecision['decision'], 'approve_batch'>;
 
 export interface SvedaSendOptions {
   context?: Record<string, unknown>;
@@ -77,7 +79,7 @@ export class SvedaChatSession {
 
   private pendingFrontendResults: SvedaDisplayMessage[] = [];
 
-  private pendingDecisions: Array<{ toolCallId: string; decision: 'approve' | 'deny' }> = [];
+  private pendingDecisions: SvedaToolDecision[] = [];
 
   private decisionStream = false;
 
@@ -136,11 +138,15 @@ export class SvedaChatSession {
 
   async resolveToolConfirmation(
     toolCallId: string,
-    decision: 'approve' | 'deny',
+    decision: SvedaToolConfirmationDecision,
     sendOptions: SvedaSendOptions = {}
   ): Promise<void> {
     const call = this.findToolCall(toolCallId);
     if (!call || call.confirmation !== 'required' || this.hasToolResult(toolCallId) || this.isStreaming) {
+      return;
+    }
+
+    if (decision === 'approve_for_chat' && (call.target !== 'backend' || call.confirmationScope !== 'chat')) {
       return;
     }
 
@@ -155,6 +161,27 @@ export class SvedaChatSession {
     }
 
     this.pendingDecisions = [{ toolCallId, decision }];
+    await this.streamRequest('', sendOptions, 'decision');
+  }
+
+  async approveToolBatch(
+    toolCallIds: readonly string[],
+    sendOptions: SvedaSendOptions = {}
+  ): Promise<void> {
+    const ids = [...new Set(toolCallIds)];
+    if (this.isStreaming || ids.length < 2) {
+      return;
+    }
+    const eligible = ids.every(id => {
+      const call = this.findToolCall(id);
+      return call?.target === 'backend' && call.confirmation === 'required' &&
+        (call.confirmationScope === 'batch' || call.confirmationScope === 'chat') &&
+        !this.hasToolResult(id);
+    });
+    if (!eligible) {
+      return;
+    }
+    this.pendingDecisions = ids.map(toolCallId => ({ toolCallId, decision: 'approve_batch' }));
     await this.streamRequest('', sendOptions, 'decision');
   }
 
@@ -220,6 +247,12 @@ export class SvedaChatSession {
       });
 
       if (!response.ok) {
+        if (mode === 'decision' && response.status === 409) {
+          const problem = (await response.json().catch(() => null)) as { message?: unknown } | null;
+          if (typeof problem?.message === 'string') {
+            throw new Error(problem.message);
+          }
+        }
         throw new Error(`[sveda] Stream request failed: ${response.status}`);
       }
 
@@ -340,6 +373,7 @@ export class SvedaChatSession {
             target: event.target,
             input: event.input,
             ...(confirmation ? { confirmation } : {}),
+            ...(event.confirmationScope ? { confirmationScope: event.confirmationScope } : {}),
           },
         ]);
 
@@ -652,6 +686,18 @@ export class SvedaClient {
 
     if (!response.ok) {
       throw new Error(`[sveda] Failed to delete chat ${chatId}: ${response.status}`);
+    }
+  }
+
+  async revokeToolApprovals(chatId: string): Promise<void> {
+    const response = await this.fetchImpl(`${this.historyUrl(chatId)}/tool-approvals`, {
+      method: 'DELETE',
+      headers: this.resolveHeaders(),
+      credentials: this.credentials,
+    });
+
+    if (!response.ok) {
+      throw new Error(`[sveda] Failed to revoke tool approvals for chat ${chatId}: ${response.status}`);
     }
   }
 

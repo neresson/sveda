@@ -59,6 +59,9 @@ const ru: SvedaMessages = {
   'tools.web_fetch': 'Чтение страницы',
   toolConfirmationPrompt: 'Это действие выполнится только после вашего подтверждения.',
   toolConfirm: 'Подтвердить',
+  toolApproveForChat: 'Разрешить для этого чата',
+  toolApproveBatch: 'Подтвердить все доступные действия ({count})',
+  toolChatApprovalScope: 'Действует 30 минут для допустимых изменений этого объекта.',
   toolDeny: 'Отказать',
 };
 

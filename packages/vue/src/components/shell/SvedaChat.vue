@@ -209,7 +209,8 @@
                         class="mb-4 max-h-[30vh] flex-none"
                         @near-bottom-change="chat.handleMessagesNearBottomChange"
                         @activity-link-click="chat.handleActivityLinkClick"
-                        @confirm-tool="chat.resolveToolConfirmation($event, 'approve')"
+                        @confirm-tool="chat.resolveToolConfirmation"
+                        @approve-tool-batch="chat.approveToolBatch"
                         @deny-tool="chat.resolveToolConfirmation($event, 'deny')"
                       />
                     </template>
@@ -235,7 +236,8 @@
                       :thinking-message="chat.thinkingMessage"
                       @near-bottom-change="chat.handleMessagesNearBottomChange"
                       @activity-link-click="chat.handleActivityLinkClick"
-                      @confirm-tool="chat.resolveToolConfirmation($event, 'approve')"
+                      @confirm-tool="chat.resolveToolConfirmation"
+                      @approve-tool-batch="chat.approveToolBatch"
                       @deny-tool="chat.resolveToolConfirmation($event, 'deny')"
                     />
                     <SvedaMaxStepsNotice
@@ -357,7 +359,8 @@
                   :thinking-message="chat.thinkingMessage"
                   @near-bottom-change="chat.handleMessagesNearBottomChange"
                   @activity-link-click="chat.handleActivityLinkClick"
-                  @confirm-tool="chat.resolveToolConfirmation($event, 'approve')"
+                  @confirm-tool="chat.resolveToolConfirmation"
+                  @approve-tool-batch="chat.approveToolBatch"
                   @deny-tool="chat.resolveToolConfirmation($event, 'deny')"
                 />
                 <SvedaMaxStepsNotice

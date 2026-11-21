@@ -1,3 +1,5 @@
+import type { SvedaConfirmationScope } from '@sveda-ai/protocol';
+
 export interface SvedaResourceLink {
   label: string;
   url: string;
@@ -20,6 +22,7 @@ export type SvedaAssistantMessagePart = {
   renderHint?: string;
   renderData?: Record<string, unknown>;
   confirmation?: string;
+  confirmationScope?: SvedaConfirmationScope;
 };
 
 export type SvedaLegacyActivity = {
@@ -102,6 +105,7 @@ function svedaToolPartToInvocation(
     renderHint: result?.renderHint,
     renderData: result?.renderData,
     confirmation: call?.confirmation,
+    confirmationScope: call?.confirmationScope,
     state: result ? 'result' : 'call',
   };
 }

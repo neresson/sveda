@@ -29,6 +29,16 @@ pub struct McpTool {
     pub domain: String,
     pub mode: String,
     pub confirmation_required: bool,
+    pub approval: McpApproval,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum McpApproval {
+    #[default]
+    Unspecified,
+    Always,
+    Batch,
+    Guarded,
 }
 
 #[derive(Debug, Clone)]
@@ -149,6 +159,48 @@ impl HostMcpClient {
             )
             .await?;
         Ok(map_call_result(&payload.body))
+    }
+
+    pub async fn approval_scope(&self, name: &str, arguments: &Value) -> Option<String> {
+        let response = self
+            .rpc(
+                "sveda/approval/check",
+                json!({ "name": name, "arguments": arguments }),
+            )
+            .await
+            .ok()?;
+        response
+            .body
+            .pointer("/result/scope")?
+            .as_str()
+            .filter(|scope| !scope.is_empty() && scope.len() <= 512)
+            .map(ToOwned::to_owned)
+    }
+
+    // A rejecting host guarantees that no tool was executed. For ambiguous transport
+    // failures, propagate the error instead of asking for a potentially duplicate write.
+    pub async fn call_with_approval(
+        &self,
+        name: &str,
+        arguments: &Value,
+        scope: &str,
+    ) -> Result<Option<Value>, McpError> {
+        let payload = self
+            .rpc(
+                "sveda/approval/call",
+                json!({ "name": name, "arguments": arguments, "scope": scope }),
+            )
+            .await?;
+        if payload.body.pointer("/result/allowed") == Some(&Value::Bool(false))
+            || payload.body.pointer("/error/code").and_then(Value::as_i64) == Some(-32601)
+        {
+            return Ok(None);
+        }
+        Ok(Some(map_call_result(&payload.body)))
+    }
+
+    pub fn approval_host(&self) -> &str {
+        &self.url
     }
 
     async fn rpc(&self, method: &str, params: Value) -> Result<RpcResponse, McpError> {
@@ -307,8 +359,19 @@ fn parse_tool(value: &Value) -> Option<McpTool> {
         .and_then(Value::as_str)
         .unwrap_or("read")
         .to_string();
-    let confirmation_required =
-        meta.get("confirmation").and_then(Value::as_str) == Some("required");
+    let annotations = value.get("annotations").unwrap_or(&Value::Null);
+    let is_read = annotations.get("readOnlyHint").and_then(Value::as_bool) == Some(true);
+    let unsafe_effects = mode == "delete"
+        || annotations.get("destructiveHint").and_then(Value::as_bool) == Some(true)
+        || (!is_read && annotations.get("openWorldHint").and_then(Value::as_bool) == Some(true));
+    let approval = match (unsafe_effects, meta.get("confirm").and_then(Value::as_str)) {
+        (true, _) | (_, Some("always")) => McpApproval::Always,
+        (_, Some("batch")) => McpApproval::Batch,
+        (_, Some("once_per_chat")) => McpApproval::Guarded,
+        _ => McpApproval::Unspecified,
+    };
+    let confirmation_required = approval != McpApproval::Unspecified
+        || meta.get("confirmation").and_then(Value::as_str) == Some("required");
     Some(McpTool {
         name,
         description,
@@ -316,6 +379,7 @@ fn parse_tool(value: &Value) -> Option<McpTool> {
         domain,
         mode,
         confirmation_required,
+        approval,
     })
 }
 

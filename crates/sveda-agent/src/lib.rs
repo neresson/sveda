@@ -28,7 +28,7 @@ pub use title::{
     derive_provisional_title, generate_title, is_placeholder_title, sanitize_generated_title,
 };
 pub use tools::{
-    normalize_output, resource_links, MemoryBackend, NativeHandler, ToolRuntime,
+    normalize_output, resource_links, ApprovalOffer, MemoryBackend, NativeHandler, ToolRuntime,
     READ_CODE_TOOL_NAME, SEARCH_CODE_TOOL_NAME, SEARCH_TOOL_NAME, SPAWN_TOOL_NAME,
 };
 
@@ -128,7 +128,8 @@ fn run_loop(
             let mut step_prompt = 0u64;
             let mut step_completion = 0u64;
             let mut finish_reason = String::from("stop");
-            let mut tool_calls: Vec<(String, String, serde_json::Value)> = Vec::new();
+            let mut tool_calls = Vec::new();
+            let mut emit_during_model = true;
             let mut assistant_text = String::new();
             let mut assistant_reasoning = String::new();
             let mut had_result = false;
@@ -178,31 +179,13 @@ fn run_loop(
                             });
                             started = true;
                         }
-                        let target = if request
-                            .client_tools
-                            .iter()
-                            .any(|tool| tool == &name)
-                        {
-                            ToolTarget::Frontend
-                        } else {
-                            ToolTarget::Backend
-                        };
-                        let confirmation = if tool_needs_confirmation(&request, &runtime, &name) {
-                            Some("required".to_string())
-                        } else {
-                            None
-                        };
-                        tool_calls.push((id.clone(), name.clone(), input.clone()));
-                        yield stamp(StreamEvent::ToolCall {
-                            tool_call_id: id,
-                            tool_name: name,
-                            target,
-                            input,
-                            confirmation,
-                            chat_id: None,
-                            message_id: None,
-                            timestamp: None,
-                        });
+                        emit_during_model &= !runtime.offers_approval(&name);
+                        if emit_during_model {
+                            let frontend = request.client_tools.iter().any(|tool| tool == &name);
+                            let confirming = tool_needs_confirmation(&request, &runtime, &name);
+                            yield stamp(tool_call_event(&id, &name, &input, frontend, confirming, None));
+                        }
+                        tool_calls.push((id, name, input, emit_during_model));
                     }
                     Ok(LlmChunk::Usage {
                         prompt_tokens,
@@ -263,80 +246,87 @@ fn run_loop(
                 });
                 continue;
             }
-
-            if finish_reason == "tool_calls" {
-                let has_frontend = tool_calls.iter().any(|(_, name, _)| {
-                    request.client_tools.iter().any(|tool| tool == name)
-                });
-                if has_frontend {
-                    stopped_for_frontend = true;
-                    break;
-                }
-                if is_final {
-                    break;
-                }
-                let waiting_confirmation = tool_calls
-                    .iter()
-                    .any(|(_, name, _)| tool_needs_confirmation(&request, &runtime, name));
-                let executable: Vec<(String, String, serde_json::Value)> = tool_calls
-                    .iter()
-                    .filter(|(_, name, _)| {
-                        runtime.known(name) && !runtime.requires_confirmation(name)
-                    })
-                    .cloned()
-                    .collect();
-                if executable.is_empty() {
-                    if waiting_confirmation {
-                        stopped_for_frontend = true;
-                    }
-                    break;
-                }
-                messages.push(ChatMessage {
-                    role: "assistant".into(),
-                    content: assistant_text,
-                    reasoning: assistant_reasoning,
-                    tool_calls: executable
-                        .iter()
-                        .map(|(id, name, input)| StoredToolCall {
-                            id: id.clone(),
-                            name: name.clone(),
-                            arguments: input.to_string(),
-                        })
-                        .collect(),
-                    ..Default::default()
-                });
-                for (id, name, input) in executable {
-                    let outcome = runtime.execute(&name, input).await;
-                    for event in outcome.events {
-                        yield stamp(event);
-                    }
-                    let output = tools::normalize_output(outcome.output);
-                    let links = tools::resource_links(&output);
-                    yield stamp(StreamEvent::ToolResult {
-                        tool_call_id: id.clone(),
-                        tool_name: name,
-                        output: output.clone(),
-                        render_hint: links.as_ref().map(|_| "resource_links".to_string()),
-                        render_data: links,
-                        chat_id: None,
-                        message_id: None,
-                        timestamp: None,
-                    });
-                    messages.push(ChatMessage {
-                        role: "tool".into(),
-                        content: output.to_string(),
-                        tool_call_id: Some(id),
-                        ..Default::default()
-                    });
-                }
-                if waiting_confirmation {
-                    stopped_for_frontend = true;
-                    break;
-                }
-                continue;
+            if finish_reason != "tool_calls" {
+                break;
             }
 
-            break;
+            let has_frontend = tool_calls.iter().any(|(_, name, _, _)| {
+                request.client_tools.iter().any(|tool| tool == name)
+            });
+            let can_execute = !has_frontend && !is_final;
+            let mut waiting_confirmation = false;
+            let mut completed = Vec::new();
+            let mut results = Vec::new();
+            for (id, name, input, emitted) in tool_calls {
+                let frontend = request.client_tools.iter().any(|tool| tool == &name);
+                let mut confirming = tool_needs_confirmation(&request, &runtime, &name);
+                let mut outcome = None;
+                if !emitted {
+                    let mut offer = if confirming && !frontend {
+                        runtime.approval_offer(&name, &input).await
+                    } else {
+                        None
+                    };
+                    if let Some(ApprovalOffer::Chat(scope)) = &offer {
+                        if can_execute && runtime.has_chat_approval(&name, scope) {
+                            outcome = runtime.execute_guarded(&name, &input, scope).await;
+                            confirming = outcome.is_none();
+                            offer = None;
+                        }
+                    }
+                    yield stamp(tool_call_event(&id, &name, &input, frontend, confirming, offer));
+                }
+                waiting_confirmation |= confirming;
+                if !can_execute || confirming || !runtime.known(&name) {
+                    continue;
+                }
+                completed.push(StoredToolCall {
+                    id: id.clone(),
+                    name: name.clone(),
+                    arguments: input.to_string(),
+                });
+                let outcome = match outcome {
+                    Some(outcome) => outcome,
+                    None => runtime.execute(&name, input).await,
+                };
+                for event in outcome.events {
+                    yield stamp(event);
+                }
+                let output = tools::normalize_output(outcome.output);
+                let links = tools::resource_links(&output);
+                yield stamp(StreamEvent::ToolResult {
+                    tool_call_id: id.clone(),
+                    tool_name: name,
+                    output: output.clone(),
+                    render_hint: links.as_ref().map(|_| "resource_links".to_string()),
+                    render_data: links,
+                    chat_id: None,
+                    message_id: None,
+                    timestamp: None,
+                });
+                results.push(ChatMessage {
+                    role: "tool".into(),
+                    content: output.to_string(),
+                    tool_call_id: Some(id),
+                    ..Default::default()
+                });
+            }
+            if has_frontend || waiting_confirmation {
+                stopped_for_frontend = true;
+                break;
+            }
+            if completed.is_empty() {
+                break;
+            }
+            messages.push(ChatMessage {
+                role: "assistant".into(),
+                content: assistant_text,
+                reasoning: assistant_reasoning,
+                tool_calls: completed,
+                ..Default::default()
+            });
+            messages.extend(results);
+            continue;
         }
 
         if final_reason.as_deref() == Some("tool_calls") && !stopped_for_frontend {
@@ -363,6 +353,35 @@ fn run_loop(
                 timestamp: None,
             });
         }
+    }
+}
+
+fn tool_call_event(
+    id: &str,
+    name: &str,
+    input: &serde_json::Value,
+    frontend: bool,
+    confirming: bool,
+    offer: Option<ApprovalOffer>,
+) -> StreamEvent {
+    StreamEvent::ToolCall {
+        tool_call_id: id.to_owned(),
+        tool_name: name.to_owned(),
+        target: if frontend {
+            ToolTarget::Frontend
+        } else {
+            ToolTarget::Backend
+        },
+        input: input.clone(),
+        confirmation: confirming.then(|| "required".to_string()),
+        confirmation_scope: offer.as_ref().map(ApprovalOffer::scope),
+        approval_scope_key: match offer {
+            Some(ApprovalOffer::Chat(scope)) => Some(scope),
+            _ => None,
+        },
+        chat_id: None,
+        message_id: None,
+        timestamp: None,
     }
 }
 
@@ -782,6 +801,7 @@ mod tests {
                     domain: "posts".into(),
                     mode: "read".into(),
                     confirmation_required: false,
+                    approval: Default::default(),
                 },
                 sveda_mcp::McpTool {
                     name: "delete_post".into(),
@@ -790,6 +810,7 @@ mod tests {
                     domain: "posts".into(),
                     mode: "delete".into(),
                     confirmation_required: true,
+                    approval: Default::default(),
                 },
             ],
         )
@@ -955,6 +976,7 @@ mod tests {
             domain: "calendar".into(),
             mode: "read".into(),
             confirmation_required: false,
+            approval: Default::default(),
         }
     }
 
@@ -1240,6 +1262,7 @@ mod tests {
                 domain: "billing".into(),
                 mode: "read".into(),
                 confirmation_required: false,
+                approval: Default::default(),
             })
             .collect();
         let runtime = ToolRuntime::memory(MemoryBackend::new(Default::default()), tools);

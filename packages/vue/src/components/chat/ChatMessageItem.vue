@@ -16,6 +16,7 @@
       type: Object,
       required: true,
     },
+    approvalDisabled: Boolean,
     contentAnimationsEnabled: {
       type: Boolean,
       default: false,
@@ -30,7 +31,7 @@
     },
   });
 
-  defineEmits(['activity-link-click']);
+  defineEmits(['confirm-tool', 'deny-tool', 'approve-tool-batch', 'activity-link-click']);
 
   const messageSegments = computed(() => {
     if (props.message.role !== 'assistant') {
@@ -261,10 +262,12 @@
           <ChatMessageActivityBlock
             v-if="segment.kind === 'activity'"
             :invocations="segment.invocations"
+            :approval-disabled="approvalDisabled"
             :legacy-activity="segment.legacyActivity"
             :content-animations-enabled="contentAnimationsEnabled"
             @activity-link-click="$emit('activity-link-click', $event)"
-            @confirm-tool="$emit('confirm-tool', $event)"
+            @confirm-tool="(id, decision) => $emit('confirm-tool', id, decision)"
+            @approve-tool-batch="$emit('approve-tool-batch', $event)"
             @deny-tool="$emit('deny-tool', $event)"
           />
 

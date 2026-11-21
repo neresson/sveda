@@ -9,7 +9,7 @@ use sveda_store::{DocumentStore, KvStore, StoreError};
 
 use std::collections::BTreeMap;
 
-use crate::policy::CapabilityPolicy;
+use crate::policy::{CapabilityPolicy, ToolApprovalPolicy};
 use crate::Config;
 
 pub const MASK: &str = "••••••••";
@@ -40,6 +40,8 @@ pub struct SettingsDocument {
     pub security: Option<SecuritySettings>,
     #[serde(default)]
     pub policies: BTreeMap<String, CapabilityPolicy>,
+    #[serde(default)]
+    pub tool_approvals: BTreeMap<String, ToolApprovalPolicy>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -223,6 +225,7 @@ pub struct SettingsPatch {
     pub web: Option<WebPatch>,
     pub security: Option<SecurityPatch>,
     pub policies: Option<BTreeMap<String, CapabilityPolicy>>,
+    pub tool_approvals: Option<BTreeMap<String, ToolApprovalPolicy>>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -293,6 +296,7 @@ impl SettingsDocument {
             },
             security: Some(SecuritySettings::from_config(config)),
             policies: BTreeMap::new(),
+            tool_approvals: BTreeMap::new(),
         }
     }
 
@@ -407,6 +411,9 @@ impl SettingsDocument {
         }
         if let Some(policies) = patch.policies {
             next.policies = policies;
+        }
+        if let Some(approvals) = patch.tool_approvals {
+            next.tool_approvals = approvals;
         }
         next
     }

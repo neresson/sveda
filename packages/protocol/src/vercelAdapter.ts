@@ -19,6 +19,7 @@ export function svedaEventToVercelDataPart(event: SvedaStreamEvent): VercelDataP
         args: event.input,
         target: event.target,
         confirmation: event.confirmation,
+        ...(event.confirmationScope ? { confirmationScope: event.confirmationScope } : {}),
       };
     case 'tool.result':
       return {
@@ -79,6 +80,9 @@ export function vercelDataPartToSvedaEvent(part: VercelDataPart): SvedaStreamEve
         target: part.target === 'frontend' ? 'frontend' : 'backend',
         input: (part.args as Record<string, unknown>) ?? {},
         ...(part.confirmation === 'required' ? { confirmation: 'required' as const } : {}),
+        ...(part.confirmationScope === 'batch' || part.confirmationScope === 'chat'
+          ? { confirmationScope: part.confirmationScope }
+          : {}),
       };
     case 'tool-result':
       return {

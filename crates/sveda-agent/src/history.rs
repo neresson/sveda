@@ -302,6 +302,9 @@ pub struct PendingToolCall {
     pub id: String,
     pub name: String,
     pub arguments: Value,
+    pub approval: Option<String>,
+    pub confirmation_required: bool,
+    pub approval_started: bool,
 }
 
 pub fn pending_tool_calls(conversation: &[Value]) -> Vec<PendingToolCall> {
@@ -354,6 +357,14 @@ pub fn pending_tool_calls(conversation: &[Value]) -> Vec<PendingToolCall> {
                 id,
                 name,
                 arguments,
+                approval: call
+                    .get("approval")
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned),
+                confirmation_required: call.get("confirmation").and_then(Value::as_str)
+                    == Some("required"),
+                approval_started: call.get("approvalStarted").and_then(Value::as_bool)
+                    == Some(true),
             });
         }
     }
