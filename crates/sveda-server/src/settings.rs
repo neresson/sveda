@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sveda_llm::{
     default_dimensions, default_usd_per_million, Catalog, EmbeddingProtocol, EmbeddingSpec,
-    ModelSpec, Protocol, DEFAULT_EMBEDDING_MODEL, MAX_EMBEDDING_DIMS, MIN_EMBEDDING_DIMS,
-    OPENAI_EMBEDDINGS_URL,
+    ModelSpec, Protocol, ReasoningEffort, DEFAULT_EMBEDDING_MODEL, MAX_EMBEDDING_DIMS,
+    MIN_EMBEDDING_DIMS, OPENAI_EMBEDDINGS_URL,
 };
 use sveda_store::{DocumentStore, KvStore, StoreError};
 
@@ -63,6 +63,8 @@ pub struct ModelSettings {
     pub key: String,
     #[serde(default)]
     pub thinking: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_effort: Option<ReasoningEffort>,
     #[serde(default)]
     pub vision: bool,
     #[serde(default)]
@@ -508,6 +510,7 @@ impl SettingsDocument {
                         url: model.url.trim_end_matches('/').to_string(),
                         key,
                         aliases: model.aliases.clone(),
+                        reasoning_effort: model.reasoning_effort,
                     }
                 })
                 .collect(),
@@ -550,6 +553,7 @@ fn model_from_spec(spec: &ModelSpec) -> ModelSettings {
         url: spec.url.clone(),
         key: spec.key.clone(),
         thinking: true,
+        reasoning_effort: spec.reasoning_effort,
         vision: false,
         aliases: spec.aliases.clone(),
         preset: None,

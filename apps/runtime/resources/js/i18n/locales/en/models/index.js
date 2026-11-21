@@ -11,6 +11,7 @@ export default {
     api_key: 'API key',
     aliases: 'Aliases',
     thinking: 'Thinking',
+    reasoning_effort: 'Reasoning effort (DeepSeek)',
     vision: 'Vision',
     model: 'Model',
     flags: 'Flags',

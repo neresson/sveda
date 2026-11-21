@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use serde_json::{json, Value};
+use sveda_llm::ReasoningEffort;
 use sveda_mcp::McpTool;
 use sveda_store::{DASHBOARD_PERIOD_DAYS, USAGE_PAGE_SIZE};
 
@@ -69,7 +70,7 @@ pub fn tools() -> Vec<McpTool> {
         ),
         tool(
             "admin_upsert_model",
-            "Add or update one catalog model without replacing the rest. id is required. Empty key keeps the stored key. Fields: id, label, protocol (responses|anthropic), api_model, url, key, thinking, vision, aliases.",
+            "Add or update one catalog model without replacing the rest. id is required. Empty key keeps the stored key. reasoning_effort sets the DeepSeek effort while thinking is on. Use null to restore the default.",
             json!({
                 "type": "object",
                 "properties": {
@@ -80,6 +81,7 @@ pub fn tools() -> Vec<McpTool> {
                     "url": { "type": "string" },
                     "key": { "type": "string" },
                     "thinking": { "type": "boolean" },
+                    "reasoning_effort": { "enum": ["low", "high", "max", null] },
                     "vision": { "type": "boolean" },
                     "aliases": {
                         "oneOf": [
@@ -219,16 +221,28 @@ async fn upsert_model(state: &AppState, input: &Value) -> Value {
     let Some(id) = string_field(input, "id") else {
         return fail("Model id is required.");
     };
+    let Ok(reasoning_effort) = input
+        .get("reasoning_effort")
+        .cloned()
+        .map(serde_json::from_value::<Option<ReasoningEffort>>)
+        .transpose()
+    else {
+        return fail("Reasoning effort must be low, high, max, or null.");
+    };
     let current = state.settings.document();
     let mut models = current.models.clone();
     match models.iter().position(|model| model.id == id) {
         Some(index) => {
             overlay_model(&mut models[index], input);
+            if let Some(effort) = reasoning_effort {
+                models[index].reasoning_effort = effort;
+            }
         }
         None => {
-            let Some(created) = new_model(input, &id) else {
+            let Some(mut created) = new_model(input, &id) else {
                 return fail("New models need an id and a label.");
             };
+            created.reasoning_effort = reasoning_effort.flatten();
             models.push(created);
         }
     }
@@ -453,6 +467,7 @@ fn new_model(input: &Value, id: &str) -> Option<ModelSettings> {
             .get("thinking")
             .and_then(Value::as_bool)
             .unwrap_or(false),
+        reasoning_effort: None,
         vision: input
             .get("vision")
             .and_then(Value::as_bool)

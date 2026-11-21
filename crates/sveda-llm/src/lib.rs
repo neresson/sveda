@@ -8,7 +8,7 @@ use futures_util::Stream;
 use futures_util::StreamExt;
 use serde_json::{json, Value};
 
-pub use catalog::{Catalog, ModelSpec, Protocol, UnknownModelError};
+pub use catalog::{Catalog, ModelSpec, Protocol, ReasoningEffort, UnknownModelError};
 pub use embeddings::{
     clamp_embedding_input, default_dimensions, default_usd_per_million, supports_dimensions_param,
     EmbeddingProtocol, EmbeddingSpec, DEFAULT_EMBEDDING_DIMS, DEFAULT_EMBEDDING_MODEL,
@@ -168,19 +168,27 @@ pub fn responses_body(model: &str, request: &StepRequest) -> Value {
 }
 
 pub fn responses_body_for(spec: &ModelSpec, request: &StepRequest) -> Value {
-    responses_payload(
+    let mut body = responses_payload(
         &spec.api_model,
         request,
         spec.uses_plaintext_reasoning() && !request.tools.is_empty(),
-    )
+    );
+    if let Some(effort) = spec.reasoning_effort.filter(|_| request.thinking) {
+        body["reasoning"]["effort"] = json!(effort);
+    }
+    body
 }
 
 pub fn anthropic_body_for(spec: &ModelSpec, request: &StepRequest) -> Value {
-    anthropic_payload(
+    let mut body = anthropic_payload(
         &spec.api_model,
         request,
         spec.uses_plaintext_reasoning() && !request.tools.is_empty(),
-    )
+    );
+    if let Some(effort) = spec.reasoning_effort.filter(|_| request.thinking) {
+        body["output_config"] = json!({ "effort": effort });
+    }
+    body
 }
 
 fn responses_payload(model: &str, request: &StepRequest, replay_reasoning: bool) -> Value {
@@ -605,6 +613,40 @@ mod tests {
         assert_eq!(body["thinking"]["type"], "disabled");
     }
 
+    #[test]
+    fn model_reasoning_effort_applies_to_both_protocols_only_with_thinking() {
+        let mut model = Catalog::builtin("k")
+            .find("deepseek-v4-pro")
+            .unwrap()
+            .clone();
+        let mut request = user("Say hello");
+        assert_eq!(
+            responses_body_for(&model, &request)["reasoning"]["effort"],
+            "high"
+        );
+        assert!(anthropic_body_for(&model, &request)
+            .get("output_config")
+            .is_none());
+
+        model.reasoning_effort = Some(ReasoningEffort::Low);
+        assert_eq!(
+            responses_body_for(&model, &request)["reasoning"]["effort"],
+            "low"
+        );
+        let body = anthropic_body_for(&model, &request);
+        assert_eq!(body["thinking"]["type"], "enabled");
+        assert_eq!(body["output_config"]["effort"], "low");
+
+        request.thinking = false;
+        assert_eq!(
+            responses_body_for(&model, &request)["reasoning"]["effort"],
+            "none"
+        );
+        let body = anthropic_body_for(&model, &request);
+        assert_eq!(body["thinking"]["type"], "disabled");
+        assert!(body.get("output_config").is_none());
+    }
+
     fn tool_followup(thinking: bool, reasoning: &str) -> StepRequest {
         StepRequest {
             messages: vec![
@@ -650,6 +692,7 @@ mod tests {
             url: "https://api.openai.com/v1".into(),
             key: "k".into(),
             aliases: Vec::new(),
+            reasoning_effort: None,
         }
     }
 
@@ -662,6 +705,7 @@ mod tests {
             url: "https://api.anthropic.com".into(),
             key: "k".into(),
             aliases: Vec::new(),
+            reasoning_effort: None,
         }
     }
 
@@ -1195,6 +1239,7 @@ data: {\"type\":\"message_stop\"}\n\
             url: "https://example.test".into(),
             key: "k".into(),
             aliases: Vec::new(),
+            reasoning_effort: None,
         }
     }
 
@@ -1255,6 +1300,7 @@ data: {\"type\":\"message_stop\"}\n\
             url: "http://127.0.0.1:1".into(),
             key: String::new(),
             aliases: Vec::new(),
+            reasoning_effort: None,
         };
         let mut stream = llm.stream_step(&model, user("hi"));
         let first = stream.next().await.expect("chunk");

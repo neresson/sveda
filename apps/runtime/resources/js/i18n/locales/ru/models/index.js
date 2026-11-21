@@ -11,6 +11,7 @@ export default {
     api_key: 'API-ключ',
     aliases: 'Алиасы',
     thinking: 'Thinking',
+    reasoning_effort: 'Уровень рассуждений (DeepSeek)',
     vision: 'Vision',
     model: 'Модель',
     flags: 'Флаги',

@@ -19,6 +19,7 @@ const emptyDraft = () => ({
     url: '',
     key: '',
     thinking: false,
+    reasoning_effort: '',
     vision: false,
     aliases: '',
     preset: '',
@@ -37,6 +38,7 @@ const toDraft = (model) => {
         url: String(model.url ?? ''),
         key: '',
         thinking: Boolean(model.thinking),
+        reasoning_effort: model.reasoning_effort ?? '',
         vision: Boolean(model.vision),
         aliases,
         preset: model.preset ?? '',
@@ -135,6 +137,7 @@ const serialize = (model) => {
         url: String(model.url ?? '').trim(),
         key: String(model.key ?? ''),
         thinking: Boolean(model.thinking),
+        reasoning_effort: model.reasoning_effort || null,
         vision: Boolean(model.vision),
         aliases,
         preset: model.preset ?? '',
@@ -432,6 +435,15 @@ const embeddingFlags = (embedding) => {
                 <label class="flex flex-col gap-2">
                     <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.aliases') }}</span>
                     <input v-model="draft.aliases" name="model_aliases" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                </label>
+                <label class="flex flex-col gap-2">
+                    <span class="font-mono text-[11px] tracking-[0.14em] text-muted">{{ t('models.reasoning_effort') }}</span>
+                    <select v-model="draft.reasoning_effort" name="model_reasoning_effort" class="border border-ink bg-canvas px-3.5 py-3 font-mono text-sm outline-none">
+                        <option value="">{{ t('models.default') }}</option>
+                        <option value="low">low</option>
+                        <option value="high">high</option>
+                        <option value="max">max</option>
+                    </select>
                 </label>
             </div>
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center">

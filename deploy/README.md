@@ -30,6 +30,20 @@ subdomains over HTTPS. List `https://app.svedalms.ru` separately to allow the
 parent. Include the port in the pattern for origins with an explicit non-default
 port, for example `https://*.app.svedalms.ru:8443`. Use `*` to allow every origin.
 
+## DeepSeek reasoning effort
+
+Set **Reasoning effort (DeepSeek)** to `low`, `high`, or `max` on a model in
+**Admin → Models**. For `deepseek-v4-pro`, try `low` to reduce reasoning time.
+The setting is also available as `reasoning_effort` on entries in `models` in
+`sveda.yaml` and `/admin/settings`. Keep the other catalog entries when sending
+`models`, since the list replaces the catalog. Settings defined in `sveda.yaml`
+are applied again on startup and config reload, so update the file if it manages
+the catalog.
+
+The setting applies when the request has thinking enabled. The default preserves
+the existing request behavior: `high` on Responses and DeepSeek's default effort
+on Anthropic. [DeepSeek thinking mode](https://api-docs.deepseek.com/guides/thinking_mode/)
+
 ## Production pin (runtime.sveda.dev)
 
 Do **not** rely on the floating `:latest` tag in production. Every push to `main` also tags `sha-<7-char>` on GHCR.

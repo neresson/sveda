@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Protocol {
     Responses,
@@ -14,6 +16,14 @@ impl Protocol {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReasoningEffort {
+    Low,
+    High,
+    Max,
+}
+
 #[derive(Debug, Clone)]
 pub struct ModelSpec {
     pub id: String,
@@ -23,6 +33,7 @@ pub struct ModelSpec {
     pub url: String,
     pub key: String,
     pub aliases: Vec<String>,
+    pub reasoning_effort: Option<ReasoningEffort>,
 }
 
 impl ModelSpec {
@@ -85,6 +96,7 @@ impl Catalog {
                     url: "https://api.deepseek.com".into(),
                     key: key.clone(),
                     aliases: vec!["deepseek-v4-flash".into()],
+                    reasoning_effort: None,
                 },
                 ModelSpec {
                     id: "deepseek-v4-flash-anthropic".into(),
@@ -94,6 +106,7 @@ impl Catalog {
                     url: "https://api.deepseek.com/anthropic/v1".into(),
                     key: key.clone(),
                     aliases: Vec::new(),
+                    reasoning_effort: None,
                 },
                 ModelSpec {
                     id: "deepseek-v4-pro".into(),
@@ -103,6 +116,7 @@ impl Catalog {
                     url: "https://api.deepseek.com".into(),
                     key,
                     aliases: Vec::new(),
+                    reasoning_effort: None,
                 },
             ],
         }
@@ -199,6 +213,7 @@ mod tests {
             url: "https://api.openai.com/v1".into(),
             key: "k".into(),
             aliases: Vec::new(),
+            reasoning_effort: None,
         };
         let claude = ModelSpec {
             id: "claude".into(),
@@ -208,6 +223,7 @@ mod tests {
             url: "https://api.anthropic.com".into(),
             key: "k".into(),
             aliases: Vec::new(),
+            reasoning_effort: None,
         };
         assert!(!openai.uses_plaintext_reasoning());
         assert!(!claude.uses_plaintext_reasoning());

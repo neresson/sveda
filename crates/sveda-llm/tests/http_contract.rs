@@ -83,6 +83,7 @@ async fn responses_thinking_on_posts_effort_high() {
         url: server.uri(),
         key: "test-deepseek-key".into(),
         aliases: Vec::new(),
+        reasoning_effort: None,
     };
     let texts = collect_text(&HttpClient::from_timeout(5), &model, true).await;
     assert_eq!(texts, vec!["Hello from responses".to_string()]);
@@ -112,6 +113,7 @@ async fn responses_thinking_off_posts_effort_none() {
         url: server.uri(),
         key: "k".into(),
         aliases: Vec::new(),
+        reasoning_effort: None,
     };
     let texts = collect_text(&HttpClient::from_timeout(5), &model, false).await;
     assert_eq!(texts, vec!["Hello from responses".to_string()]);
@@ -142,6 +144,7 @@ async fn anthropic_thinking_on_posts_enabled() {
         url: server.uri(),
         key: "k".into(),
         aliases: Vec::new(),
+        reasoning_effort: None,
     };
     let texts = collect_text(&HttpClient::from_timeout(5), &model, true).await;
     assert_eq!(texts, vec!["Hello from anthropic".to_string()]);
@@ -164,6 +167,7 @@ async fn http_429_is_failoverable() {
         url: server.uri(),
         key: "k".into(),
         aliases: Vec::new(),
+        reasoning_effort: None,
     };
     let mut stream = HttpClient::from_timeout(5).stream_step(&model, request(true));
     let err = stream.next().await.unwrap().unwrap_err();
@@ -247,6 +251,7 @@ async fn deepseek_thinking_posts_reasoning_text_with_function_call() {
         url: server.uri(),
         key: "k".into(),
         aliases: Vec::new(),
+        reasoning_effort: None,
     };
     let mut stream = HttpClient::from_timeout(5).stream_step(&model, tool_followup(true));
     let mut texts = Vec::new();
@@ -295,6 +300,7 @@ async fn openai_thinking_does_not_post_plaintext_reasoning() {
         url: server.uri(),
         key: "k".into(),
         aliases: Vec::new(),
+        reasoning_effort: None,
     };
     let mut stream = HttpClient::from_timeout(5).stream_step(&model, tool_followup(true));
     let mut texts = Vec::new();
