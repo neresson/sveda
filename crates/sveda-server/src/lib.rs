@@ -686,14 +686,10 @@ fn cors_layer(origins: Arc<Mutex<Vec<String>>>) -> CorsLayer {
     let allow_origin = AllowOrigin::predicate(
         move |origin: &HeaderValue, _request: &axum::http::request::Parts| {
             let list = origins.lock().expect("cors");
-            if list.iter().any(|item| item == "*") {
-                return true;
-            }
-            origin
-                .to_str()
-                .ok()
-                .map(|value| list.iter().any(|item| item == value))
-                .unwrap_or(false)
+            let origin = origin.to_str().ok();
+            list.iter().any(|pattern| {
+                pattern == "*" || origin.is_some_and(|value| cors_origin_matches(pattern, value))
+            })
         },
     );
 
@@ -717,6 +713,113 @@ fn cors_layer(origins: Arc<Mutex<Vec<String>>>) -> CorsLayer {
             HeaderName::from_static(HEADER_ADMIN_KEY),
             HeaderName::from_static("x-sveda-protocol"),
         ]))
+}
+
+fn cors_origin_matches(pattern: &str, origin: &str) -> bool {
+    let Some((scheme, suffix)) = pattern.split_once("://*.") else {
+        return pattern == origin;
+    };
+    let Some((origin_scheme, authority)) = origin.split_once("://") else {
+        return false;
+    };
+    if !matches!(scheme, "http" | "https") || origin_scheme != scheme {
+        return false;
+    }
+    let Some((parent, parent_port)) = cors_dns_authority(suffix) else {
+        return false;
+    };
+    let Some((host, port)) = cors_dns_authority(authority) else {
+        return false;
+    };
+    port == parent_port
+        && host.len() > parent.len() + 1
+        && host.as_bytes()[host.len() - parent.len() - 1] == b'.'
+        && host[host.len() - parent.len()..].eq_ignore_ascii_case(parent)
+}
+
+fn cors_dns_authority(authority: &str) -> Option<(&str, Option<u16>)> {
+    let (host, port) = match authority.split_once(':') {
+        Some((host, port)) if port.bytes().all(|byte| byte.is_ascii_digit()) => {
+            (host, Some(port.parse().ok()?))
+        }
+        Some(_) => return None,
+        None => (authority, None),
+    };
+    let valid_dns = host.len() <= 253
+        && host.parse::<std::net::Ipv4Addr>().is_err()
+        && host.split('.').all(|label| {
+            !label.is_empty()
+                && label.len() <= 63
+                && !label.starts_with('-')
+                && !label.ends_with('-')
+                && label
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+        });
+    valid_dns.then_some((host, port))
+}
+
+#[cfg(test)]
+mod cors_tests {
+    use super::cors_origin_matches;
+
+    #[test]
+    fn cors_wildcard_matches_only_dns_subdomains_on_the_same_scheme() {
+        let pattern = "https://*.app.svedalms.ru";
+        for origin in [
+            "https://tenant.app.svedalms.ru",
+            "https://preview.tenant.app.svedalms.ru",
+            "https://Tenant.App.SvedaLms.Ru",
+        ] {
+            assert!(cors_origin_matches(pattern, origin), "{origin}");
+        }
+        for origin in [
+            "https://app.svedalms.ru",
+            "http://tenant.app.svedalms.ru",
+            "https://evilapp.svedalms.ru",
+            "https://x.app.svedalms.ru.evil.com",
+            "https://x.app.svedalms.ru:8443",
+            "https://x.app.svedalms.ru/",
+            "https://*.app.svedalms.ru",
+            "https://evil.com@x.app.svedalms.ru",
+            "https://x..app.svedalms.ru",
+            "https://-x.app.svedalms.ru",
+            "https://x_.app.svedalms.ru",
+            "null",
+        ] {
+            assert!(!cors_origin_matches(pattern, origin), "{origin}");
+        }
+    }
+
+    #[test]
+    fn cors_wildcard_checks_ports_and_preserves_exact_origins() {
+        let pattern = "https://*.app.svedalms.ru:8443";
+        assert!(cors_origin_matches(
+            pattern,
+            "https://x.app.svedalms.ru:8443"
+        ));
+        for origin in [
+            "https://x.app.svedalms.ru",
+            "https://x.app.svedalms.ru:8444",
+            "https://x.app.svedalms.ru:65536",
+            "https://x.app.svedalms.ru:8443/path",
+        ] {
+            assert!(!cors_origin_matches(pattern, origin), "{origin}");
+        }
+        assert!(!cors_origin_matches("https://*.0.0.1", "https://127.0.0.1"));
+        assert!(cors_origin_matches(
+            "http://[::1]:5173",
+            "http://[::1]:5173"
+        ));
+        assert!(cors_origin_matches(
+            "https://app.svedalms.ru",
+            "https://app.svedalms.ru"
+        ));
+        assert!(!cors_origin_matches(
+            "https://app.svedalms.ru",
+            "https://x.app.svedalms.ru"
+        ));
+    }
 }
 
 async fn issue_embed_token(

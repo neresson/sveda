@@ -17,6 +17,19 @@ Human-friendly copies (browser): `https://sveda.dev/compose.yaml` — `curl` may
 
 Image: `ghcr.io/neresson/sveda-server` (public after the first [Publish image](https://github.com/neresson/sveda/actions/workflows/publish-image.yml) run and GHCR package visibility is **Public**).
 
+## CORS origins
+
+Set `SVEDA_CORS_ORIGINS` to a comma-separated list such as
+`https://sveda.dev,https://*.app.svedalms.ru`, or use `cors.allowed_origins` in
+`sveda.yaml`. **Admin → Security** and authenticated `POST /admin/settings`
+accept the same values and apply changes at runtime. Keep any existing exact
+origins in the list when adding a pattern.
+
+`https://*.app.svedalms.ru` allows `https://tenant.app.svedalms.ru` and nested
+subdomains over HTTPS. List `https://app.svedalms.ru` separately to allow the
+parent. Include the port in the pattern for origins with an explicit non-default
+port, for example `https://*.app.svedalms.ru:8443`. Use `*` to allow every origin.
+
 ## Production pin (runtime.sveda.dev)
 
 Do **not** rely on the floating `:latest` tag in production. Every push to `main` also tags `sha-<7-char>` on GHCR.
