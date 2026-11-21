@@ -1,5 +1,15 @@
 # @sveda-ai/vue
 
+## 0.3.6
+
+### Patch Changes
+
+- f2c0e15: Support confirmation for eligible edits and deletions to one course in a chat.
+- Updated dependencies [f2c0e15]
+  - @sveda-ai/protocol@0.3.4
+  - @sveda-ai/core@0.3.4
+  - @sveda-ai/chat@0.3.5
+
 ## 0.3.5
 
 ### Patch Changes

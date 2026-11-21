@@ -1,6 +1,6 @@
 {
   "name": "@sveda-ai/chat",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "type": "module",
   "license": "Apache-2.0",
   "description": "Framework-agnostic chat store, streaming, helpers, and appearance for Sveda AI. https://sveda.dev/docs/chat-ui",

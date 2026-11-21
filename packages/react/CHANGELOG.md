@@ -1,5 +1,14 @@
 # @sveda-ai/react
 
+## 0.3.5
+
+### Patch Changes
+
+- Updated dependencies [f2c0e15]
+  - @sveda-ai/protocol@0.3.4
+  - @sveda-ai/core@0.3.4
+  - @sveda-ai/chat@0.3.5
+
 ## 0.3.4
 
 ### Patch Changes

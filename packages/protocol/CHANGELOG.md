@@ -1,5 +1,11 @@
 # @sveda-ai/protocol
 
+## 0.3.4
+
+### Patch Changes
+
+- f2c0e15: Support confirmation for eligible edits and deletions to one course in a chat.
+
 ## 0.3.3
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@sveda-ai/protocol",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "type": "module",
   "license": "Apache-2.0",
   "description": "Sveda wire protocol (SSE events). https://sveda.dev/docs/stream",
