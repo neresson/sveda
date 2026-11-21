@@ -152,26 +152,25 @@ pub async fn run_turn(
                 ).into_response())
             })?;
             let mut tools = filter_mcp_tools(tools, &capabilities.mcp, restricted);
-                let options = tools
-                    .iter_mut()
-                    .filter_map(|tool| {
-                        let policy = settings.tool_approvals.get(&tool.name).copied();
-                        apply_tool_approval_policy(tool, policy)
-                            .map(|offer| (tool.name.clone(), offer))
-                    })
-                    .collect();
-                let chat_grants = grants.clone();
+            let options = tools
+                .iter_mut()
+                .filter_map(|tool| {
+                    let policy = settings.tool_approvals.get(&tool.name).copied();
+                    apply_tool_approval_policy(tool, policy).map(|offer| (tool.name.clone(), offer))
+                })
+                .collect();
+            let chat_grants = grants.clone();
             let server_instructions = client.instructions();
-                runtime = ToolRuntime::mcp(std::sync::Arc::new(client), tools)
-                    .with_defer(runtime_config.defer_enabled, runtime_config.defer_min_pool)
-                    .with_approvals(
-                        options,
-                        std::sync::Arc::new(move |host, tool, scope| {
-                            chat_grants
-                                .as_ref()
-                                .is_some_and(|grants| grants.permits(host, tool, scope))
-                        }),
-                    );
+            runtime = ToolRuntime::mcp(std::sync::Arc::new(client), tools)
+                .with_defer(runtime_config.defer_enabled, runtime_config.defer_min_pool)
+                .with_approvals(
+                    options,
+                    std::sync::Arc::new(move |host, tool, scope| {
+                        chat_grants
+                            .as_ref()
+                            .is_some_and(|grants| grants.permits(host, tool, scope))
+                    }),
+                );
             let names = runtime
                 .advertised()
                 .into_iter()
