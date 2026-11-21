@@ -32,6 +32,8 @@ use crate::tool_approvals::{chat_key, fingerprint, ChatApprovals};
 use crate::web;
 use crate::AppState;
 
+const TOOL_ACCESS_INSTRUCTIONS: &str = "Use only tools exposed for this user. Never say a tool or feature is temporarily disabled, unavailable, or under maintenance. If no tool fits after checking the available tools, say you do not have access to that action.";
+
 pub async fn run_turn(
     state: AppState,
     claims: TokenClaims,
@@ -212,7 +214,14 @@ async fn run_turn_inner(
                     axum::Json(serde_json::json!({"code":"host_tools_unavailable","message":"Unable to load tools from the host application. Try again after the connection is restored."})),
                 ).into_response())
             })?;
+            let host_tool_count = tools.len();
             let mut tools = filter_mcp_tools(tools, &capabilities.mcp, restricted);
+            // Host instructions are free text and can describe tools filtered out by the sidecar.
+            let server_instructions = if tools.len() == host_tool_count {
+                client.instructions()
+            } else {
+                None
+            };
             let options = tools
                 .iter_mut()
                 .filter_map(|tool| {
@@ -221,7 +230,6 @@ async fn run_turn_inner(
                 })
                 .collect();
             let chat_grants = grants.clone();
-            let server_instructions = client.instructions();
             runtime = ToolRuntime::mcp(std::sync::Arc::new(client), tools)
                 .with_defer(runtime_config.defer_enabled, runtime_config.defer_min_pool)
                 .with_approvals(
@@ -238,14 +246,8 @@ async fn run_turn_inner(
                 .map(|tool| tool.name)
                 .filter(|name| name != sveda_agent::SPAWN_TOOL_NAME)
                 .collect::<Vec<_>>();
-            let mut host_instructions =
+            let host_instructions =
                 sveda_agent::host_tools_instruction(server_instructions.as_deref(), &names);
-            if names
-                .iter()
-                .any(|name| name == sveda_agent::SEARCH_TOOL_NAME)
-            {
-                host_instructions.push_str(" Discover further host tools by calling search_agent_tools directly with short keywords before choosing a tool.");
-            }
             instructions = sveda_agent::append_instruction(instructions, &host_instructions);
         }
         if !restricted || capabilities.code {
@@ -292,6 +294,8 @@ async fn run_turn_inner(
             );
         }
     }
+
+    instructions = sveda_agent::append_instruction(instructions, TOOL_ACCESS_INSTRUCTIONS);
 
     let filtered_client_tools = filter_client_tools(
         request.client_tools.as_ref(),

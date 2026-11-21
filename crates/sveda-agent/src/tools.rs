@@ -511,7 +511,7 @@ impl ToolRuntime {
                     "activated_tools": activated,
                     "backend": "keyword",
                     "hint": if activated.is_empty() {
-                        "No matching tools found. Try a shorter action or entity name in the tool catalog language."
+                        "No matching tools found. Try different short keywords if appropriate. If no tool fits, tell the user you do not have access to this action."
                     } else {
                         "These tools are now available in your next step. Call them directly by name."
                     }
@@ -1054,5 +1054,56 @@ mod tests {
         assert!(activated.contains(&"admin_dashboard"));
         let missing = runtime.search_tools(json!({"query": "xyzzy"}));
         assert_eq!(missing.output["data"]["activated_tools"], json!([]));
+    }
+
+    #[tokio::test]
+    async fn onboarding_is_initially_advertised_and_searchable_only_when_supplied() {
+        let onboarding = McpTool {
+            name: "draft_onboarding_program".into(),
+            description: "Draft an onboarding program.".into(),
+            input_schema: json!({ "type": "object" }),
+            domain: "onboarding".into(),
+            mode: "write".into(),
+            always_loaded: true,
+            confirmation_required: true,
+            approval: Default::default(),
+        };
+
+        for permitted in [true, false] {
+            let mut tools = vec![McpTool {
+                name: "create_course".into(),
+                description: "Create a course.".into(),
+                domain: "course".into(),
+                always_loaded: false,
+                ..onboarding.clone()
+            }];
+            if permitted {
+                tools.push(onboarding.clone());
+            }
+            let runtime = ToolRuntime::memory(MemoryBackend::new(Default::default()), tools)
+                .with_defer(true, 2);
+            let initial = runtime.advertised();
+            assert!(initial.iter().any(|tool| tool.name == SEARCH_TOOL_NAME));
+            assert!(!initial.iter().any(|tool| tool.name == "create_course"));
+            assert_eq!(
+                initial.iter().any(|tool| tool.name == onboarding.name),
+                permitted
+            );
+
+            let result = runtime
+                .execute(SEARCH_TOOL_NAME, json!({ "query": "onboarding" }))
+                .await;
+            if permitted {
+                assert_eq!(result.output["data"]["tools"][0]["name"], onboarding.name);
+            } else {
+                assert_eq!(result.output["data"]["tools"], json!([]));
+                assert_eq!(result.output["data"]["activated_tools"], json!([]));
+                assert!(result.output["data"]["hint"]
+                    .as_str()
+                    .unwrap()
+                    .contains("you do not have access to this action"));
+                assert!(!runtime.known(&onboarding.name));
+            }
+        }
     }
 }

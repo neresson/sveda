@@ -2,6 +2,8 @@ use std::sync::Arc;
 
 use sveda_llm::{Catalog, ChatMessage, LlmClient};
 
+use crate::SEARCH_TOOL_NAME;
+
 pub const COMPACT_INSTRUCTIONS: &str = "Summarize the conversation for continuation. Preserve goals, files or entities touched, recent tool commands and results, and the next step. Use the same language as the user. Do not call tools. Output plain text only.";
 
 pub fn should_compact(count: usize, enabled: bool, min_messages: usize) -> bool {
@@ -89,8 +91,13 @@ pub fn host_tools_instruction(server_instructions: Option<&str>, tool_names: &[S
     }
     if !tool_names.is_empty() {
         parts.push(format!(
-            "You have host application tools: {}. When the user asks to create, update, search, or otherwise change host data, you MUST call the matching tool. Do not refuse by claiming you cannot publish, cannot act, or have no access. Do not only draft the result in chat.",
+            "You have host application tools: {}. When a tool matches a request to act on host data, you MUST call the matching tool.",
             tool_names.join(", ")
+        ));
+    }
+    if tool_names.iter().any(|name| name == SEARCH_TOOL_NAME) {
+        parts.push(format!(
+            "If no visible tool fits, call {SEARCH_TOOL_NAME} directly with short keywords before saying you do not have access."
         ));
     }
     parts.join("\n\n")
@@ -144,6 +151,15 @@ mod tests {
         assert!(text.starts_with("Server rules."));
         assert!(text.contains("search_posts, create_post"));
         assert!(text.contains("MUST call the matching tool"));
+        assert!(!text.contains(SEARCH_TOOL_NAME));
+    }
+
+    #[test]
+    fn host_tools_instruction_requires_search_before_reporting_lack_of_access() {
+        let text = host_tools_instruction(None, &[SEARCH_TOOL_NAME.to_string()]);
+        assert!(text.contains(
+            "call search_agent_tools directly with short keywords before saying you do not have access"
+        ));
     }
 
     #[test]

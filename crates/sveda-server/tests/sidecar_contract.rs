@@ -578,7 +578,7 @@ async fn compaction_summary_trims_llm_history() {
 }
 
 #[tokio::test]
-async fn host_mcp_instructions_and_tool_names_reach_the_model() {
+async fn host_mcp_instructions_and_default_tools_follow_the_effective_catalog() {
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -597,19 +597,21 @@ async fn host_mcp_instructions_and_tool_names_reach_the_model() {
                         "protocolVersion": "2025-11-25",
                         "capabilities": { "tools": { "listChanged": false } },
                         "serverInfo": { "name": "playground", "version": "0.1.0" },
-                        "instructions": "Playground feed tools."
+                        "instructions": "Use draft_onboarding_program for onboarding."
                     }
                 })),
                 "tools/list" => ResponseTemplate::new(200).set_body_json(json!({
                     "jsonrpc": "2.0",
                     "id": id,
                     "result": {
-                        "tools": [{
-                            "name": "create_post",
-                            "description": "Create a post",
-                            "inputSchema": { "type": "object", "properties": {} },
-                            "_meta": { "domain": "posts", "mode": "write" }
-                        }]
+                        "tools": [
+                            {
+                                "name": "draft_onboarding_program",
+                                "_meta": { "domain": "onboarding", "mode": "write", "ai.sveda/alwaysLoaded": true }
+                            },
+                            { "name": "create_post", "_meta": { "mode": "write" } },
+                            { "name": "get_record", "_meta": { "ai.sveda/alwaysLoaded": true } }
+                        ]
                     }
                 })),
                 _ => ResponseTemplate::new(202),
@@ -618,32 +620,38 @@ async fn host_mcp_instructions_and_tool_names_reach_the_model() {
         .mount(&server)
         .await;
 
-    let mut config = Config::test();
-    config.host_api_key = Some("sidecar-host-secret".into());
-    let llm = std::sync::Arc::new(ScriptedClient::hello_world());
-    let state = AppState::with_llm(config, llm.clone() as std::sync::Arc<dyn LlmClient>);
+    for (grants, permitted) in [
+        (Value::Null, true),
+        (json!({ "mcp": { "allow": ["get_record"] } }), false),
+    ] {
+        let mut config = Config::test();
+        config.host_api_key = Some("sidecar-host-secret".into());
+        config.defer_min_pool = 2;
+        let llm = std::sync::Arc::new(ScriptedClient::hello_world());
+        let state = AppState::with_llm(config, llm.clone() as std::sync::Arc<dyn LlmClient>);
 
-    let mut token_headers = json_headers();
-    token_headers.insert("x-sveda-host-key", "sidecar-host-secret".parse().unwrap());
-    let (status, _, body) = send(
-        state.clone(),
-        "POST",
-        "/sveda/embed/token",
-        token_headers,
-        json_body(&json!({
-            "visitor_id": "visitor-mcp-instructions",
-            "host_mcp_url": format!("{}/mcp/sveda", server.uri()),
-            "host_mcp_token": "mcp-secret"
-        })),
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK);
-    let token = serde_json::from_slice::<Value>(&body).unwrap()["token"]
-        .as_str()
-        .unwrap()
-        .to_string();
+        let mut token_headers = json_headers();
+        token_headers.insert("x-sveda-host-key", "sidecar-host-secret".parse().unwrap());
+        let (status, _, body) = send(
+            state.clone(),
+            "POST",
+            "/sveda/embed/token",
+            token_headers,
+            json_body(&json!({
+                "visitor_id": "visitor-mcp-instructions",
+                "host_mcp_url": format!("{}/mcp/sveda", server.uri()),
+                "host_mcp_token": "mcp-secret",
+                "grants": grants
+            })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        let token = serde_json::from_slice::<Value>(&body).unwrap()["token"]
+            .as_str()
+            .unwrap()
+            .to_string();
 
-    let (status, _, _) = send(
+        let (status, _, _) = send(
         state,
         "POST",
         "/sveda/stream",
@@ -654,26 +662,32 @@ async fn host_mcp_instructions_and_tool_names_reach_the_model() {
         })),
     )
     .await;
-    assert_eq!(status, StatusCode::OK);
+        assert_eq!(status, StatusCode::OK);
 
-    let instructions = llm
-        .last_instructions
-        .lock()
-        .expect("instructions")
-        .clone()
-        .unwrap_or_default();
-    assert!(
-        instructions.contains("Playground feed tools."),
-        "instructions missing server text: {instructions}"
-    );
-    assert!(
-        instructions.contains("create_post"),
-        "instructions missing tool name: {instructions}"
-    );
-    assert!(
-        instructions.contains("MUST call the matching tool"),
-        "instructions missing usage directive: {instructions}"
-    );
+        let instructions = llm
+            .last_instructions
+            .lock()
+            .expect("instructions")
+            .clone()
+            .unwrap_or_default();
+        let calls = llm.last_tools.lock().unwrap();
+        let initial = &calls[0];
+        assert!(initial.iter().any(|name| name == "get_record"));
+        assert_eq!(
+            initial
+                .iter()
+                .any(|name| name == "draft_onboarding_program"),
+            permitted
+        );
+        assert_eq!(instructions.contains("draft_onboarding_program"), permitted);
+        assert_eq!(instructions.contains("for onboarding."), permitted);
+        assert!(!initial.iter().any(|name| name == "create_post"));
+        assert!(!instructions.contains("create_post"));
+        assert!(instructions.contains("MUST call the matching tool"));
+        assert!(instructions.contains("call search_agent_tools directly"));
+        assert!(instructions.contains("temporarily disabled, unavailable, or under maintenance"));
+        assert!(instructions.contains("say you do not have access to that action"));
+    }
 }
 
 fn ensure_embed_module() {
