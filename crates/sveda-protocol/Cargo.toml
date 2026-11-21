@@ -9,6 +9,7 @@ documentation.workspace = true
 description.workspace = true
 
 [dependencies]
+tokio = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

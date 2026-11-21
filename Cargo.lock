@@ -2105,9 +2105,11 @@ dependencies = [
  "bytes",
  "eventsource-stream",
  "futures-util",
+ "hyper",
  "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "sveda-protocol",
  "thiserror",
  "tokio",
@@ -2125,6 +2127,7 @@ dependencies = [
  "sveda-protocol",
  "thiserror",
  "tokio",
+ "uuid",
  "wiremock",
 ]
 
@@ -2135,6 +2138,7 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

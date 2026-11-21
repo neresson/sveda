@@ -2,11 +2,13 @@ use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Instant;
 
 use async_stream::stream;
 use futures_util::Stream;
 use futures_util::StreamExt;
 use serde_json::{json, Value};
+use sveda_protocol::diagnostics::{identifier, log, Level};
 
 pub use catalog::{Catalog, ModelSpec, Protocol, ReasoningEffort, UnknownModelError};
 pub use embeddings::{
@@ -23,6 +25,7 @@ mod catalog;
 mod embeddings;
 mod error;
 mod http;
+mod http_diagnostics;
 mod parse;
 mod scripted;
 
@@ -135,30 +138,51 @@ pub fn stream_with_failover(
             return;
         }
 
-        let mut last_failoverable = None;
         let last_index = chain.len() - 1;
         for (index, model) in chain.into_iter().enumerate() {
+            let started = Instant::now();
+            log(Level::Debug, "llm.attempt.started", || json!({
+                "attempt": index + 1, "model": identifier(&model.id),
+                "protocol": format!("{:?}", model.protocol), "chain_length": last_index + 1,
+            }));
             let mut inner = llm.stream_step(&model, request.clone());
             match inner.next().await {
-                None => return,
+                None => {
+                    log(Level::Debug, "llm.attempt.empty", || json!({
+                        "attempt": index + 1, "model": identifier(&model.id),
+                        "elapsed_ms": started.elapsed().as_millis(),
+                    }));
+                    return;
+                }
                 Some(Ok(chunk)) => {
                     yield Ok(chunk);
                     while let Some(item) = inner.next().await {
+                        if let Err(error) = &item {
+                            log(Level::Warn, "llm.attempt.failed", || json!({
+                                "attempt": index + 1, "model": identifier(&model.id), "error_kind": error.kind(),
+                                "elapsed_ms": started.elapsed().as_millis(), "decision": "stop_after_output",
+                            }));
+                        }
                         yield item;
                     }
                     return;
                 }
                 Some(Err(error)) if error.is_failoverable() && index < last_index => {
-                    last_failoverable = Some(error);
+                    log(Level::Info, "llm.attempt.failed", || json!({
+                        "attempt": index + 1, "model": identifier(&model.id), "error_kind": error.kind(),
+                        "elapsed_ms": started.elapsed().as_millis(), "decision": "failover",
+                    }));
                 }
                 Some(Err(error)) => {
+                    log(Level::Warn, "llm.attempt.failed", || json!({
+                        "attempt": index + 1, "model": identifier(&model.id), "error_kind": error.kind(),
+                        "elapsed_ms": started.elapsed().as_millis(),
+                        "decision": if error.is_failoverable() { "chain_exhausted" } else { "not_failoverable" },
+                    }));
                     yield Err(error);
                     return;
                 }
             }
-        }
-        if let Some(error) = last_failoverable {
-            yield Err(error);
         }
     })
 }

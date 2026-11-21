@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::convert::Infallible;
 use std::pin::Pin;
+use std::time::Instant;
 
 use async_stream::stream;
 use axum::response::IntoResponse;
@@ -16,6 +17,7 @@ use sveda_agent::{
 };
 use sveda_llm::{ChatMessage, StoredToolCall};
 use sveda_mcp::{HostMcpClient, McpCallContext, McpCredentials};
+use sveda_protocol::diagnostics::{identifier, log, Context, Level, CONTEXT};
 use sveda_protocol::{ConfirmationScope, StreamEvent, StreamRequest, ToolDecision, ToolTarget};
 use sveda_store::{Checkpoint, HistoryRecord, StoreError, UsageEvent};
 use uuid::Uuid;
@@ -35,8 +37,6 @@ pub async fn run_turn(
     claims: TokenClaims,
     request: StreamRequest,
 ) -> Result<Pin<Box<dyn Stream<Item = StreamEvent> + Send>>, Box<axum::response::Response>> {
-    let visitor_id = claims.visitor_id.clone();
-    let admin = claims.admin;
     let chat_id = request
         .chat_id
         .as_deref()
@@ -44,6 +44,59 @@ pub async fn run_turn(
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| format!("chat_{}", Uuid::new_v4()));
+    CONTEXT
+        .scope(
+            Context {
+                chat_id: chat_id.clone(),
+                turn_id: Uuid::new_v4().to_string(),
+                ..Context::default()
+            },
+            async {
+                let result = run_turn_inner(state, claims, request, chat_id).await;
+                if let Err(response) = &result {
+                    log(
+                        Level::Warn,
+                        "turn.rejected",
+                        || json!({"http_status": response.status().as_u16()}),
+                    );
+                }
+                result
+            },
+        )
+        .await
+}
+
+async fn run_turn_inner(
+    state: AppState,
+    claims: TokenClaims,
+    request: StreamRequest,
+    chat_id: String,
+) -> Result<Pin<Box<dyn Stream<Item = StreamEvent> + Send>>, Box<axum::response::Response>> {
+    let diagnostics = Context::current();
+    let started = Instant::now();
+    let visitor_id = claims.visitor_id.clone();
+    let admin = claims.admin;
+    log(Level::Info, "turn.started", || {
+        json!({
+            "resume": !request.tool_decisions.is_empty(),
+            "decisions": request.tool_decisions.len(),
+        })
+    });
+    log(Level::Debug, "turn.request", || {
+        json!({
+            "has_prompt": request.prompt.as_ref().is_some_and(|prompt| !prompt.trim().is_empty()),
+            "decisions": request.tool_decisions.iter().take(32).map(|decision| json!({
+                "tool_call_id": identifier(&decision.tool_call_id),
+                "decision": match decision.decision.trim().to_ascii_lowercase().as_str() {
+                    "approve" => "approve",
+                    "approve_batch" => "approve_batch",
+                    "approve_for_chat" => "approve_for_chat",
+                    "deny" => "deny",
+                    _ => "unknown",
+                },
+            })).collect::<Vec<_>>(),
+        })
+    });
     let settings = state.settings.document();
     let mut lease = if !settings.tool_approvals.is_empty() || !request.tool_decisions.is_empty() {
         Some(
@@ -86,6 +139,12 @@ pub async fn run_turn(
         .map(|model| model.id.clone())
         .unwrap_or_default();
     let mut full_history = history.clone();
+    log(Level::Debug, "turn.model_config", || {
+        json!({
+            "model": identifier(&model_id), "stream_timeout_s": runtime_config.stream_timeout,
+            "host_mcp_timeout_s": runtime_config.mcp_timeout,
+        })
+    });
     if stored
         .as_ref()
         .and_then(|record| record.summary.as_deref())
@@ -144,8 +203,10 @@ pub async fn run_turn(
                     chat_id: Some(chat_id.clone()),
                 },
             );
-            let tools = client.list_tools().await.map_err(|error| {
-                eprintln!("host MCP discovery failed: {error}");
+            let tools = client.list_tools().await.map_err(|_| {
+                log(Level::Warn, "turn.host_tools_unavailable", || json!({
+                    "elapsed_ms": started.elapsed().as_millis(),
+                }));
                 Box::new((
                     axum::http::StatusCode::BAD_GATEWAY,
                     axum::Json(serde_json::json!({"code":"host_tools_unavailable","message":"Unable to load tools from the host application. Try again after the connection is restored."})),
@@ -268,22 +329,23 @@ pub async fn run_turn(
             let task_state = state.clone();
             let record = record.clone();
             let pending_calls = pending.clone();
-            let (returned_runtime, returned_lease, updated, events) = tokio::spawn(async move {
-                let (updated, events) = resolve_tool_decisions(
-                    &task_state,
-                    &runtime,
-                    record,
-                    &pending_calls,
-                    &tool_decisions,
-                    grants.as_ref(),
-                )
-                .await?;
-                Ok::<_, StoreError>((runtime, lease, updated, events))
-            })
-            .await
-            .ok()
-            .and_then(Result::ok)
-            .ok_or_else(|| confirmation_response("Could not save tool decisions."))?;
+            let (returned_runtime, returned_lease, updated, events) =
+                tokio::spawn(CONTEXT.scope(diagnostics.clone(), async move {
+                    let (updated, events) = resolve_tool_decisions(
+                        &task_state,
+                        &runtime,
+                        record,
+                        &pending_calls,
+                        &tool_decisions,
+                        grants.as_ref(),
+                    )
+                    .await?;
+                    Ok::<_, StoreError>((runtime, lease, updated, events))
+                }))
+                .await
+                .ok()
+                .and_then(Result::ok)
+                .ok_or_else(|| confirmation_response("Could not save tool decisions."))?;
             runtime = returned_runtime;
             lease = returned_lease;
             decision_events = events;
@@ -313,6 +375,12 @@ pub async fn run_turn(
             skip_model = pending
                 .iter()
                 .any(|call| !resolved.contains(call.id.as_str()));
+            log(Level::Info, "turn.approvals_resolved", || {
+                json!({
+                    "pending": pending.len(), "resolved": resolved.len(),
+                    "continue_to_model": !skip_model, "elapsed_ms": started.elapsed().as_millis(),
+                })
+            });
         }
     }
 
@@ -383,7 +451,16 @@ pub async fn run_turn(
         for event in decision_events {
             yield event;
         }
-        while let Some(event) = finalized.next().await {
+        while let Some(event) = CONTEXT.scope(diagnostics.clone(), finalized.next()).await {
+            if let StreamEvent::MessageEnd { finish_reason, usage, message_id, .. } = &event {
+                CONTEXT.sync_scope(Context {
+                    message_id: message_id.clone().unwrap_or_default(),
+                    ..diagnostics.clone()
+                }, || log(Level::Info, "turn.finished", || json!({
+                    "finish_reason": finish_reason.as_deref().map(identifier), "usage": usage,
+                    "elapsed_ms": started.elapsed().as_millis(),
+                })));
+            }
             yield event;
         }
     }))
@@ -723,6 +800,19 @@ async fn resolve_tool_decisions(
             }
             _ => continue,
         };
+        let path = match &action {
+            ApprovedAction::Deny => "deny",
+            ApprovedAction::UnknownOutcome => "unknown_outcome",
+            ApprovedAction::Run if normalized == "approve_batch" => "batch",
+            ApprovedAction::Run => "plain",
+            ApprovedAction::Guarded { .. } => "guarded",
+            ApprovedAction::CoveredCourse(_) => "covered_course",
+        };
+        log(Level::Debug, "turn.approval_path", || {
+            json!({
+                "path": path, "tool_call_id": identifier(&call.id), "tool": identifier(&call.name),
+            })
+        });
         actions.push((call, action));
     }
     if actions.is_empty() {

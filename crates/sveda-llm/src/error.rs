@@ -25,6 +25,15 @@ impl LlmError {
         )
     }
 
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Self::RateLimited => "rate_limited",
+            Self::Overloaded => "overloaded",
+            Self::InsufficientCredits => "insufficient_credits",
+            Self::Other(_) => "llm_error",
+        }
+    }
+
     pub fn from_status(status: u16, body: &str) -> Self {
         let lowered = body.to_ascii_lowercase();
         if status == 429 || lowered.contains("rate_limit") || lowered.contains("rate limited") {

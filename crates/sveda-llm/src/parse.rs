@@ -30,10 +30,18 @@ impl ProviderParser {
         }
     }
 
-    pub fn push(&mut self, event: &str, data: &str) -> Vec<LlmChunk> {
+    pub fn try_push(
+        &mut self,
+        event: &str,
+        data: &str,
+    ) -> Result<Vec<LlmChunk>, serde_json::Error> {
+        if matches!(data.trim(), "" | "[DONE]") {
+            return Ok(Vec::new());
+        }
+        let value = serde_json::from_str::<Value>(data)?;
         let mut chunks = match self.protocol {
             Protocol::Responses => parse_responses(
-                data,
+                &value,
                 &mut self.prompt_tokens,
                 &mut self.completion_tokens,
                 &mut self.finish_reason,
@@ -42,7 +50,7 @@ impl ProviderParser {
             ),
             Protocol::Anthropic => parse_anthropic(
                 event,
-                data,
+                &value,
                 &mut self.prompt_tokens,
                 &mut self.completion_tokens,
                 &mut self.finish_reason,
@@ -52,7 +60,7 @@ impl ProviderParser {
             .collect(),
         };
         chunks.extend(self.flush_end());
-        chunks
+        Ok(chunks)
     }
 
     fn flush_end(&mut self) -> Vec<LlmChunk> {
@@ -76,7 +84,11 @@ pub fn parse_provider_sse(protocol: Protocol, body: &str) -> Vec<LlmChunk> {
     let mut parser = ProviderParser::new(protocol);
     let mut chunks = Vec::new();
     for frame in frames(body) {
-        chunks.extend(parser.push(&frame.event, &frame.data));
+        chunks.extend(
+            parser
+                .try_push(&frame.event, &frame.data)
+                .unwrap_or_default(),
+        );
     }
     chunks
 }
@@ -113,28 +125,25 @@ fn frames(body: &str) -> Vec<Frame> {
 }
 
 fn parse_responses(
-    data: &str,
+    value: &Value,
     prompt_tokens: &mut u64,
     completion_tokens: &mut u64,
     finish_reason: &mut String,
     saw_end: &mut bool,
     got_reasoning: &mut bool,
 ) -> Vec<LlmChunk> {
-    let Ok(value) = serde_json::from_str::<Value>(data) else {
-        return Vec::new();
-    };
     let kind = value.get("type").and_then(Value::as_str).unwrap_or("");
     match kind {
         "response.created" => {
             *got_reasoning = false;
             Vec::new()
         }
-        "response.output_text.delta" => delta_text(&value)
+        "response.output_text.delta" => delta_text(value)
             .map(LlmChunk::TextDelta)
             .into_iter()
             .collect(),
         "response.reasoning_text.delta" | "response.reasoning.delta" => {
-            if let Some(text) = delta_text(&value) {
+            if let Some(text) = delta_text(value) {
                 *got_reasoning = true;
                 vec![LlmChunk::ReasoningDelta(text)]
             } else {
@@ -145,7 +154,7 @@ fn parse_responses(
             if *got_reasoning {
                 return Vec::new();
             }
-            if let Some(text) = reasoning_done_text(&value) {
+            if let Some(text) = reasoning_done_text(value) {
                 *got_reasoning = true;
                 vec![LlmChunk::ReasoningDelta(text)]
             } else {
@@ -170,7 +179,7 @@ fn parse_responses(
                 Vec::new()
             }
         }
-        "response.completed" => {
+        "response.completed" | "response.incomplete" => {
             let mut extra = Vec::new();
             if let Some(response) = value.get("response") {
                 if let Some(usage) = response.get("usage") {
@@ -191,8 +200,8 @@ fn parse_responses(
                             .any(|chunk| matches!(chunk, LlmChunk::ToolCall { .. }))
                         {
                             "tool_calls".into()
-                        } else if response.get("status").and_then(Value::as_str)
-                            == Some("incomplete")
+                        } else if kind == "response.incomplete"
+                            || response.get("status").and_then(Value::as_str) == Some("incomplete")
                         {
                             "length".into()
                         } else {
@@ -200,12 +209,13 @@ fn parse_responses(
                         };
                     }
                 } else if finish_reason.as_str() != "tool_calls" {
-                    *finish_reason =
-                        if response.get("status").and_then(Value::as_str) == Some("incomplete") {
-                            "length".into()
-                        } else {
-                            "stop".into()
-                        };
+                    *finish_reason = if kind == "response.incomplete"
+                        || response.get("status").and_then(Value::as_str) == Some("incomplete")
+                    {
+                        "length".into()
+                    } else {
+                        "stop".into()
+                    };
                 }
             }
             *saw_end = true;
@@ -222,13 +232,12 @@ fn parse_responses(
 
 fn parse_anthropic(
     event: &str,
-    data: &str,
+    value: &Value,
     prompt_tokens: &mut u64,
     completion_tokens: &mut u64,
     finish_reason: &mut String,
     saw_end: &mut bool,
 ) -> Option<LlmChunk> {
-    let value: Value = serde_json::from_str(data).ok()?;
     let kind = if event.is_empty() {
         value.get("type").and_then(Value::as_str).unwrap_or("")
     } else {

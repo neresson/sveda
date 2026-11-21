@@ -1,13 +1,16 @@
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Instant;
 
 use async_stream::stream;
 use chrono::Utc;
 use futures_util::{Stream, StreamExt};
+use serde_json::json;
 use sveda_llm::{
     stream_with_failover, Catalog, ChatMessage, LlmChunk, LlmClient, LlmError, StepRequest,
     StoredToolCall, ToolSpec, UnknownModelError,
 };
+use sveda_protocol::diagnostics::{identifier, log, Context, Level, CONTEXT};
 use sveda_protocol::{StreamEvent, StreamUsage, ToolTarget};
 use uuid::Uuid;
 
@@ -91,6 +94,13 @@ fn run_loop(
     stream! {
         let chat_id = request.chat_id.clone();
         let message_id = Some(format!("msg_{}", Uuid::new_v4()));
+        let mut diagnostics = Context::current();
+        diagnostics.chat_id = chat_id.clone().unwrap_or_default();
+        diagnostics.message_id = message_id.clone().unwrap_or_default();
+        CONTEXT.sync_scope(diagnostics.clone(), || log(Level::Debug, "agent.started", || json!({
+            "model": chain.first().map(|model| identifier(&model.id)),
+            "thinking": request.thinking, "messages": request.history.len(), "has_prompt": !request.prompt.trim().is_empty(),
+        })));
         let timestamp = Some(Utc::now());
         let stamp = |event: StreamEvent| attach(event, chat_id.clone(), message_id.clone(), timestamp);
         let mut messages = request.history.clone();
@@ -111,6 +121,8 @@ fn run_loop(
         let max_steps = config.max_steps.max(1);
 
         for step in 0..max_steps {
+            diagnostics.step = Some(step + 1);
+            let step_started = Instant::now();
             let is_final = step + 1 >= max_steps;
             let mut advertised = runtime.advertised();
             for spec in &request.client_tool_specs {
@@ -134,7 +146,7 @@ fn run_loop(
             let mut assistant_reasoning = String::new();
             let mut had_result = false;
 
-            while let Some(item) = llm_stream.next().await {
+            while let Some(item) = CONTEXT.scope(diagnostics.clone(), llm_stream.next()).await {
                 match item {
                     Ok(LlmChunk::TextDelta(delta)) => {
                         if !started {
@@ -212,6 +224,12 @@ fn run_loop(
                     }
                 }
             }
+
+            CONTEXT.sync_scope(diagnostics.clone(), || log(Level::Debug, "agent.step.finished", || json!({
+                "finish_reason": identifier(&finish_reason), "prompt_tokens": step_prompt,
+                "completion_tokens": step_completion, "tool_calls": tool_calls.len(),
+                "elapsed_ms": step_started.elapsed().as_millis(),
+            })));
 
             if !tool_calls.is_empty()
                 && finish_reason != "continue"

@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+use std::time::Instant;
 
 use sha2::{Digest, Sha256};
 use tokio::sync::OnceCell;
@@ -7,7 +8,9 @@ use tokio::sync::OnceCell;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
 use serde_json::{json, Value};
-use sveda_protocol::{HEADER_CHAT_ID, HEADER_PAGE_CONTEXT};
+use sveda_protocol::diagnostics::{chat_id, identifier, log, Level};
+use sveda_protocol::{HEADER_CHAT_ID, HEADER_PAGE_CONTEXT, HEADER_REQUEST_ID};
+use uuid::Uuid;
 
 pub const PAGE_CONTEXT_MAX_BYTES: usize = 24000;
 pub const MCP_PROTOCOL_VERSION: &str = "2026-07-28";
@@ -323,12 +326,66 @@ impl HostMcpClient {
         key: Option<&str>,
     ) -> Result<RpcResponse, McpError> {
         let method = body["method"].as_str().unwrap_or_default();
+        let tool = body.pointer("/params/name").and_then(Value::as_str);
+        let rpc_id = body["id"].as_u64();
+        let request_id = Uuid::new_v4().to_string();
+        let started = Instant::now();
+        let mut status = None;
+        let result = self
+            .post_request(&body, version, key, &request_id, &mut status)
+            .await;
+        let response = result.as_ref().ok().map(|response| &response.body);
+        let rpc_code = response
+            .and_then(|body| body.pointer("/error/code"))
+            .and_then(Value::as_i64);
+        let tool_error = response.is_some_and(|body| {
+            body.pointer("/result/isError") == Some(&Value::Bool(true))
+                || body.pointer("/result/structuredContent/success") == Some(&Value::Bool(false))
+        });
+        let guard_rejected = response
+            .is_some_and(|body| body.pointer("/result/allowed") == Some(&Value::Bool(false)));
+        let outcome = match &result {
+            Err(McpError::LegacyDiscovery) => "legacy_discovery",
+            Err(_) if status.is_none() => "request_failed",
+            Err(_) => "response_failed",
+            Ok(_) if rpc_code.is_some() => "rpc_error",
+            Ok(_) if guard_rejected => "guard_rejected",
+            Ok(_) if tool_error => "tool_error",
+            Ok(_) => "ok",
+        };
+        let level = match outcome {
+            "ok" | "guard_rejected" if tool.is_some() => Level::Info,
+            "ok" | "legacy_discovery" => Level::Debug,
+            _ => Level::Warn,
+        };
+        log(level, "host_mcp.finished", || {
+            json!({
+                "request_id": request_id, "rpc_id": rpc_id,
+                "chat_id": self.context.chat_id.as_deref().map(chat_id),
+                "method": method, "tool": tool.map(identifier),
+                "http_status": status.map(|status: reqwest::StatusCode| status.as_u16()),
+                "rpc_code": rpc_code, "outcome": outcome, "elapsed_ms": started.elapsed().as_millis(),
+            })
+        });
+        result
+    }
+
+    async fn post_request(
+        &self,
+        body: &Value,
+        version: &str,
+        key: Option<&str>,
+        request_id: &str,
+        status_out: &mut Option<reqwest::StatusCode>,
+    ) -> Result<RpcResponse, McpError> {
+        let method = body["method"].as_str().unwrap_or_default();
         let mut request = self
             .http
             .post(&self.url)
             .headers(self.headers()?)
             .header("MCP-Protocol-Version", version)
-            .json(&body);
+            .header(HEADER_REQUEST_ID, request_id)
+            .json(body);
         if version == MCP_PROTOCOL_VERSION {
             request = request.header("Mcp-Method", method);
             if let Some(name) = body.pointer("/params/name").and_then(Value::as_str) {
@@ -351,6 +408,7 @@ impl HostMcpClient {
             .and_then(|value| value.to_str().ok())
             .map(ToOwned::to_owned);
         let status = response.status();
+        *status_out = Some(status);
         let content_type = response
             .headers()
             .get(CONTENT_TYPE)

@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+pub mod diagnostics;
+
 pub const PROTOCOL_VERSION: &str = "1.0";
 pub const SSE_DONE_LINE: &str = "data: [DONE]";
 pub const ACCEPT_SVEDA_STREAM: &str = "application/vnd.sveda.stream+json";
@@ -12,6 +14,7 @@ pub const HEADER_PROTOCOL_VERSION: &str = "x-sveda-protocol-version";
 pub const HEADER_ACCEL_BUFFERING: &str = "x-accel-buffering";
 pub const HEADER_PAGE_CONTEXT: &str = "x-sveda-page-context";
 pub const HEADER_CHAT_ID: &str = "x-sveda-chat-id";
+pub const HEADER_REQUEST_ID: &str = "x-sveda-request-id";
 pub const HEADER_ADMIN_KEY: &str = "x-sveda-admin-key";
 pub const TOKEN_PREFIX: &str = "sveda_embed_";
 pub const ADMIN_VISITOR_ID: &str = "sveda-admin";

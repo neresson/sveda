@@ -4,8 +4,167 @@ use sveda_llm::{
     ChatMessage, HttpClient, LlmChunk, LlmClient, ModelSpec, Protocol, StepRequest, StoredToolCall,
     ToolSpec,
 };
-use wiremock::matchers::{body_partial_json, method, path};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
+use wiremock::matchers::{body_partial_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
+
+async fn raw_upstream(response: String) -> ModelSpec {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let mut request = Vec::new();
+        let mut buffer = [0; 4096];
+        loop {
+            let n = socket.read(&mut buffer).await.unwrap();
+            assert_ne!(n, 0);
+            request.extend_from_slice(&buffer[..n]);
+            if let Some(end) = request.windows(4).position(|w| w == b"\r\n\r\n") {
+                let headers = String::from_utf8_lossy(&request[..end]).to_ascii_lowercase();
+                let size: usize = headers
+                    .lines()
+                    .find_map(|line| line.strip_prefix("content-length: "))
+                    .unwrap()
+                    .parse()
+                    .unwrap();
+                if request.len() >= end + 4 + size {
+                    break;
+                }
+            }
+        }
+        socket.write_all(response.as_bytes()).await.unwrap();
+        socket.shutdown().await.unwrap();
+    });
+    fixture_model(format!("http://{address}"))
+}
+
+fn fixture_model(url: String) -> ModelSpec {
+    ModelSpec {
+        id: "deepseek-v4-flash-responses".into(),
+        label: "Flash".into(),
+        protocol: Protocol::Responses,
+        api_model: "deepseek-v4-flash".into(),
+        url,
+        key: "fixture-key".into(),
+        aliases: Vec::new(),
+        reasoning_effort: None,
+    }
+}
+
+#[tokio::test]
+async fn truncated_chunked_approval_followup_reports_safe_transport_error() {
+    let model = raw_upstream(
+        "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nTransfer-Encoding: chunked\r\n\r\n100\r\n: partial"
+            .into(),
+    )
+    .await;
+    let chunks: Vec<_> = HttpClient::from_timeout(5)
+        .stream_step(&model, tool_followup(true))
+        .collect()
+        .await;
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(
+        chunks[0].as_ref().unwrap_err().to_string(),
+        "The connection to the model provider ended while reading its response."
+    );
+}
+
+#[tokio::test]
+async fn terminal_event_prevents_a_later_framing_failure_from_discarding_the_response() {
+    let body = responses_sse();
+    let model = raw_upstream(format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nTransfer-Encoding: chunked\r\n\r\n{:x}\r\n{body}\r\n100\r\n: partial",
+        body.len()
+    ))
+    .await;
+    let chunks: Vec<_> = HttpClient::from_timeout(5)
+        .stream_step(&model, tool_followup(true))
+        .collect()
+        .await;
+    assert!(chunks.iter().all(Result::is_ok));
+    assert!(
+        matches!(chunks.last(), Some(Ok(LlmChunk::End { finish_reason })) if finish_reason == "stop")
+    );
+}
+
+#[tokio::test]
+async fn clean_eof_without_completion_is_reported_even_after_text() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/responses"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            "data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\"}\n\n",
+            "text/event-stream",
+        ))
+        .mount(&server)
+        .await;
+    let model = fixture_model(server.uri());
+    let chunks: Vec<_> = HttpClient::from_timeout(5)
+        .stream_step(&model, tool_followup(true))
+        .collect()
+        .await;
+    assert_eq!(chunks.len(), 2);
+    assert!(matches!(&chunks[0], Ok(LlmChunk::TextDelta(text)) if text == "partial"));
+    assert_eq!(
+        chunks[1].as_ref().unwrap_err().to_string(),
+        "The model provider ended the stream before completing the response."
+    );
+}
+
+#[tokio::test]
+async fn incompatible_responses_are_reported_without_exposing_upstream_payloads() {
+    for (status, media, encoding, body, expected) in [
+        (
+            400,
+            "application/json",
+            "identity",
+            r#"{"error":{"message":"fixture-key"}}"#,
+            "The model provider returned HTTP 400.",
+        ),
+        (
+            200,
+            "application/json",
+            "identity",
+            r#"{"message":"fixture-key"}"#,
+            "The model provider returned an unexpected response format.",
+        ),
+        (
+            200,
+            "text/event-stream",
+            "gzip",
+            "invalid compressed bytes",
+            "The model provider returned an unexpected response format.",
+        ),
+        (
+            200,
+            "text/event-stream",
+            "identity",
+            "data: {fixture-key}\n\n",
+            "The model provider sent an unreadable event.",
+        ),
+    ] {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/responses"))
+            .and(header("accept", "text/event-stream"))
+            .and(header("accept-encoding", "identity"))
+            .respond_with(
+                ResponseTemplate::new(status)
+                    .insert_header("content-encoding", encoding)
+                    .set_body_raw(body, media),
+            )
+            .mount(&server)
+            .await;
+        let model = fixture_model(server.uri());
+        let chunks: Vec<_> = HttpClient::from_timeout(5)
+            .stream_step(&model, tool_followup(true))
+            .collect()
+            .await;
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].as_ref().unwrap_err().to_string(), expected);
+    }
+}
 
 fn responses_sse() -> String {
     "event: response.output_text.delta\n\
@@ -67,11 +226,7 @@ async fn responses_thinking_on_posts_effort_high() {
             "store": false,
             "reasoning": { "effort": "high" }
         })))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .insert_header("content-type", "text/event-stream")
-                .set_body_string(responses_sse()),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_raw(responses_sse(), "text/event-stream"))
         .mount(&server)
         .await;
 
@@ -97,11 +252,7 @@ async fn responses_thinking_off_posts_effort_none() {
         .and(body_partial_json(json!({
             "reasoning": { "effort": "none" }
         })))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .insert_header("content-type", "text/event-stream")
-                .set_body_string(responses_sse()),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_raw(responses_sse(), "text/event-stream"))
         .mount(&server)
         .await;
 
@@ -128,11 +279,7 @@ async fn anthropic_thinking_on_posts_enabled() {
             "model": "deepseek-v4-flash",
             "thinking": { "type": "enabled", "budget_tokens": 8192 }
         })))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .insert_header("content-type", "text/event-stream")
-                .set_body_string(anthropic_sse()),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_raw(anthropic_sse(), "text/event-stream"))
         .mount(&server)
         .await;
 
@@ -235,11 +382,7 @@ async fn deepseek_thinking_posts_reasoning_text_with_function_call() {
                 }
             ]
         })))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .insert_header("content-type", "text/event-stream")
-                .set_body_string(responses_sse()),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_raw(responses_sse(), "text/event-stream"))
         .mount(&server)
         .await;
 
@@ -284,11 +427,7 @@ async fn openai_thinking_does_not_post_plaintext_reasoning() {
                 }
             ]
         })))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .insert_header("content-type", "text/event-stream")
-                .set_body_string(responses_sse()),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_raw(responses_sse(), "text/event-stream"))
         .mount(&server)
         .await;
 

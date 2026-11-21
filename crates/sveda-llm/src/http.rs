@@ -1,12 +1,21 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use async_stream::stream;
-use eventsource_stream::Eventsource;
+use eventsource_stream::{EventStreamError, Eventsource};
 use futures_util::{Stream, StreamExt};
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use reqwest::header::{
+    HeaderMap, HeaderValue, ACCEPT, ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE,
+};
 use reqwest::Client;
+use serde_json::{json, Value};
+use sveda_protocol::diagnostics::{identifier, log, Level};
 
+use crate::http_diagnostics::{
+    content_encoding, media_type, read_error, redacted_shape, response_fields,
+};
 use crate::parse::ProviderParser;
 use crate::{
     anthropic_body_for, clamp_embedding_input, join_endpoint, responses_body_for,
@@ -130,35 +139,138 @@ impl LlmClient for HttpClient {
                 ),
             };
 
-            let response = match client.post(url).headers(headers).json(&body).send().await {
+            let upstream = match client.post(url).headers(headers)
+                .header(ACCEPT, "text/event-stream")
+                .header(ACCEPT_ENCODING, "identity")
+                .json(&body)
+                .build() {
+                Ok(upstream) => upstream,
+                Err(error) => {
+                    yield Err(read_error(&error, "build_request", || Value::Null));
+                    return;
+                }
+            };
+            log(Level::Debug, "llm.http.request", || {
+                let items = body["input"].as_array().or_else(|| body["messages"].as_array());
+                let reasoning_items = match model.protocol {
+                    Protocol::Responses => items.into_iter().flatten()
+                        .filter(|item| item["type"] == "reasoning").count(),
+                    Protocol::Anthropic => items.into_iter().flatten()
+                        .filter_map(|item| item["content"].as_array()).flatten()
+                        .filter(|block| block["type"] == "thinking").count(),
+                };
+                json!({
+                    "model": identifier(&model.id),
+                    "api_model": identifier(&model.api_model),
+                    "protocol": format!("{:?}", model.protocol),
+                    "url_host": upstream.url().host_str(),
+                    "body_bytes": upstream.body().and_then(reqwest::Body::as_bytes).map(<[u8]>::len),
+                    "message_count": request.messages.len(),
+                    "item_count": items.map(Vec::len),
+                    "tool_count": request.tools.len(),
+                    "tool_result_count": request.messages.iter().filter(|message| message.role == "tool").count(),
+                    "thinking": request.thinking,
+                    "reasoning_replay_items": reasoning_items,
+                })
+            });
+            let started = Instant::now();
+            let response = match client.execute(upstream).await {
                 Ok(response) => response,
                 Err(error) => {
-                    yield Err(LlmError::Other(error.to_string()));
+                    yield Err(read_error(&error, "headers", || json!({
+                        "model": identifier(&model.id), "elapsed_ms": started.elapsed().as_millis(),
+                    })));
                     return;
                 }
             };
 
-            let status = response.status().as_u16();
+            let mut meta = response_fields(&response, &model.key, started);
+            meta["model"] = json!(identifier(&model.id));
+            meta["protocol"] = json!(format!("{:?}", model.protocol));
+            log(Level::Debug, "llm.http.response", || meta.clone());
             if !response.status().is_success() {
-                let body = response.text().await.unwrap_or_default();
-                yield Err(LlmError::from_status(status, &body));
+                yield Err(http_status_error(response, meta, started).await);
+                return;
+            }
+            let encoding = content_encoding(response.headers());
+            let media = media_type(response.headers());
+            if !matches!(encoding, "" | "identity")
+                || (!media.is_empty() && !media.eq_ignore_ascii_case("text/event-stream"))
+            {
+                log(Level::Warn, "llm.http.unexpected_response", || meta.clone());
+                yield Err(LlmError::Other(
+                    "The model provider returned an unexpected response format.".into(),
+                ));
                 return;
             }
 
             let mut parser = ProviderParser::new(model.protocol);
-            let mut events = response.bytes_stream().eventsource();
+            let stats = Arc::new(Mutex::new(StreamStats::default()));
+            let tracker = stats.clone();
+            let mut events = response.bytes_stream().inspect(move |chunk| {
+                if let Ok(chunk) = chunk {
+                    let mut stats = tracker.lock().expect("stream stats");
+                    stats.chunks += 1;
+                    stats.bytes += chunk.len();
+                    stats.last = chunk.clone();
+                }
+            }).eventsource();
+            let mut event_count = 0;
+            let totals = |events: usize| {
+                let stats = stats.lock().expect("stream stats");
+                json!({
+                    "response": meta, "chunks": stats.chunks, "bytes": stats.bytes, "events": events,
+                    "elapsed_ms": started.elapsed().as_millis(),
+                })
+            };
             while let Some(event) = events.next().await {
                 let event = match event {
                     Ok(event) => event,
+                    Err(EventStreamError::Transport(error)) => {
+                        yield Err(read_error(&error, "sse_body", || totals(event_count)));
+                        return;
+                    }
                     Err(error) => {
-                        yield Err(LlmError::Other(error.to_string()));
+                        let kind = match error {
+                            EventStreamError::Utf8(_) => "utf8",
+                            _ => "sse",
+                        };
+                        log(Level::Warn, "llm.http.parse_error", || {
+                            let sample = stats.lock().expect("stream stats").last.clone();
+                            json!({"kind": kind, "sample": redacted_shape(&sample), "stream": totals(event_count)})
+                        });
+                        yield Err(LlmError::Other("The model provider sent an unreadable event stream.".into()));
                         return;
                     }
                 };
-                for chunk in parser.push(&event.event, &event.data) {
+                event_count += 1;
+                let chunks = match parser.try_push(&event.event, &event.data) {
+                    Ok(chunks) => chunks,
+                    Err(error) => {
+                        log(Level::Warn, "llm.http.parse_error", || json!({
+                            "kind": "json", "line": error.line(), "column": error.column(),
+                            "sample": redacted_shape(event.data.as_bytes()), "stream": totals(event_count),
+                        }));
+                        yield Err(LlmError::Other("The model provider sent an unreadable event.".into()));
+                        return;
+                    }
+                };
+                for chunk in chunks {
+                    if let LlmChunk::End { finish_reason } = &chunk {
+                        if finish_reason == "error" {
+                            log(Level::Warn, "llm.http.provider_error", || totals(event_count));
+                            yield Err(LlmError::Other("The model provider reported that generation failed.".into()));
+                        } else {
+                            log(Level::Debug, "llm.http.completed", || totals(event_count));
+                            yield Ok(chunk);
+                        }
+                        return;
+                    }
                     yield Ok(chunk);
                 }
             }
+            log(Level::Warn, "llm.http.incomplete_stream", || totals(event_count));
+            yield Err(LlmError::Other("The model provider ended the stream before completing the response.".into()));
         })
     }
 
@@ -174,6 +286,72 @@ impl LlmClient for HttpClient {
             instructions.to_string(),
             prompt.to_string(),
         )
+    }
+}
+
+#[derive(Default)]
+struct StreamStats {
+    chunks: usize,
+    bytes: usize,
+    last: bytes::Bytes,
+}
+
+async fn http_status_error(
+    mut response: reqwest::Response,
+    meta: Value,
+    started: Instant,
+) -> LlmError {
+    const MAX_ERROR_BYTES: usize = 4096;
+    let status = response.status().as_u16();
+    let mut body = Vec::new();
+    while body.len() < MAX_ERROR_BYTES {
+        match response.chunk().await {
+            Ok(Some(chunk)) => {
+                body.extend_from_slice(&chunk[..chunk.len().min(MAX_ERROR_BYTES - body.len())])
+            }
+            Ok(None) => break,
+            Err(error) => {
+                read_error(&error, "http_error_body", || {
+                    json!({
+                        "response": meta,
+                        "bytes": body.len(), "elapsed_ms": started.elapsed().as_millis(),
+                    })
+                });
+                break;
+            }
+        }
+    }
+    let text = String::from_utf8_lossy(&body);
+    let error = LlmError::from_status(status, &text);
+    log(Level::Warn, "llm.http.status_error", || {
+        json!({
+            "response": meta,
+            "body_bytes_sampled": body.len(), "error_kind": error.kind(),
+            "elapsed_ms": started.elapsed().as_millis(),
+        })
+    });
+    log(Level::Debug, "llm.http.error_body_shape", || {
+        let signals = [
+            "reasoning_content",
+            "reasoning_text",
+            "encrypted_content",
+            "tool_call_id",
+            "context_length_exceeded",
+            "invalid_request_error",
+            "request too large",
+        ]
+        .into_iter()
+        .filter(|signal| text.contains(signal))
+        .collect::<Vec<_>>();
+        json!({
+            "sample": redacted_shape(&body),
+            "signals": signals,
+        })
+    });
+    if matches!(error, LlmError::Other(_)) {
+        LlmError::Other(format!("The model provider returned HTTP {status}."))
+    } else {
+        error
     }
 }
 
