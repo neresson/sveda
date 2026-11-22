@@ -54,10 +54,12 @@ test.describe('live web search from chat', () => {
     const search = expectLiveWebSearch(events);
     const text = sseText(events);
 
-    await expect(page.getByText(/Search the web|Поиск в интернете/).first()).toBeVisible({
-      timeout: 180_000,
-    });
     await expect(page.locator('.sveda-chat .prose').first()).toBeVisible({ timeout: 180_000 });
+    const searchLabel = /Search the web|Поиск в интернете/;
+    const actionHistory = page.locator('details.sveda-tool-history').filter({ hasText: searchLabel }).first();
+    await expect(actionHistory).toHaveJSProperty('open', false);
+    await actionHistory.locator('summary').click();
+    await expect(actionHistory.getByText(searchLabel).first()).toBeVisible();
     expect(text.length, text).toBeGreaterThan(0);
     expect(
       /sveda\.dev|https?:\/\//i.test(text),
