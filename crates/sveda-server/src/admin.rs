@@ -113,7 +113,11 @@ pub async fn embed_config(State(state): State<AppState>, headers: HeaderMap) -> 
         Err(status) => return status.into_response(),
     };
     let settings = state.settings.document();
-    let mut public = settings.public();
+    let mut public = if claims.is_lms_visitor() {
+        settings.lms_public()
+    } else {
+        settings.public()
+    };
     let capabilities = if claims.admin {
         EffectiveCapabilities::unrestricted().to_public_json(false)
     } else {

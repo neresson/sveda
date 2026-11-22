@@ -13,6 +13,8 @@ use crate::policy::{CapabilityPolicy, ToolApprovalPolicy};
 use crate::Config;
 
 pub const MASK: &str = "••••••••";
+const LMS_FLASH_API_MODEL: &str = "deepseek-flash";
+const DEEPSEEK_RESPONSES_URL: &str = "https://api.deepseek.com";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SettingsDocument {
@@ -489,6 +491,61 @@ impl SettingsDocument {
             "welcome_message": self.welcome_message,
             "appearance": self.appearance.clone(),
         })
+    }
+
+    pub(crate) fn lms_public(&self) -> Value {
+        let mut public = self.public();
+        public["default_model"] = json!("sveda");
+        public["model"] = json!("sveda");
+        public["models"] = json!([{
+            "id": "sveda",
+            "label": "Sveda",
+            "protocol": "responses",
+            "supports_thinking": true,
+            "supportsThinking": true,
+        }]);
+        let mut appearance = self.appearance.as_object().cloned().unwrap_or_default();
+        let mut chrome = appearance
+            .get("chrome")
+            .and_then(Value::as_object)
+            .cloned()
+            .unwrap_or_default();
+        chrome.insert("modelSelect".into(), json!(false));
+        appearance.insert("chrome".into(), json!(chrome));
+        public["appearance"] = json!(appearance);
+        public
+    }
+
+    pub(crate) fn lms_chat_catalog(&self) -> Catalog {
+        let configured = self.models.iter().find(|model| {
+            matches!(
+                model.api_model.as_str(),
+                LMS_FLASH_API_MODEL | "deepseek-v4-flash"
+            ) && Protocol::parse(&model.protocol) == Some(Protocol::Responses)
+                && matches!(
+                    model.url.trim_end_matches('/'),
+                    DEEPSEEK_RESPONSES_URL | "https://api.deepseek.com/v1"
+                )
+        });
+        let key = configured
+            .map(|model| model.key.as_str())
+            .filter(|key| !key.is_empty())
+            .unwrap_or(&self.deepseek.key);
+
+        Catalog {
+            default_id: LMS_FLASH_API_MODEL.into(),
+            failover_ids: Vec::new(),
+            models: vec![ModelSpec {
+                id: LMS_FLASH_API_MODEL.into(),
+                label: "Sveda".into(),
+                protocol: Protocol::Responses,
+                api_model: LMS_FLASH_API_MODEL.into(),
+                url: DEEPSEEK_RESPONSES_URL.into(),
+                key: key.into(),
+                aliases: Vec::new(),
+                reasoning_effort: configured.and_then(|model| model.reasoning_effort),
+            }],
+        }
     }
 
     pub fn to_catalog(&self) -> Catalog {

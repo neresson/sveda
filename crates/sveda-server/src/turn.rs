@@ -15,7 +15,7 @@ use sveda_agent::{
     split_prompt_and_history, tail_messages, AgentConfig, AgentRequest, ApprovalOffer,
     PendingToolCall, ToolRuntime,
 };
-use sveda_llm::{ChatMessage, StoredToolCall};
+use sveda_llm::{Catalog, ChatMessage, StoredToolCall};
 use sveda_mcp::{HostMcpClient, McpCallContext, McpCredentials};
 use sveda_protocol::diagnostics::{identifier, log, Context, Level, CONTEXT};
 use sveda_protocol::{ConfirmationScope, StreamEvent, StreamRequest, ToolDecision, ToolTarget};
@@ -135,9 +135,14 @@ async fn run_turn_inner(
         }
     }
     let runtime_config = state.runtime_config();
-    let catalog = state.catalog();
+    let lms_visitor = claims.is_lms_visitor();
+    let (catalog, requested_model) = if lms_visitor {
+        (settings.lms_chat_catalog(), None)
+    } else {
+        (state.catalog(), request.model)
+    };
     let model_id = catalog
-        .resolve(request.model.as_deref())
+        .resolve(requested_model.as_deref())
         .map(|model| model.id.clone())
         .unwrap_or_default();
     let mut full_history = history.clone();
@@ -162,6 +167,12 @@ async fn run_turn_inner(
         },
         stored.as_ref().and_then(|record| record.summary.as_deref()),
     );
+    if lms_visitor {
+        instructions = sveda_agent::append_instruction(
+            instructions,
+            "In user-facing replies, introduce yourself as the Sveda assistant. Keep the underlying model and provider internal.",
+        );
+    }
 
     let restricted = !admin && claims_restricted(claims.policy.as_deref(), claims.grants.as_ref());
     let capabilities = if admin {
@@ -408,7 +419,7 @@ async fn run_turn_inner(
         prompt: prompt.clone(),
         history,
         chat_id: Some(chat_id.clone()),
-        model: request.model,
+        model: requested_model,
         thinking: sveda_agent::thinking_enabled(request.options.as_ref()),
         client_tools: client_tool_specs
             .iter()
@@ -422,7 +433,7 @@ async fn run_turn_inner(
     };
     let events = sveda_agent::run_with_tools(
         state.llm.clone(),
-        catalog,
+        catalog.clone(),
         AgentConfig {
             max_steps: runtime_config.max_steps,
             context_max_tokens: runtime_config.context_max_tokens,
@@ -444,6 +455,7 @@ async fn run_turn_inner(
         visitor_id,
         chat_id,
         model_id,
+        catalog,
         prompt,
         incoming,
         full_history,
@@ -455,7 +467,12 @@ async fn run_turn_inner(
         for event in decision_events {
             yield event;
         }
-        while let Some(event) = CONTEXT.scope(diagnostics.clone(), finalized.next()).await {
+        while let Some(mut event) = CONTEXT.scope(diagnostics.clone(), finalized.next()).await {
+            if lms_visitor {
+                if let StreamEvent::Error { message, .. } = &mut event {
+                    *message = "Sveda could not complete the request. Please try again.".into();
+                }
+            }
             if let StreamEvent::MessageEnd { finish_reason, usage, message_id, .. } = &event {
                 CONTEXT.sync_scope(Context {
                     message_id: message_id.clone().unwrap_or_default(),
@@ -475,6 +492,7 @@ fn finalize_turn(
     visitor_id: String,
     chat_id: String,
     model_id: String,
+    catalog: Catalog,
     prompt: String,
     incoming: Vec<serde_json::Value>,
     full_history: Vec<ChatMessage>,
@@ -559,7 +577,6 @@ fn finalize_turn(
         }
 
         let runtime_config = state.runtime_config();
-        let catalog = state.catalog();
         let existing = state
             .store
             .record(&visitor_id, &chat_id)

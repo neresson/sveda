@@ -15,6 +15,13 @@ pub struct TokenClaims {
     pub grants: Option<CapabilityPolicy>,
 }
 
+impl TokenClaims {
+    pub(crate) fn is_lms_visitor(&self) -> bool {
+        // The Laravel host uses this signed namespace for LMS user IDs.
+        !self.admin && self.visitor_id.starts_with("lms-")
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct IssueOptions {
     pub admin: bool,

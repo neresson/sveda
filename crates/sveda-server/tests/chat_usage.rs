@@ -95,6 +95,45 @@ fn thinking_client() -> Arc<ScriptedClient> {
 }
 
 #[tokio::test]
+async fn lms_visitor_uses_only_flash_and_gets_unbranded_model_metadata() {
+    let llm = thinking_client();
+    let state = AppState::with_llm(admin_config(), llm.clone());
+    let token = mint_token(state.clone(), "lms-42").await;
+
+    let (status, _, body) = send(
+        state.clone(),
+        "GET",
+        "/sveda/embed/config",
+        stream_headers(&token),
+        Body::empty(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let config: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(config["default_model"], "sveda");
+    assert_eq!(config["models"].as_array().unwrap().len(), 1);
+    assert_eq!(config["models"][0]["label"], "Sveda");
+    assert_eq!(config["appearance"]["chrome"]["modelSelect"], false);
+    assert!(!config.to_string().contains("deepseek"));
+
+    let (status, _, body) = send(
+        state,
+        "POST",
+        "/sveda/stream",
+        stream_headers(&token),
+        Body::from(json!({"prompt": "Hi", "model": "deepseek-v4-pro"}).to_string()),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(event_types(&parse_events(&body)).contains(&"text.delta"));
+    let attempts = llm.attempts.lock().unwrap();
+    assert_eq!(attempts.first().unwrap(), "deepseek-flash");
+    assert!(attempts
+        .iter()
+        .all(|model| matches!(model.as_str(), "deepseek-flash" | "complete:deepseek-flash")));
+}
+
+#[tokio::test]
 async fn stream_defaults_to_thinking_and_records_usage() {
     let llm = thinking_client();
     let state = AppState::with_llm(admin_config(), llm.clone() as Arc<dyn LlmClient>);
