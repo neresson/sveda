@@ -5,9 +5,12 @@
   import { getUserMessageAttachmentNames, getUserMessageText } from '@sveda-ai/chat';
   import { useSvedaT } from '../../i18n/index.js';
   import { Paperclip } from 'lucide-vue-next';
-  import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
+  import { computed } from 'vue';
+  import { Button } from '../../ui/button/index.js';
   import ChatMessageActivityBlock from './ChatMessageActivityBlock.vue';
+  import ChatToolConfirmation from './ChatToolConfirmation.vue';
   import ReasoningStream from './ReasoningStream.vue';
+  import { needsToolConfirmation } from './chatToolActivity.js';
 
   const t = useSvedaT();
 
@@ -18,10 +21,6 @@
     },
     approvalDisabled: Boolean,
     contentAnimationsEnabled: {
-      type: Boolean,
-      default: false,
-    },
-    followWorkflowStream: {
       type: Boolean,
       default: false,
     },
@@ -40,11 +39,23 @@
     return buildAssistantMessageSegments(props.message);
   });
 
-  const workflowSegments = computed(() =>
-    messageSegments.value.filter(segment => segment.kind === 'activity' || segment.kind === 'comment' || segment.kind === 'reasoning')
+  const reasoning = computed(() => messageSegments.value.filter(segment => segment.kind === 'reasoning').at(-1));
+  const textSegments = computed(() => messageSegments.value.filter(segment => segment.kind === 'comment' || segment.kind === 'answer'));
+  const activities = computed(() => messageSegments.value.filter(segment => segment.kind === 'activity'));
+  const completedAndRunningTools = computed(() =>
+    activities.value.flatMap(segment => segment.invocations.filter(invocation => !needsToolConfirmation(invocation)))
   );
-
-  const answerSegments = computed(() => messageSegments.value.filter(segment => segment.kind === 'answer'));
+  const legacyActivity = computed(() => activities.value.find(segment => segment.legacyActivity)?.legacyActivity);
+  const approvalGroups = computed(() => activities.value.flatMap(segment => {
+    const invocations = segment.invocations.filter(invocation => needsToolConfirmation(invocation) && invocation.toolCallId);
+    if (invocations.length === 0) {
+      return [];
+    }
+    const batchIds = invocations.filter(invocation =>
+      invocation.confirmationScope === 'batch' || invocation.confirmationScope === 'chat'
+    ).map(invocation => invocation.toolCallId);
+    return [{ id: segment.id, invocations, batchIds }];
+  }));
 
   const userMessageText = computed(() => (props.message.role === 'user' ? getUserMessageText(props.message) : ''));
 
@@ -55,12 +66,6 @@
   const userAttachmentNames = computed(() => (props.message.role === 'user' ? getUserMessageAttachmentNames(props.message) : []));
 
   const hasUserText = computed(() => userMessageText.value.length > 0);
-
-  const hasSegmentText = computed(() =>
-    messageSegments.value.some(segment => (segment.kind === 'comment' || segment.kind === 'answer' || segment.kind === 'reasoning') && segment.text.trim())
-  );
-
-  const hasActivity = computed(() => props.message.role === 'assistant' && messageSegments.value.some(segment => segment.kind === 'activity'));
 
   const isMessageStreaming = computed(() => {
     if (!props.contentAnimationsEnabled) {
@@ -75,7 +80,7 @@
   const shouldHideMessage = computed(() => {
     if (props.message.role === 'assistant') {
       const isError = props.message.isError;
-      if (!hasSegmentText.value && !hasActivity.value && !isError) {
+      if (!messageSegments.value.length && !isError) {
         return true;
       }
     }
@@ -109,100 +114,6 @@
 
   const showAnswerCursor = segment => segment.streaming || (props.contentAnimationsEnabled && isMessageStreaming.value && segment.kind === 'answer');
 
-  const workflowPanelRef = ref(null);
-  const workflowContentRef = ref(null);
-  let workflowResizeObserver = null;
-
-  const shouldFollowWorkflowStream = computed(() => props.followWorkflowStream);
-
-  const blockWorkflowPanelUserScroll = event => {
-    if (shouldFollowWorkflowStream.value) {
-      event.preventDefault();
-    }
-  };
-
-  const workflowScrollSignature = computed(() =>
-    JSON.stringify(
-      workflowSegments.value.map(segment => {
-        if (segment.kind === 'activity') {
-          return {
-            kind: segment.kind,
-            tools: segment.invocations.map(inv => [inv.toolCallId, inv.state, typeof inv.output === 'string' ? inv.output.length : 0]),
-          };
-        }
-
-        return {
-          kind: segment.kind,
-          length: segment.text?.length ?? 0,
-          streaming: segment.streaming,
-        };
-      })
-    )
-  );
-
-  const scrollWorkflowPanelToBottom = () => {
-    const applyScroll = () => {
-      const panel = workflowPanelRef.value;
-      if (!panel) {
-        return;
-      }
-      panel.scrollTop = Math.max(0, panel.scrollHeight - panel.clientHeight);
-    };
-
-    nextTick(() => {
-      requestAnimationFrame(() => {
-        applyScroll();
-        requestAnimationFrame(applyScroll);
-      });
-    });
-  };
-
-  const stopWorkflowResizeObserver = () => {
-    workflowResizeObserver?.disconnect();
-    workflowResizeObserver = null;
-  };
-
-  const startWorkflowResizeObserver = () => {
-    stopWorkflowResizeObserver();
-    const content = workflowContentRef.value;
-    if (!content) {
-      return;
-    }
-    workflowResizeObserver = new ResizeObserver(() => {
-      scrollWorkflowPanelToBottom();
-    });
-    workflowResizeObserver.observe(content);
-  };
-
-  watch(
-    [workflowScrollSignature, shouldFollowWorkflowStream],
-    ([, shouldFollowStream]) => {
-      if (!shouldFollowStream || workflowSegments.value.length === 0) {
-        return;
-      }
-      scrollWorkflowPanelToBottom();
-    },
-    { flush: 'post' }
-  );
-
-  watch(
-    [shouldFollowWorkflowStream, () => workflowSegments.value.length],
-    ([shouldFollowStream]) => {
-      stopWorkflowResizeObserver();
-      if (!shouldFollowStream) {
-        return;
-      }
-      nextTick(() => {
-        startWorkflowResizeObserver();
-        scrollWorkflowPanelToBottom();
-      });
-    },
-    { flush: 'post', immediate: true }
-  );
-
-  onUnmounted(() => {
-    stopWorkflowResizeObserver();
-  });
 </script>
 
 <template>
@@ -243,58 +154,9 @@
     v-else
     class="w-full max-w-full space-y-3"
   >
-    <div
-      v-if="workflowSegments.length > 0"
-      ref="workflowPanelRef"
-      class="assistant-workflow-panel max-h-[25dvh] touch-pan-y overflow-y-auto overflow-x-hidden border border-border bg-muted/40 p-2"
-      :class="{ 'assistant-workflow-panel--locked': shouldFollowWorkflowStream }"
-      @wheel="blockWorkflowPanelUserScroll"
-      @touchmove="blockWorkflowPanelUserScroll"
-    >
-      <div
-        ref="workflowContentRef"
-        class="space-y-1"
-      >
-        <template
-          v-for="segment in workflowSegments"
-          :key="segment.id"
-        >
-          <ChatMessageActivityBlock
-            v-if="segment.kind === 'activity'"
-            :invocations="segment.invocations"
-            :approval-disabled="approvalDisabled"
-            :legacy-activity="segment.legacyActivity"
-            :content-animations-enabled="contentAnimationsEnabled"
-            @activity-link-click="$emit('activity-link-click', $event)"
-            @confirm-tool="(id, decision) => $emit('confirm-tool', id, decision)"
-            @approve-tool-batch="$emit('approve-tool-batch', $event)"
-            @deny-tool="$emit('deny-tool', $event)"
-          />
+    <ReasoningStream v-if="reasoning" :text="reasoning.text" />
 
-          <ReasoningStream
-            v-else-if="segment.kind === 'reasoning'"
-            :text="segment.text"
-            :animated="contentAnimationsEnabled"
-            @content-resize="scrollWorkflowPanelToBottom"
-          />
-
-          <div
-            v-else-if="segment.kind === 'comment'"
-            class="rounded-md border border-border/40 bg-muted/30 px-3 py-2"
-          >
-            <div
-              class="prose prose-sm dark:prose-invert max-w-none break-words text-sm text-muted-foreground [overflow-wrap:anywhere] [&_code]:rounded [&_code]:bg-muted/60 [&_code]:px-1 [&_code]:py-0.5 [&_p:last-child]:mb-0 [&_p]:my-1"
-              v-html="renderSegmentMarkdown(segment.text)"
-            ></div>
-          </div>
-        </template>
-      </div>
-    </div>
-
-    <template
-      v-for="segment in answerSegments"
-      :key="segment.id"
-    >
+    <template v-for="segment in textSegments" :key="segment.id">
       <div :class="message.isError ? 'text-destructive' : ''">
         <div
           class="prose prose-sm dark:prose-invert max-w-none break-words text-sm text-foreground [overflow-wrap:anywhere] [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-border [&_pre]:bg-muted [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-xs"
@@ -302,7 +164,7 @@
         >
           <div
             class="[&_a]:break-all [&_blockquote]:break-words [&_h1]:break-words [&_h2]:break-words [&_h3]:break-words [&_h4]:break-words [&_img]:my-2 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-md [&_li]:break-words [&_p:last-child]:mb-0 [&_p]:my-1 [&_p]:break-words"
-            v-html="renderSegmentMarkdown(segment.text, { injectResources: true })"
+            v-html="renderSegmentMarkdown(segment.text, { injectResources: segment.kind === 'answer' })"
           ></div>
           <span
             v-if="showAnswerCursor(segment)"
@@ -311,6 +173,35 @@
         </div>
       </div>
     </template>
+
+    <ChatMessageActivityBlock
+      :invocations="completedAndRunningTools"
+      :legacy-activity="legacyActivity"
+      :content-animations-enabled="contentAnimationsEnabled"
+      @activity-link-click="$emit('activity-link-click', $event)"
+    />
+
+    <div v-for="group in approvalGroups" :key="group.id" class="grid gap-2.5">
+      <ChatToolConfirmation
+        v-for="invocation in group.invocations"
+        :key="invocation.toolCallId"
+        :invocation="invocation"
+        :disabled="approvalDisabled"
+        @confirm-tool="(id, decision) => $emit('confirm-tool', id, decision)"
+        @deny-tool="$emit('deny-tool', $event)"
+      />
+      <Button
+        v-if="group.batchIds.length > 1"
+        type="button"
+        size="sm"
+        variant="outline"
+        class="max-w-full justify-self-start whitespace-normal text-xs"
+        :disabled="approvalDisabled"
+        @click="$emit('approve-tool-batch', group.batchIds)"
+      >
+        {{ t('toolApproveBatch', { count: group.batchIds.length }) }}
+      </Button>
+    </div>
 
     <div
       v-if="message.isError && messageSegments.length === 0"
@@ -353,10 +244,5 @@
   :deep(.resource-inline-link:hover .resource-link-icon) {
     opacity: 1;
     transform: translate(1px, -1px);
-  }
-
-  .assistant-workflow-panel--locked {
-    touch-action: none;
-    overscroll-behavior: contain;
   }
 </style>

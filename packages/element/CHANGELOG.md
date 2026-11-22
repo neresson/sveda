@@ -1,5 +1,11 @@
 # @sveda-ai/element
 
+## 0.3.4
+
+### Patch Changes
+
+- Bundle the updated Vue chat with compact reasoning and readable approval cards.
+
 ## 0.3.3
 
 ### Patch Changes

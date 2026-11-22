@@ -1,5 +1,11 @@
 # @sveda-ai/chat
 
+## 0.3.6
+
+### Patch Changes
+
+- Show a compact reasoning preview and a collapsible action history. Present pending approvals in the conversation with readable action and target labels.
+
 ## 0.3.5
 
 ### Patch Changes

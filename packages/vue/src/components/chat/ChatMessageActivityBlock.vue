@@ -9,14 +9,13 @@
   import { CheckCircle, ChevronDown, ChevronRight, CircleStop, ExternalLink, Search, Terminal, XCircle } from 'lucide-vue-next';
   import { computed, ref, watch } from 'vue';
   import AnimatedStreamBlock from './AnimatedStreamBlock.vue';
-  import ChatToolConfirmation from './ChatToolConfirmation.vue';
+  import { isToolInvocationComplete, translateToolName } from './chatToolActivity.js';
 
   const props = defineProps({
     invocations: {
       type: Array,
       default: () => [],
     },
-    approvalDisabled: Boolean,
     legacyActivity: {
       type: Object,
       default: null,
@@ -27,28 +26,11 @@
     },
   });
 
-  const emit = defineEmits(['activity-link-click', 'confirm-tool', 'deny-tool', 'approve-tool-batch']);
+  const emit = defineEmits(['activity-link-click']);
 
   const t = useSvedaT();
 
-  const translateToolName = toolName => {
-    if (!toolName) {
-      return '';
-    }
-    const key = `tools.${toolName}`;
-    const translated = t(key);
-    return translated === key ? toolName : translated;
-  };
-
-  const isToolInvocationComplete = inv =>
-    inv?.state === 'result' || inv?.state === 'output-available' || inv?.state === 'output-error' || inv?.state === 'output-denied';
-
-  const needsConfirmation = inv => inv?.confirmation === 'required' && !isToolInvocationComplete(inv);
-
   const getToolInvocationStatus = inv => {
-    if (needsConfirmation(inv)) {
-      return 'confirmation';
-    }
     if (!isToolInvocationComplete(inv)) {
       if (!props.contentAnimationsEnabled) {
         return 'success';
@@ -60,6 +42,9 @@
     }
 
     const resultData = parseToolResultOutput(inv.output !== undefined ? inv.output : inv.result);
+    if (resultData?.denied === true) {
+      return 'stopped';
+    }
     if (resultData && (resultData.error || resultData.success === false)) {
       return 'error';
     }
@@ -76,7 +61,9 @@
         const toolName = getToolNameFromPart(inv);
 
         let detail = '';
-        if (isComplete) {
+        if (status === 'stopped') {
+          detail = t('toolActivityDeniedDetail');
+        } else if (isComplete) {
           if (resultData) {
             const data = resultData.data;
             if (data && typeof data === 'object' && data !== null && 'content' in data && data.content) {
@@ -101,7 +88,7 @@
           detail = detail.slice(0, 2000) + '...';
         }
 
-        const translatedName = translateToolName(toolName);
+        const translatedName = translateToolName(t, toolName);
         let label = translatedName;
         const display = resultData?.display;
         if (isComplete && display && typeof display === 'object' && display !== null && 'name' in display && display.name) {
@@ -123,9 +110,6 @@
           label,
           status,
           detail,
-          needsConfirmation: needsConfirmation(inv),
-          confirmationScope: inv.confirmationScope,
-          toolCallId: inv.toolCallId || '',
           display: display && typeof display === 'object' ? display : undefined,
           ...groupPayload,
         };
@@ -135,11 +119,6 @@
     const steps = props.legacyActivity?.steps ?? [];
     return steps.filter(step => step.kind === 'tool' || step.kind === 'error' || step.kind === 'subagent');
   });
-
-  const batchIds = computed(() => toolSteps.value.filter(step =>
-    step.needsConfirmation && step.toolCallId &&
-    (step.confirmationScope === 'batch' || step.confirmationScope === 'chat')
-  ).map(step => step.toolCallId));
 
   const expandedSteps = ref({});
   const expandedGroups = ref({});
@@ -155,8 +134,7 @@
             expandedSteps.value[step.id] = true;
           } else if (step.status === 'success' || step.status === 'error' || step.status === 'stopped') {
             const previous = prevMap.get(step.id);
-            const wasOpen = previous?.status === 'running' || previous?.status === 'confirmation' || previous?.needsConfirmation;
-            if (wasOpen) {
+            if (previous?.status === 'running') {
               expandedSteps.value[step.id] = false;
             }
           }
@@ -167,16 +145,8 @@
     { deep: true, immediate: true }
   );
 
-  const phaseStatusLabel = computed(() => {
-    if (!props.contentAnimationsEnabled || props.invocations.length === 0) {
-      return '';
-    }
-    const hasRunning = props.invocations.some(inv => !isToolInvocationComplete(inv));
-    if (hasRunning) {
-      return t('phaseToolCalling');
-    }
-    return '';
-  });
+  const running = computed(() => toolSteps.value.some(step => step.status === 'running'));
+  const failureCount = computed(() => toolSteps.value.filter(step => step.kind === 'error' || step.status === 'error').length);
 
   const isSubagentStep = step => step.kind === 'subagent';
 
@@ -252,9 +222,6 @@
   const hasDisplayLink = step => step.display && step.display.link && step.status === 'success';
 
   const handleStepClick = step => {
-    if (step.needsConfirmation) {
-      return;
-    }
     if (hasDisplayLink(step)) {
       emit('activity-link-click', step.display.link);
       return;
@@ -271,219 +238,211 @@
 </script>
 
 <template>
-  <div
-    v-if="toolSteps.length > 0"
-    class="space-y-0.5"
-  >
-    <p
-      v-if="phaseStatusLabel"
-      class="text-xs text-muted-foreground/80"
-    >
-      {{ phaseStatusLabel }}
-    </p>
-    <template
-      v-for="item in activityItems"
-      :key="getActivityItemKey(item)"
-    >
-      <div v-if="item.type === 'group'">
-        <button
-          type="button"
-          class="flex w-full items-center gap-1.5 py-0.5 text-left text-muted-foreground/90 hover:text-muted-foreground"
-          @click="handleGroupClick(item)"
-        >
-          <CheckCircle
-            v-if="getGroupStatus(item) === 'success'"
-            class="h-3 w-3 text-green-500"
-          />
-          <XCircle
-            v-else-if="getGroupStatus(item) === 'error'"
-            class="h-3 w-3 text-red-500"
-          />
-          <CircleStop
-            v-else-if="getGroupStatus(item) === 'stopped'"
-            class="h-3 w-3 text-muted-foreground"
-          />
-          <Terminal
-            v-else
-            class="h-3 w-3 text-muted-foreground"
-          />
-          <span
-            class="min-w-0 flex-1 truncate text-xs"
-            :class="getGroupStatus(item) === 'error' ? 'text-red-500/90' : ''"
+  <details v-if="toolSteps.length" class="sveda-tool-history text-muted-foreground">
+    <summary class="flex min-h-8 cursor-pointer list-none items-center gap-2 rounded-md px-1 text-xs hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+      <ChevronRight class="sveda-tool-history-chevron h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <span>{{ t(running ? 'phaseToolCalling' : 'toolActivityHistory', { count: toolSteps.length }) }}</span>
+      <span v-if="failureCount" class="sveda-tool-history-error">{{ t('toolActivityFailed', { count: failureCount }) }}</span>
+    </summary>
+    <div class="space-y-0.5 border-l border-border pl-3">
+      <template
+        v-for="item in activityItems"
+        :key="getActivityItemKey(item)"
+      >
+        <div v-if="item.type === 'group'">
+          <button
+            type="button"
+            class="flex w-full items-center gap-1.5 py-0.5 text-left text-muted-foreground/90 hover:text-muted-foreground"
+            :aria-expanded="isGroupExpanded(item)"
+            @click="handleGroupClick(item)"
           >
-            {{ getGroupLabel(item) }}
-          </span>
-          <component
-            :is="isGroupExpanded(item) ? ChevronDown : ChevronRight"
-            class="ml-auto h-3 w-3 text-muted-foreground"
-          />
-        </button>
-        <div
-          v-if="isGroupExpanded(item)"
-          class="space-y-0.5 pl-4"
-        >
+            <CheckCircle
+              v-if="getGroupStatus(item) === 'success'"
+              class="h-3 w-3 text-green-500"
+            />
+            <XCircle
+              v-else-if="getGroupStatus(item) === 'error'"
+              class="h-3 w-3 text-red-500"
+            />
+            <CircleStop
+              v-else-if="getGroupStatus(item) === 'stopped'"
+              class="h-3 w-3 text-muted-foreground"
+            />
+            <Terminal
+              v-else
+              class="h-3 w-3 text-muted-foreground"
+            />
+            <span
+              class="min-w-0 flex-1 truncate text-xs"
+              :class="getGroupStatus(item) === 'error' ? 'text-red-500/90' : ''"
+            >
+              {{ getGroupLabel(item) }}
+            </span>
+            <component
+              :is="isGroupExpanded(item) ? ChevronDown : ChevronRight"
+              class="ml-auto h-3 w-3 text-muted-foreground"
+            />
+          </button>
           <div
-            v-for="step in item.steps"
-            :key="step.id"
+            v-if="isGroupExpanded(item)"
+            class="space-y-0.5 pl-4"
           >
-            <button
-              type="button"
-              class="flex w-full items-center gap-1.5 py-0.5 text-left text-muted-foreground/90"
-              :class="{ 'cursor-pointer hover:text-muted-foreground': hasDisplayLink(step) }"
-              @click="handleStepClick(step)"
-            >
-              <CheckCircle
-                v-if="step.status === 'success'"
-                class="h-3 w-3 text-green-500"
-              />
-              <XCircle
-                v-else-if="step.status === 'error'"
-                class="h-3 w-3 text-red-500"
-              />
-              <CircleStop
-                v-else-if="step.status === 'stopped'"
-                class="h-3 w-3 text-muted-foreground"
-              />
-              <Search
-                v-else-if="isSubagentStep(step)"
-                class="h-3 w-3 text-sky-600"
-              />
-              <Terminal
-                v-else
-                class="h-3 w-3 text-muted-foreground"
-              />
-              <span
-                class="min-w-0 flex-1 text-xs"
-                :class="[
-                  step.status === 'error' ? 'text-red-500/90' : '',
-                  isSubagentStep(step) ? 'text-sky-700/80 dark:text-sky-400/80' : '',
-                  hasDisplayLink(step) ? 'underline decoration-dotted underline-offset-2 hover:text-primary' : '',
-                ]"
-              >
-                {{ step.label }}
-              </span>
-              <ExternalLink
-                v-if="hasDisplayLink(step)"
-                class="h-3 w-3 flex-shrink-0 text-muted-foreground"
-              />
-              <component
-                v-else-if="!step.needsConfirmation && (step.detail || step.kind === 'tool' || step.kind === 'subagent')"
-                :is="isStepExpanded(step) ? ChevronDown : ChevronRight"
-                class="ml-auto h-3 w-3 text-muted-foreground"
-              />
-            </button>
             <div
-              v-if="isStepExpanded(step) && !step.needsConfirmation && !hasDisplayLink(step) && (step.detail || step.kind === 'tool' || step.kind === 'subagent')"
-              class="pb-1 pl-4 text-muted-foreground/80"
+              v-for="step in item.steps"
+              :key="step.id"
             >
-              <AnimatedStreamBlock
-                v-if="step.kind === 'tool'"
-                :text="step.detail || ''"
-                :animated="contentAnimationsEnabled"
-                max-height="8rem"
-                :show-mask="true"
-                variant="mono"
-              />
-              <div
-                v-else
-                :class="['max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-xs', step.kind === 'thinking' ? 'font-mono' : '']"
+              <button
+                type="button"
+                class="flex w-full items-center gap-1.5 py-0.5 text-left text-muted-foreground/90"
+                :class="{ 'cursor-pointer hover:text-muted-foreground': hasDisplayLink(step) }"
+                :aria-expanded="hasDisplayLink(step) ? undefined : isStepExpanded(step)"
+                @click="handleStepClick(step)"
               >
-                {{ step.detail }}
+                <CheckCircle
+                  v-if="step.status === 'success'"
+                  class="h-3 w-3 text-green-500"
+                />
+                <XCircle
+                  v-else-if="step.status === 'error'"
+                  class="h-3 w-3 text-red-500"
+                />
+                <CircleStop
+                  v-else-if="step.status === 'stopped'"
+                  class="h-3 w-3 text-muted-foreground"
+                />
+                <Search
+                  v-else-if="isSubagentStep(step)"
+                  class="h-3 w-3 text-sky-600"
+                />
+                <Terminal
+                  v-else
+                  class="h-3 w-3 text-muted-foreground"
+                />
+                <span
+                  class="min-w-0 flex-1 text-xs"
+                  :class="[
+                    step.status === 'error' ? 'text-red-500/90' : '',
+                    isSubagentStep(step) ? 'text-sky-700/80 dark:text-sky-400/80' : '',
+                    hasDisplayLink(step) ? 'underline decoration-dotted underline-offset-2 hover:text-primary' : '',
+                  ]"
+                >
+                  {{ step.label }}
+                </span>
+                <ExternalLink
+                  v-if="hasDisplayLink(step)"
+                  class="h-3 w-3 flex-shrink-0 text-muted-foreground"
+                />
+                <component
+                  v-else-if="(step.detail || step.kind === 'tool' || step.kind === 'subagent')"
+                  :is="isStepExpanded(step) ? ChevronDown : ChevronRight"
+                  class="ml-auto h-3 w-3 text-muted-foreground"
+                />
+              </button>
+              <div
+                v-if="isStepExpanded(step) && !hasDisplayLink(step) && (step.detail || step.kind === 'tool' || step.kind === 'subagent')"
+                class="pb-1 pl-4 text-muted-foreground/80"
+              >
+                <AnimatedStreamBlock
+                  v-if="step.kind === 'tool'"
+                  :text="step.detail || ''"
+                  :animated="contentAnimationsEnabled"
+                  max-height="8rem"
+                  :show-mask="true"
+                  variant="mono"
+                />
+                <div
+                  v-else
+                  :class="['whitespace-pre-wrap break-words text-xs [overflow-wrap:anywhere]', step.kind === 'thinking' ? 'font-mono' : '']"
+                >
+                  {{ step.detail }}
+                </div>
               </div>
             </div>
-            <ChatToolConfirmation
-              v-if="step.needsConfirmation"
-              :step="step"
-              :disabled="approvalDisabled"
-              @confirm-tool="(id, decision) => emit('confirm-tool', id, decision)"
-              @deny-tool="emit('deny-tool', $event)"
+          </div>
+        </div>
+        <div v-else>
+          <button
+            type="button"
+            class="flex w-full items-center gap-1.5 py-0.5 text-left text-muted-foreground/90"
+            :class="{ 'cursor-pointer hover:text-muted-foreground': hasDisplayLink(item.step) }"
+            :aria-expanded="hasDisplayLink(item.step) ? undefined : isStepExpanded(item.step)"
+            @click="handleStepClick(item.step)"
+          >
+            <CheckCircle
+              v-if="item.step.status === 'success'"
+              class="h-3 w-3 text-green-500"
             />
-          </div>
-        </div>
-      </div>
-      <div v-else>
-        <button
-          type="button"
-          class="flex w-full items-center gap-1.5 py-0.5 text-left text-muted-foreground/90"
-          :class="{ 'cursor-pointer hover:text-muted-foreground': hasDisplayLink(item.step) }"
-          @click="handleStepClick(item.step)"
-        >
-          <CheckCircle
-            v-if="item.step.status === 'success'"
-            class="h-3 w-3 text-green-500"
-          />
-          <XCircle
-            v-else-if="item.step.status === 'error'"
-            class="h-3 w-3 text-red-500"
-          />
-          <CircleStop
-            v-else-if="item.step.status === 'stopped'"
-            class="h-3 w-3 text-muted-foreground"
-          />
-          <Search
-            v-else-if="isSubagentStep(item.step)"
-            class="h-3 w-3 text-sky-600"
-          />
-          <Terminal
-            v-else
-            class="h-3 w-3 text-muted-foreground"
-          />
-          <span
-            class="min-w-0 flex-1 text-xs"
-            :class="[
-              item.step.status === 'error' ? 'text-red-500/90' : '',
-              isSubagentStep(item.step) ? 'text-sky-700/80 dark:text-sky-400/80' : '',
-              hasDisplayLink(item.step) ? 'underline decoration-dotted underline-offset-2 hover:text-primary' : '',
-            ]"
-          >
-            {{ item.step.label }}
-          </span>
-          <ExternalLink
-            v-if="hasDisplayLink(item.step)"
-            class="h-3 w-3 flex-shrink-0 text-muted-foreground"
-          />
-          <component
-            v-else-if="!item.step.needsConfirmation && (item.step.detail || item.step.kind === 'tool' || item.step.kind === 'subagent')"
-            :is="isStepExpanded(item.step) ? ChevronDown : ChevronRight"
-            class="ml-auto h-3 w-3 text-muted-foreground"
-          />
-        </button>
-        <div
-          v-if="isStepExpanded(item.step) && !item.step.needsConfirmation && !hasDisplayLink(item.step) && (item.step.detail || item.step.kind === 'tool' || item.step.kind === 'subagent')"
-          class="pb-1 pl-4 text-muted-foreground/80"
-        >
-          <AnimatedStreamBlock
-            v-if="item.step.kind === 'tool'"
-            :text="item.step.detail || ''"
-            :animated="contentAnimationsEnabled"
-            max-height="8rem"
-            :show-mask="true"
-            variant="mono"
-          />
+            <XCircle
+              v-else-if="item.step.status === 'error'"
+              class="h-3 w-3 text-red-500"
+            />
+            <CircleStop
+              v-else-if="item.step.status === 'stopped'"
+              class="h-3 w-3 text-muted-foreground"
+            />
+            <Search
+              v-else-if="isSubagentStep(item.step)"
+              class="h-3 w-3 text-sky-600"
+            />
+            <Terminal
+              v-else
+              class="h-3 w-3 text-muted-foreground"
+            />
+            <span
+              class="min-w-0 flex-1 text-xs"
+              :class="[
+                item.step.status === 'error' ? 'text-red-500/90' : '',
+                isSubagentStep(item.step) ? 'text-sky-700/80 dark:text-sky-400/80' : '',
+                hasDisplayLink(item.step) ? 'underline decoration-dotted underline-offset-2 hover:text-primary' : '',
+              ]"
+            >
+              {{ item.step.label }}
+            </span>
+            <ExternalLink
+              v-if="hasDisplayLink(item.step)"
+              class="h-3 w-3 flex-shrink-0 text-muted-foreground"
+            />
+            <component
+              v-else-if="(item.step.detail || item.step.kind === 'tool' || item.step.kind === 'subagent')"
+              :is="isStepExpanded(item.step) ? ChevronDown : ChevronRight"
+              class="ml-auto h-3 w-3 text-muted-foreground"
+            />
+          </button>
           <div
-            v-else
-            :class="['max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-xs', item.step.kind === 'thinking' ? 'font-mono' : '']"
+            v-if="isStepExpanded(item.step) && !hasDisplayLink(item.step) && (item.step.detail || item.step.kind === 'tool' || item.step.kind === 'subagent')"
+            class="pb-1 pl-4 text-muted-foreground/80"
           >
-            {{ item.step.detail }}
+            <AnimatedStreamBlock
+              v-if="item.step.kind === 'tool'"
+              :text="item.step.detail || ''"
+              :animated="contentAnimationsEnabled"
+              max-height="8rem"
+              :show-mask="true"
+              variant="mono"
+            />
+            <div
+              v-else
+              :class="['whitespace-pre-wrap break-words text-xs [overflow-wrap:anywhere]', item.step.kind === 'thinking' ? 'font-mono' : '']"
+            >
+              {{ item.step.detail }}
+            </div>
           </div>
         </div>
-        <ChatToolConfirmation
-          v-if="item.step.needsConfirmation"
-          :step="item.step"
-          :disabled="approvalDisabled"
-          @confirm-tool="(id, decision) => emit('confirm-tool', id, decision)"
-          @deny-tool="emit('deny-tool', $event)"
-        />
-      </div>
-    </template>
-    <button
-      v-if="batchIds.length > 1"
-      type="button"
-      class="mt-2 border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
-      :disabled="approvalDisabled"
-      @click="emit('approve-tool-batch', batchIds)"
-    >
-      {{ t('toolApproveBatch', { count: batchIds.length }) }}
-    </button>
-  </div>
+      </template>
+    </div>
+  </details>
 </template>
+
+<style scoped>
+  .sveda-tool-history summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .sveda-tool-history[open] .sveda-tool-history-chevron {
+    transform: rotate(90deg);
+  }
+
+  .sveda-tool-history-error {
+    color: color-mix(in srgb, var(--color-destructive) 60%, var(--color-foreground));
+  }
+</style>

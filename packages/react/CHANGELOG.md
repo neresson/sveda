@@ -1,5 +1,12 @@
 # @sveda-ai/react
 
+## 0.3.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @sveda-ai/chat@0.3.6
+
 ## 0.3.5
 
 ### Patch Changes

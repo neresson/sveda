@@ -190,7 +190,6 @@
             :message="message"
             :approval-disabled="isLoading"
             :content-animations-enabled="contentAnimationsEnabled"
-            :follow-workflow-stream="contentAnimationsEnabled && message.role === 'assistant' && index === messages.length - 1"
             :on-resource-link-click="onResourceLinkClick"
             @activity-link-click="$emit('activity-link-click', $event)"
             @confirm-tool="(id, decision) => $emit('confirm-tool', id, decision)"

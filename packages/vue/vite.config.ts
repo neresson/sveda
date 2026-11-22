@@ -1,3 +1,4 @@
+import { isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
@@ -14,7 +15,7 @@ export default defineConfig({
     },
     rollupOptions: {
       external: (id) =>
-        !id.startsWith('.') && !id.startsWith('/') && !id.endsWith('.css') && !id.includes('\0'),
+        !id.startsWith('.') && !isAbsolute(id) && !id.endsWith('.css') && !id.includes('\0'),
     },
   },
 });

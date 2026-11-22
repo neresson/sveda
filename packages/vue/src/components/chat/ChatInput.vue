@@ -455,10 +455,12 @@
         @input="handleInput"
         @keypress="handleKeyPress"
         @paste="onPaste"
-        :placeholder="t('typeMessage')"
+        :placeholder="t(confirmationPending ? 'toolApprovalWaiting' : 'typeMessage')"
+        :aria-label="t(confirmationPending ? 'toolApprovalWaiting' : 'typeMessage')"
         :disabled="composerDisabled"
         :readonly="isListening"
         class="sveda-chat-input-textarea max-h-[250px] min-h-[60px] w-full resize-none border-0 bg-transparent p-3 font-sans text-sm text-foreground shadow-none !outline-none !ring-0 placeholder:font-mono placeholder:text-[11px] placeholder:tracking-[0.08em] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+        :class="{ 'disabled:opacity-100': confirmationPending }"
         style="height: 60px; outline: none; box-shadow: none"
       />
 

@@ -1,5 +1,13 @@
 # @sveda-ai/vue
 
+## 0.3.7
+
+### Patch Changes
+
+- Show a compact reasoning preview and a collapsible action history. Present pending approvals in the conversation with readable action and target labels.
+- Updated dependencies
+  - @sveda-ai/chat@0.3.6
+
 ## 0.3.6
 
 ### Patch Changes
