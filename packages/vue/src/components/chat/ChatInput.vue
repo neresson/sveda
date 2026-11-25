@@ -530,6 +530,7 @@
           <Button
             v-if="isStreaming"
             variant="ghost"
+            :aria-label="t('stopGeneration')"
             @click="$emit('stop')"
             size="icon"
             :class="streamStopButtonClass"
@@ -539,6 +540,7 @@
           <Button
             v-else
             variant="ghost"
+            :aria-label="t('sendMessage')"
             @click="$emit('send')"
             :disabled="composerDisabled || !canSend"
             size="icon"

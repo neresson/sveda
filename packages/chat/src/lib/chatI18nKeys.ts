@@ -1,6 +1,8 @@
 export const chatComponentI18nKeys: Record<string, Record<string, string>> = {
   en: {
     typeMessage: 'Ask AI to help you...',
+    sendMessage: 'Send message',
+    stopGeneration: 'Stop generating',
     chatAttachFiles: 'Attach files (PDF, Word, Excel, presentations, images…)',
     chatRemoveFile: 'Remove file',
     attachmentsLabel: 'Attachments',
@@ -32,6 +34,8 @@ export const chatComponentI18nKeys: Record<string, Record<string, string>> = {
   },
   ru: {
     typeMessage: 'Попросите AI помочь вам...',
+    sendMessage: 'Отправить сообщение',
+    stopGeneration: 'Остановить генерацию',
     chatAttachFiles: 'Прикрепить файлы (PDF, Word, Excel, презентации, изображения…)',
     chatRemoveFile: 'Убрать файл',
     attachmentsLabel: 'Вложения',

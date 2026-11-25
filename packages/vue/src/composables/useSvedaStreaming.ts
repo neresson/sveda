@@ -88,9 +88,7 @@ export function useSvedaStreaming(
     }
   );
 
-  const isStreaming = computed(() =>
-    controller.isStreamingFor(store.currentChat.value?.id)
-  );
+  const isStreaming = computed(() => streamingChatIds.value.has(store.currentChat.value?.id ?? ''));
 
   onUnmounted(() => {
     unsubscribe();
