@@ -478,7 +478,7 @@ impl SettingsDocument {
     }
 
     pub fn public(&self) -> Value {
-        json!({
+        let mut result = json!({
             "default_model": self.default_model,
             "model": self.model,
             "models": self.models.iter().map(|model| json!({
@@ -490,7 +490,15 @@ impl SettingsDocument {
             })).collect::<Vec<_>>(),
             "welcome_message": self.welcome_message,
             "appearance": self.appearance.clone(),
-        })
+        });
+        if sveda_llm::yandex_only() {
+            let id = sveda_llm::YANDEX_MODEL;
+            result["default_model"] = json!(id);
+            result["model"] = json!(id);
+            result["models"] = json!([{"id": id, "label": "DeepSeek V4.1 Flash · Yandex AI Studio",
+                "protocol": "responses", "supports_thinking": true, "supportsThinking": true}]);
+        }
+        result
     }
 
     pub(crate) fn lms_public(&self) -> Value {
@@ -517,6 +525,9 @@ impl SettingsDocument {
     }
 
     pub(crate) fn lms_chat_catalog(&self) -> Catalog {
+        if sveda_llm::yandex_only() {
+            return Catalog::yandex_from_env();
+        }
         let configured = self.models.iter().find(|model| {
             matches!(
                 model.api_model.as_str(),
@@ -582,6 +593,9 @@ impl SettingsDocument {
     }
 
     pub fn active_embedding(&self) -> Option<EmbeddingSpec> {
+        if sveda_llm::yandex_only() {
+            return None;
+        }
         let needle = self.default_embedding.trim();
         self.embeddings
             .iter()
@@ -734,6 +748,9 @@ fn resolve_default_embedding(current: &str, embeddings: &[EmbeddingSettings]) ->
 }
 
 fn embeddings_from_env() -> (String, Vec<EmbeddingSettings>) {
+    if sveda_llm::yandex_only() {
+        return (String::new(), Vec::new());
+    }
     let key = std::env::var("OPENAI_API_KEY")
         .or_else(|_| std::env::var("SVEDA_OPENAI_API_KEY"))
         .unwrap_or_default()
@@ -928,6 +945,40 @@ impl SettingsStore {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn yandex_profile_ignores_saved_routes() {
+        // Run with process-local environment without affecting tests executing in parallel.
+        if std::env::var_os("SVEDA_TEST_YANDEX_CHILD").is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "settings::tests::yandex_profile_ignores_saved_routes",
+                ])
+                .env("SVEDA_TEST_YANDEX_CHILD", "1")
+                .env("SVEDA_INFERENCE_PROFILE", "yandex-ru")
+                .env("SVEDA_YANDEX_API_KEY", "synthetic-fixture")
+                .env("SVEDA_YANDEX_FOLDER_ID", "test-folder")
+                .env("OPENAI_API_KEY", "legacy-embedding-fixture")
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        let state = crate::AppState::new(crate::Config::test());
+        let doc = state.settings.document();
+        for catalog in [state.catalog(), doc.lms_chat_catalog()] {
+            assert_eq!(catalog.default().unwrap().url, sveda_llm::YANDEX_BASE_URL);
+            assert_eq!(catalog.default().unwrap().key, "synthetic-fixture");
+            assert!(catalog.failover_ids.is_empty());
+        }
+        assert!(!serde_json::to_string(&doc)
+            .unwrap()
+            .contains("synthetic-fixture"));
+        assert!(doc.active_embedding().is_none());
+        assert!(!state.runtime_config().web_enabled);
+        assert_eq!(doc.public()["default_model"], sveda_llm::YANDEX_MODEL);
+    }
 
     #[test]
     fn yaml_patch_overlays_prompt_and_cors() {

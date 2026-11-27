@@ -36,6 +36,17 @@ pub struct ModelSpec {
     pub reasoning_effort: Option<ReasoningEffort>,
 }
 
+pub const YANDEX_BASE_URL: &str = "https://ai.api.cloud.yandex.net/v1";
+pub const YANDEX_MODEL: &str = "deepseek-v4.1-flash";
+
+pub fn yandex_only() -> bool {
+    match std::env::var("SVEDA_INFERENCE_PROFILE").as_deref() {
+        Ok("yandex-ru") => true,
+        Ok("default") | Err(std::env::VarError::NotPresent) => false,
+        _ => panic!("Unsupported SVEDA_INFERENCE_PROFILE"),
+    }
+}
+
 impl ModelSpec {
     pub fn matches(&self, needle: &str) -> bool {
         let needle = needle.trim().to_ascii_lowercase();
@@ -54,6 +65,9 @@ impl ModelSpec {
     }
 
     pub fn uses_plaintext_reasoning(&self) -> bool {
+        if self.url == YANDEX_BASE_URL {
+            return false;
+        }
         let haystack = format!("{} {} {}", self.url, self.api_model, self.id).to_ascii_lowercase();
         haystack.contains("deepseek")
     }
@@ -82,6 +96,39 @@ impl std::fmt::Display for UnknownModelError {
 }
 
 impl Catalog {
+    pub fn yandex_from_env() -> Self {
+        Self::yandex(
+            &std::env::var("SVEDA_YANDEX_FOLDER_ID").unwrap_or_default(),
+            std::env::var("SVEDA_YANDEX_API_KEY").unwrap_or_default(),
+        )
+    }
+
+    pub fn yandex(folder: &str, key: String) -> Self {
+        let folder = folder.trim();
+        let valid_folder = !folder.is_empty()
+            && folder
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-');
+        Self {
+            default_id: YANDEX_MODEL.into(),
+            failover_ids: Vec::new(),
+            models: vec![ModelSpec {
+                id: YANDEX_MODEL.into(),
+                label: "DeepSeek V4.1 Flash · Yandex AI Studio".into(),
+                protocol: Protocol::Responses,
+                api_model: format!("gpt://{folder}/{YANDEX_MODEL}"),
+                url: YANDEX_BASE_URL.into(),
+                key: if valid_folder { key } else { String::new() },
+                aliases: vec![
+                    "sveda".into(),
+                    "deepseek-flash".into(),
+                    "deepseek-v4-flash-responses".into(),
+                ],
+                reasoning_effort: None,
+            }],
+        }
+    }
+
     pub fn builtin(deepseek_key: impl Into<String>) -> Self {
         let key = deepseek_key.into();
         Self {
@@ -123,6 +170,13 @@ impl Catalog {
     }
 
     pub fn from_env() -> Self {
+        if yandex_only() {
+            // The seed may be persisted. Credentials are applied only at inference time.
+            return Self::yandex(
+                &std::env::var("SVEDA_YANDEX_FOLDER_ID").unwrap_or_default(),
+                String::new(),
+            );
+        }
         let key = std::env::var("DEEPSEEK_API_KEY")
             .or_else(|_| std::env::var("SVEDA_DEEPSEEK_API_KEY"))
             .unwrap_or_default();

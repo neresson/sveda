@@ -183,7 +183,7 @@ pub fn overlay(base: &crate::Config, settings: &SettingsStore) -> crate::Config 
     config.compaction_min_messages = document.compaction.min_messages;
     config.compaction_keep_tail = document.compaction.keep_tail_messages;
     config.cors_origins = document.cors.allowed_origins;
-    config.web_enabled = document.web.enabled;
+    config.web_enabled = document.web.enabled && !sveda_llm::yandex_only();
     config.searxng_url = document.web.searxng_url;
     let security = document
         .security

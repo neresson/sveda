@@ -34,7 +34,11 @@ impl HttpClient {
     }
 
     pub fn from_timeout(seconds: u64) -> Self {
-        let client = Client::builder()
+        let mut builder = Client::builder();
+        if crate::yandex_only() {
+            builder = builder.redirect(reqwest::redirect::Policy::none());
+        }
+        let client = builder
             .timeout(std::time::Duration::from_secs(seconds.max(1)))
             .build()
             .expect("reqwest client");
@@ -46,6 +50,11 @@ impl HttpClient {
         spec: &EmbeddingSpec,
         inputs: &[String],
     ) -> Result<Vec<Vec<f32>>, LlmError> {
+        if crate::yandex_only() {
+            return Err(LlmError::Other(
+                "Remote embeddings disabled in yandex-ru profile".into(),
+            ));
+        }
         if spec.key.trim().is_empty() {
             return Err(LlmError::Other(
                 "Missing API key for the selected embedding. Add it in Admin → Models.".into(),
@@ -77,7 +86,7 @@ impl HttpClient {
         if supports_dimensions_param(&spec.api_model) {
             body["dimensions"] = serde_json::json!(spec.dimensions);
         }
-        let headers = responses_headers(&spec.key)?;
+        let headers = responses_headers(&spec.key, false)?;
         let url = join_endpoint(&spec.url, "embeddings");
         let response = self
             .client
@@ -109,6 +118,10 @@ impl LlmClient for HttpClient {
         let client = self.client.clone();
         let model = model.clone();
         Box::pin(stream! {
+            if crate::yandex_only() && (model.url != crate::YANDEX_BASE_URL || model.protocol != Protocol::Responses) {
+                yield Err(LlmError::Other("Provider disabled in yandex-ru profile".into()));
+                return;
+            }
             if model.key.trim().is_empty() {
                 yield Err(LlmError::missing_api_key());
                 return;
@@ -118,7 +131,7 @@ impl LlmClient for HttpClient {
                 Protocol::Responses => (
                     join_endpoint(&model.url, "responses"),
                     responses_body_for(&model, &request),
-                    match responses_headers(&model.key) {
+                    match responses_headers(&model.key, model.url == crate::YANDEX_BASE_URL) {
                         Ok(headers) => headers,
                         Err(error) => {
                             yield Err(error);
@@ -355,10 +368,15 @@ async fn http_status_error(
     }
 }
 
-fn responses_headers(key: &str) -> Result<HeaderMap, LlmError> {
+fn responses_headers(key: &str, yandex: bool) -> Result<HeaderMap, LlmError> {
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-    let value = format!("Bearer {key}");
+    let value = if yandex {
+        headers.insert("x-data-logging-enabled", HeaderValue::from_static("false"));
+        format!("Api-Key {key}")
+    } else {
+        format!("Bearer {key}")
+    };
     headers.insert(
         AUTHORIZATION,
         HeaderValue::from_str(&value).map_err(|error| LlmError::Other(error.to_string()))?,
@@ -425,4 +443,52 @@ fn parse_openai_embeddings(
         )));
     }
     Ok(vectors)
+}
+
+#[cfg(test)]
+mod yandex_tests {
+    use super::*;
+    use crate::{Catalog, YANDEX_BASE_URL};
+
+    #[test]
+    fn yandex_profile_pins_model_and_disables_logging_and_fallback() {
+        let catalog = Catalog::yandex("test-folder", "fixture".into());
+        let model = catalog.default().unwrap();
+        assert_eq!(
+            join_endpoint(&model.url, "responses"),
+            format!("{YANDEX_BASE_URL}/responses")
+        );
+        assert_eq!(model.api_model, "gpt://test-folder/deepseek-v4.1-flash");
+        assert_eq!(catalog.stream_chain(model).len(), 1);
+        assert!(catalog.find("deepseek-v4-pro").is_none());
+        assert!(!model.uses_plaintext_reasoning());
+        let body = responses_body_for(
+            model,
+            &StepRequest {
+                messages: vec![crate::ChatMessage {
+                    role: "user".into(),
+                    content: "test".into(),
+                    ..Default::default()
+                }],
+                instructions: None,
+                thinking: false,
+                tools: vec![crate::ToolSpec {
+                    name: "get_demo".into(),
+                    description: "fixture".into(),
+                    parameters: json!({"type": "object"}),
+                }],
+            },
+        );
+        assert_eq!(body["store"], false);
+        assert_eq!(body["stream"], true);
+        assert_eq!(body["tools"][0]["type"], "function");
+        let headers = responses_headers(&model.key, true).unwrap();
+        assert_eq!(headers[AUTHORIZATION], "Api-Key fixture");
+        assert_eq!(headers["x-data-logging-enabled"], "false");
+        assert!(Catalog::yandex("", "fixture".into())
+            .default()
+            .unwrap()
+            .key
+            .is_empty());
+    }
 }

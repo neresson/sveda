@@ -10,7 +10,10 @@ use futures_util::StreamExt;
 use serde_json::{json, Value};
 use sveda_protocol::diagnostics::{identifier, log, Level};
 
-pub use catalog::{Catalog, ModelSpec, Protocol, ReasoningEffort, UnknownModelError};
+pub use catalog::{
+    yandex_only, Catalog, ModelSpec, Protocol, ReasoningEffort, UnknownModelError, YANDEX_BASE_URL,
+    YANDEX_MODEL,
+};
 pub use embeddings::{
     clamp_embedding_input, default_dimensions, default_usd_per_million, supports_dimensions_param,
     EmbeddingProtocol, EmbeddingSpec, DEFAULT_EMBEDDING_DIMS, DEFAULT_EMBEDDING_MODEL,

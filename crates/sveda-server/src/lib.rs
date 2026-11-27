@@ -517,6 +517,9 @@ impl AppState {
     }
 
     pub(crate) fn catalog(&self) -> Catalog {
+        if sveda_llm::yandex_only() {
+            return Catalog::yandex_from_env();
+        }
         self.catalog.lock().expect("catalog").clone()
     }
 
@@ -529,7 +532,10 @@ impl AppState {
             return Ok(());
         };
         let patch = settings::read_config_patch(&path)?;
-        let seed = settings::SettingsDocument::from_runtime(&self.config, &self.catalog());
+        let seed = settings::SettingsDocument::from_runtime(
+            &self.config,
+            &self.catalog.lock().expect("catalog"),
+        );
         let merged = seed.merge(patch);
         let stored = self
             .settings
